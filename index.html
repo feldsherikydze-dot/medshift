@@ -5,758 +5,278 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>МедСмена</title>
 <style>
-:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#e0e0e0}
-body.dark{--bg:#12161c;--card:#1c232c;--tx:#e8e8e8;--mut:#9aa5b1;--bd:#2a3340}
+:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#ddd}
 body{font-family:system-ui;margin:0;background:var(--bg);color:var(--tx)}
-header{background:var(--ac);color:#fff;padding:10px 14px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
-header #alarm{cursor:pointer}
-nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10}
-nav button{flex:1;padding:11px 2px;border:0;background:none;font-size:13px;color:var(--tx)}
+header{background:var(--ac);color:#fff;padding:10px 14px;font-size:18px}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0}
+nav button{flex:1;padding:11px 2px;border:0;background:none;font-size:13px}
 nav button.on{box-shadow:inset 0 -3px 0 var(--ac);font-weight:600}
-main{padding:12px;max-width:960px;margin:0 auto}
+main{padding:12px;max-width:900px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
 .badge{border-radius:8px;padding:2px 8px;font-size:12px;white-space:nowrap}
-.bExp{background:#ffd2d2;color:#7a1010}.bSoon{background:#ffe0c2;color:#8a4b00}.bWarn{background:#fff3c2;color:#7a6000}.bOk{background:#d9f2d9;color:#1b5e20}
+.bExp{background:#ffd2d2;color:#7a1010}.bSoon{background:#ffe0c2;color:#8a4b00}
+.bWarn{background:#fff3c2;color:#7a6000}.bOk{background:#d9f2d9;color:#1b5e20}
 .bG{background:#2e7d32;color:#fff}.bY{background:#f9a825;color:#332}.bR{background:#c62828;color:#fff}
-body.dark .bExp{background:#5c2020;color:#ffd2d2}body.dark .bSoon{background:#5c3a1a;color:#ffe0c2}
-body.dark .bWarn{background:#54470f;color:#fff3c2}body.dark .bOk{background:#1e4620;color:#d9f2d9}
-tr.exp{background:#ffe3e3}tr.soon{background:#ffedd9}tr.warn{background:#fff8d6}
-body.dark tr.exp{background:#4d1d1d}body.dark tr.soon{background:#4d301d}body.dark tr.warn{background:#443a10}
-.btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:15px;margin:4px 4px 4px 0;cursor:pointer}
+tr.exp{background:#ffe3e3}tr.soon{background:#ffedd9}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:15px;margin:4px 4px 4px 0}
 .btn.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
 .btn.del{background:transparent;color:#c62828;border:1px solid #c62828;padding:4px 8px;margin:0}
 .btn.mini{padding:4px 8px;margin:0}
-.btn.wide{width:100%;padding:12px;font-size:16px;margin:4px 0}
-input,select,textarea{padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:15px;width:100%;box-sizing:border-box;background:var(--card);color:var(--tx)}
-textarea{min-height:80px;font-size:13px}
+.btn.wide{width:100%;padding:12px;margin:4px 0}
+input,select,textarea{padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:15px;width:100%;box-sizing:border-box}
+textarea{min-height:70px}
 label{font-size:13px;color:var(--mut)}
-.sugg{position:relative}
-.sugg ul{position:absolute;left:0;right:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;margin:0;padding:0;list-style:none;max-height:220px;overflow:auto;z-index:50}
-.sugg li{padding:8px;cursor:pointer}
-.sugg li:hover{background:var(--ac);color:#fff}
 .row{display:flex;gap:8px}.row>*{flex:1}
-.alert{background:#ffe3e3;border:1px solid #e57373;border-radius:10px;padding:10px;margin-bottom:10px;color:#7a1010}
-body.dark .alert{background:#4d1d1d;color:#ffd2d2}
-.miss{background:#fff8d6;border:1px solid #e0c060;border-radius:10px;padding:10px;margin:8px 0;font-size:14px;color:#7a6000}
-body.dark .miss{background:#443a10;color:#fff3c2}
-.prev{max-height:260px;overflow:auto;border:1px solid var(--bd);border-radius:8px;margin:8px 0}
-.prev input{padding:4px;font-size:13px}
-.wgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-@media(max-width:640px){.wgrid{grid-template-columns:1fr}}
-.wgt{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center}
-.wgt .big{font-size:24px;font-weight:700;white-space:pre-line}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:11px}
-.cal div{padding:3px 0;text-align:center;border-radius:6px}
-.cal .td{background:var(--ac);color:#fff;font-weight:700}.cal .hd{color:var(--mut);font-weight:600}
-.chatbox{height:280px;overflow:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px}
-.msg{margin:4px 0;padding:6px 8px;border-radius:8px;background:var(--bg);font-size:14px}
-.msg b{color:var(--ac)}.msg small{color:var(--mut)}
-.chk{display:flex;gap:6px;align-items:center;font-size:14px;margin:3px 0}
-.chk input{width:auto}
-#dlg::backdrop{background:rgba(0,0,0,.45)}
 .loginwrap{max-width:420px;margin:40px auto}
-.bigbtn{display:block;width:100%;margin:6px 0;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px;text-align:left;cursor:pointer}
-.bigbtn b{color:var(--ac)}
+.bigbtn{display:block;width:100%;margin:6px 0;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:16px;text-align:left}
+#dlg::backdrop{background:rgba(0,0,0,.45)}
 </style>
 </head>
 <body>
-  <script>window.addEventListener('error',function(e){var m=document.getElementById('main');if(m)m.innerHTML='<div class="card"><b>ОШИБКА:</b> '+e.message+'<br><b>СТРОКА:</b> '+e.lineno+'</div>'},true);</script>
-<header>МедСмена <span id="alarm" onclick="go('home')"></span></header>
+<header>МедСмена <span id="alarm"></span></header>
 <nav id="nav"></nav>
 <main id="main"></main>
 <dialog id="dlg" style="width:min(680px,95%)"><div id="dlgBody"></div></dialog>
 <script>
-/* ===== SEED ===== */
-window.SEED=`а|1|Адреналин|р-р 1 мг/мл 1 мл|амп|10
-а|2|Аминофиллин (Эуфиллин)|р-р 24 мг/мл 10 мл|амп|10
-а|3|Анальгин|р-р 50% 2 мл|амп|10
-а|4|Атропин|р-р 0.1% 1 мл|амп|10
-а|5|Гепарин|р-р 5000 ЕД/мл 5 мл|фл|2
-а|6|Глюкоза|р-р 40% 20 мл|амп|10
-а|7|Дексаметазон|р-р 4 мг/мл 1 мл|амп|10
-а|8|Димедрол|р-р 1% 1 мл|амп|10
-а|9|Допамин|р-р 40 мг/мл 5 мл|амп|5
-а|10|Калия хлорид|р-р 4% 10 мл|амп|10
-а|11|Коргликон|р-р 0.06% 1 мл|амп|10
-а|12|Кордиамин|р-р 25% 1 мл|амп|10
-а|13|Лазикс|р-р 1% 2 мл|амп|10
-а|14|Магния сульфат|р-р 25% 10 мл|амп|10
-а|15|Натрия хлорид|р-р 0.9% 20 мл|амп|10
-а|16|Нитроглицерин|р-р 0.1% 1 мл|амп|10
-а|17|Нитроглицерин|таб 0.5 мг|таб|20
-а|18|Но-шпа|р-р 2% 2 мл|амп|10
-а|19|Преднизолон|р-р 30 мг/мл 1 мл|амп|10
-а|20|Реланиум|р-р 0.5% 2 мл|амп|10
-а|21|Супрастин|р-р 2% 1 мл|амп|10
-а|22|Фуросемид|р-р 1% 2 мл|амп|10
-а|23|Эуфиллин|р-р 24 мг/мл 10 мл|амп|10
-б|1|Валидол|таб 60 мг|таб|10
-б|2|Валокордин|р-р 25 мл|фл|1
-б|3|Каптоприл|таб 25 мг|таб|10
-б|4|Метопролол|таб 50 мг|таб|10
-б|5|Нифедипин|таб 10 мг|таб|10
-б|6|Нитроглицерин аэрозоль|аэр 1% 10 мл|фл|1
-в|1|Амбробене|р-р 15 мг/2 мл|амп|5
-в|2|Преднизолон|таб 5 мг|таб|10
-в|3|Сальбутамол|аэр 100 мкг/доза 200 доз|фл|1
-в|4|Эуфиллин|таб 150 мг|таб|20
-г|1|Анальгин|таб 500 мг|таб|10
-г|2|Баралгин|таб 500 мг|таб|10
-г|3|Кеторол|таб 10 мг|таб|10
-г|4|Кеторолак|р-р 30 мг/мл 1 мл|амп|10
-г|5|Найз|таб 100 мг|таб|10
-г|6|Парацетамол|таб 500 мг|таб|10
-д|1|Активированный уголь|таб 250 мг|таб|20
-д|2|Лоперамид|таб 2 мг|таб|10
-д|3|Омепразол|капс 20 мг|капс|10
-д|4|Церукал|р-р 10 мг/2 мл|амп|5
-д|5|Церукал|таб 10 мг|таб|10
-е|1|Амоксициллин|капс 500 мг|капс|20
-е|2|Цефазолин|пор 1 г|фл|5
-е|3|Ципрофлоксацин|таб 500 мг|таб|10
-ж|1|Бисопролол|таб 5 мг|таб|30
-ж|2|Вальсакор|таб 80 мг|таб|30
-ж|3|Верапамил|таб 40 мг|таб|50
-ж|4|Изосорбид|таб 20 мг|таб|30
-ж|5|Индапамид|таб 2.5 мг|таб|30
-ж|6|Каптоприл|таб 25 мг|таб|30
-ж|7|Лизиноприл|таб 10 мг|таб|30
-ж|8|Лозартан|таб 50 мг|таб|30
-ж|9|Метопролол|таб 50 мг|таб|30
-ж|10|Нитроглицерин|таб 0.5 мг|таб|40
-ж|11|Эналаприл|таб 10 мг|таб|30
-з|1|Альбумин|р-р 10% 100 мл|фл|1
-з|2|Волювен|р-р 500 мл|фл|2
-з|3|Глюкоза|р-р 5% 400 мл|фл|2
-з|4|Натрия хлорид|р-р 0.9% 400 мл|фл|2
-з|5|Реополиглюкин|р-р 400 мл|фл|1
-з|6|Рингер|р-р 400 мл|фл|2
-и|1|Алкоголь этиловый|р-р 70% 100 мл|фл|1
-и|2|Бриллиантовый зеленый|р-р 1% 10 мл|фл|1
-и|3|Йод|р-р 5% 10 мл|фл|1
-и|4|Перекись водорода|р-р 3% 100 мл|фл|1
-и|5|Фурацилин|таб 20 мг|таб|10
-и|6|Хлоргексидин|р-р 0.05% 100 мл|фл|1
-к|1|Альбуцид|глаз капли 20% 5 мл|фл|1
-к|2|Визин|глаз капли 0.05% 15 мл|фл|1
-к|3|Дексаметазон|глаз капли 0.1% 5 мл|фл|1
-к|4|Левомицетин|глаз капли 0.25% 5 мл|фл|1
-к|5|Офтан Дексаметазон|глаз капли 1 мг/мл 5 мл|фл|1
-к|6|Сульфацил-натрий|глаз капли 20% 5 мл|фл|1
-к|7|Таурин|глаз капли 4% 5 мл|фл|1
-к|8|Тобрадекс|глаз капли 5 мл|фл|1
-к|9|Флоксал|глаз капли 0.3% 5 мл|фл|1
-к|10|Ципролет|глаз капли 0.3% 5 мл|фл|1
-л|1|Бинт марлевый стерильный|5 м х 10 см|шт|10
-л|2|Бинт марлевый стерильный|7 м х 14 см|шт|10
-л|3|Бинт марлевый нестерильный|5 м х 10 см|шт|5
-л|4|Вата|гигиеническая 50 г|уп|5
-л|5|Гемостатическая губка|50х50 мм|шт|5
-л|6|Жгут кровеостанавливающий|шт|3
-л|7|Лейкопластырь бактерицидный|разн. размеры|уп|10
-л|8|Лейкопластырь рулонный|2 см х 5 м|шт|3
-л|9|Салфетки стерильные|16х14 см №10|уп|10
-л|10|Салфетки стерильные|45х29 см №5|уп|5
-м|1|Воротник Шанца|шейный|шт|2
-м|2|Носилки мягкие|шт|1
-м|3|Покрывало спасательное|шт|2
-м|4|Шина Дитерихса|шт|1
-м|5|Шина Крамера|110 см|шт|3
-м|6|Шина вакуумная для руки|шт|1
-м|7|Шина вакуумная для ноги|шт|1
-н|1|Маска медицинская|одноразовая|шт|20
-н|2|Перчатки латексные|стерильные|пар|10
-н|3|Перчатки латексные|нестерильные|пар|10
-н|4|Халат медицинский|одноразовый|шт|5
-о|1|Катетер венозный периферический|разн. размеры|шт|10
-о|2|Система для инфузий|шт|10
-о|3|Шприц 2 мл|шт|20
-о|4|Шприц 5 мл|шт|20
-о|5|Шприц 10 мл|шт|10
-о|6|Шприц 20 мл|шт|5
-о|7|Игла инъекционная|разн. размеры|шт|30
-п|1|Аммиак|р-р 10% 10 мл|фл|1
-п|2|Анальгин|р-р 50% 2 мл|амп|10
-п|3|Атропин|р-р 0.1% 1 мл|амп|10
-п|4|Гепарин|р-р 5000 ЕД/мл 5 мл|фл|2
-п|5|Глюкоза|р-р 40% 20 мл|амп|10
-п|6|Дексаметазон|р-р 4 мг/мл 1 мл|амп|10
-п|7|Димедрол|р-р 1% 1 мл|амп|10
-п|8|Кордиамин|р-р 25% 1 мл|амп|10
-п|9|Лазикс|р-р 1% 2 мл|амп|10
-п|10|Магния сульфат|р-р 25% 10 мл|амп|10
-п|11|Натрия хлорид|р-р 0.9% 20 мл|амп|10
-п|12|Нитроглицерин|таб 0.5 мг|таб|10
-п|13|Преднизолон|р-р 30 мг/мл 1 мл|амп|10
-п|14|Реланиум|р-р 0.5% 2 мл|амп|10
-п|15|Супрастин|р-р 2% 1 мл|амп|10
-р|1|Ацетилсалициловая кислота|таб 500 мг|таб|10
-р|2|Ибупрофен|таб 200 мг|таб|10
-р|3|Нимесулид|таб 100 мг|таб|10
-р|4|Парацетамол|таб 500 мг|таб|10
-с|1|Активированный уголь|таб 250 мг|таб|20
-с|2|Лоперамид|таб 2 мг|таб|10
-с|3|Омепразол|капс 20 мг|капс|10
-с|4|Смекта|пакет 3 г|пакет|10
-т|1|Валидол|таб 60 мг|таб|10
-т|2|Корвалол|р-р 25 мл|фл|1
-т|3|Нитроглицерин|таб 0.5 мг|таб|10
-у|1|Алкоголь этиловый|р-р 70% 100 мл|фл|1
-у|2|Йод|р-р 5% 10 мл|фл|1
-у|3|Перекись водорода|р-р 3% 100 мл|фл|1
-у|4|Хлоргексидин|р-р 0.05% 100 мл|фл|1
-ф|1|Альбуцид|глаз капли 20% 5 мл|фл|1
-ф|2|Дексаметазон|глаз капли 0.1% 5 мл|фл|1
-ф|3|Левомицетин|глаз капли 0.25% 5 мл|фл|1
-х|1|Амбробене|р-р 15 мг/2 мл|амп|5
-х|2|Преднизолон|таб 5 мг|таб|10
-х|3|Сальбутамол|аэр 100 мкг/доза|фл|1
-ц|1|Кеторол|таб 10 мг|таб|10
-ц|2|Кеторолак|р-р 30 мг/мл 1 мл|амп|10
-ц|3|Найз|таб 100 мг|таб|10
-ч|1|Амоксициллин|капс 500 мг|капс|20
-ч|2|Цефазолин|пор 1 г|фл|5
-ч|3|Ципрофлоксацин|таб 500 мг|таб|10
-ш|1|Бисопролол|таб 5 мг|таб|30
-ш|2|Каптоприл|таб 25 мг|таб|30
-ш|3|Лизиноприл|таб 10 мг|таб|30
-ш|4|Метопролол|таб 50 мг|таб|30
-ш|5|Нитроглицерин|таб 0.5 мг|таб|40`.split('\n').map(r=>r.split('|'));
-
-/* ===== CORE ===== */
-const LS='medshift_v3',VER=3;
-let DB=JSON.parse(localStorage.getItem(LS)||'null');
-const S=()=>DB.settings;
+window.SEED=[];
+var LS='medshift_v3';
+var DB=JSON.parse(localStorage.getItem(LS)||'null');
+function S(){return DB.settings}
 function save(){localStorage.setItem(LS,JSON.stringify(DB))}
 function uid(){return DB.seq++}
-function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-if(!DB){
-DB={seq:1,ver:VER,settings:{warnDays:10,city:'',accent:'#0b5394',dark:false},users:[],session:null,
-bagTypes:[{id:1,name:'Стандарт 117 (основной + таблетки)',std:true,items:(window.SEED||[]).map(s=>({group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}))}],
-bags:[],cars:[],ecg:[],uchet:[],reports:[],tasks:[],monthly:[],chat:[]};save()}
-let tab='home',loginFor=null,room='общая';
-function me(){return DB.users.find(u=>u.id===DB.session)||null}
-function isBoss(){const u=me();return!!u&&(u.role==='admin'||u.role==='lead')}
-function applyTheme(){const s=S();document.documentElement.style.setProperty('--ac',s.accent);document.body.classList.toggle('dark',!!s.dark)}
-function openDlg(html){dlgBody.innerHTML=html;dlg.showModal()}
+function esc(s){s=(s==null?'':String(s));
+return s.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')}
+if(!DB){DB={seq:1,settings:{warnDays:10},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[]};save()}
+var tab='home',loginFor=null,curBag=null,curCar=null,curKit=null,repCar=null;
+function me(){for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===DB.session)return DB.users[i];return null}
+function isBoss(){var u=me();return !!u&&(u.role==='admin'||u.role==='lead')}
+function openDlg(h){dlgBody.innerHTML=h;dlg.showModal()}
 function closeDlg(){dlg.close()}
 function todayStr(){return new Date().toISOString().slice(0,10)}
-function daysLeft(iso){const d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
-function badgeExp(iso){if(!iso)return'<span class="badge bWarn">нет срока</span>';const d=daysLeft(iso);
-if(d<0)return`<span class="badge bExp">просрочен ${-d} дн</span>`;if(d<=S().warnDays)return`<span class="badge bSoon">осталось ${d} дн</span>`;
-if(d<=30)return`<span class="badge bWarn">${d} дн</span>`;return`<span class="badge bOk">${d} дн</span>`}
-function rowCls(iso){if(!iso)return'';const d=daysLeft(iso);if(d<0)return'exp';if(d<=S().warnDays)return'soon';if(d<=30)return'warn';return''}
-function myObjects(){const u=me();if(!u)return{bags:[],cars:[]};
-return{bags:DB.bags.filter(b=>isBoss()||(u.bags||[]).includes(b.id)),cars:DB.cars.filter(c=>isBoss()||(u.cars||[]).includes(c.id))}}
-function soonItems(){const r=[];const mo=myObjects();
-mo.bags.forEach(b=>b.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push({obj:b.name,it})}));
-mo.cars.forEach(c=>c.kits.forEach(k=>k.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push({obj:c.name+' / '+k.name,it})})));
+function daysLeft(iso){var d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+function badgeExp(iso){if(!iso)return '<span class="badge bWarn">нет срока</span>';var d=daysLeft(iso);
+if(d<0)return '<span class="badge bExp">просрочен '+(-d)+' дн</span>';
+if(d<=S().warnDays)return '<span class="badge bSoon">осталось '+d+' дн</span>';
+if(d<=30)return '<span class="badge bWarn">'+d+' дн</span>';
+return '<span class="badge bOk">'+d+' дн</span>'}
+function rowCls(iso){if(!iso)return '';var d=daysLeft(iso);if(d<0)return 'exp';if(d<=S().warnDays)return 'soon';return ''}
+function myBags(){var u=me();if(!u)return [];if(isBoss())return DB.bags;
+return DB.bags.filter(function(b){return (u.bags||[]).indexOf(b.id)>=0})}
+function myCars(){var u=me();if(!u)return [];if(isBoss())return DB.cars;
+return DB.cars.filter(function(c){return (u.cars||[]).indexOf(c.id)>=0})}
+function soonList(){var r=[];
+myBags().forEach(function(b){b.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(b.name+': '+it.name)})});
+myCars().forEach(function(c){c.kits.forEach(function(k){k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(c.name+' / '+k.name+': '+it.name)})})});
 return r}
-function monthlyDue(){const u=me();if(!u)return[];const mk=todayStr().slice(0,7),d=new Date().getDate();if(d>5)return[];
-const r=[];const mo=myObjects();
-mo.bags.forEach(b=>{if(!DB.monthly.some(m=>m.kind==='bag'&&m.objId===b.id&&m.month===mk))r.push('сумка '+b.name)});
-mo.cars.forEach(c=>{if(!DB.monthly.some(m=>m.kind==='car'&&m.objId===c.id&&m.month===mk))r.push('машина '+c.name)});
-return r}
-function alerts(){const a=[];const so=soonItems();
-if(so.length)a.push({t:`⏰ Истекает/просрочено по вашим объектам: ${so.length} поз.`,l:'bSoon'});
-DB.cars.forEach(c=>c.equip.forEach(e=>{if(e.status==='def'&&(isBoss()||(me()&&(me().cars||[]).includes(c.id))))a.push({t:`🔧 ${c.name}: дефект ${e.name}${e.defect?' ('+e.defect+')':''}`,l:'bExp'})}));
-DB.uchet.forEach(k=>k.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)a.push({t:`🔐 Учёт ${k.name}: ${it.name} — срок!`,l:'bExp'})}));
-const md=monthlyDue();if(md.length)a.push({t:`📋 Месячная проверка: ${md.join(', ')} — отметьте проверку`,l:'bWarn'});
-if(isBoss()){const pend=DB.reports.filter(r=>!r.viewed).length;if(pend)a.push({t:`📨 Непросмотренных отчётов: ${pend}`,l:'bWarn'});
-DB.tasks.forEach(t=>{if(!t.done&&(Date.now()-t.ts)/864e5>3)a.push({t:`📌 Задача висит >3 дней: ${t.text}`,l:'bWarn'})})}
+function alerts(){var a=[];var so=soonList();
+if(so.length)a.push({t:'Истекает/просрочено: '+so.length+' поз.',l:'bSoon'});
+DB.cars.forEach(function(c){c.equip.forEach(function(e){if(e.status==='def')a.push({t:c.name+': дефект '+e.name,l:'bExp'})})});
+if(isBoss()){var p=0;DB.reports.forEach(function(r){if(!r.viewed)p++});if(p)a.push({t:'Непросмотренных отчётов: '+p,l:'bWarn'})}
 return a}
-function renderNav(){const tabs=me()?[['home','Главная'],['bags','Сумки'],['cars','Машины'],['uchet','Учёт'],['chat','Чат'],['set','Ещё']]:[];
-nav.innerHTML=tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}
+function renderNav(){var u=me();nav.innerHTML='';if(!u)return;
+var tabs=[['home','Главная'],['bags','Сумки'],['cars','Машины'],['set','Ещё']];
+tabs.forEach(function(t){var b=document.createElement('button');
+if(tab===t[0])b.className='on';b.textContent=t[1];b.onclick=function(){go(t[0])};nav.appendChild(b)})}
 function go(t){tab=t;renderNav();render()}
-function render(){if(!me()){main.innerHTML=loginView();alarm.innerHTML='';return}
-main.innerHTML=tab==='home'?homeView():tab==='bags'?bagsView():tab==='cars'?carsView():tab==='uchet'?uchetView():tab==='chat'?chatView():setView();
-const a=alerts();alarm.innerHTML=a.length?`<span class="badge bExp">⚠ ${a.length}</span>`:'';
+function render(){var u=me();
+if(!u){main.innerHTML=loginView();document.getElementById('alarm').innerHTML='';return}
+if(tab==='home')main.innerHTML=homeView();
+else if(tab==='bags')main.innerHTML=bagsView();
+else if(tab==='cars')main.innerHTML=carsView();
+else main.innerHTML=setView();
+var a=alerts();
+document.getElementById('alarm').innerHTML=a.length?'<span class="badge bExp">! '+a.length+'</span>':'';
 if(tab==='home')startClock()}
-function loginView(){let h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p style="color:var(--mut)">Вход по PIN-коду сотрудника</p>';
-h+=DB.users.map(u=>`<button class="bigbtn" onclick="loginPick(${u.id})">👤 <b>${esc(u.name)}</b> · ${u.role==='admin'?'админ':u.role==='lead'?'руководитель':'сотрудник'}</button>`).join('');
-if(loginFor)h+=`<p><input id="pinIn" type="password" placeholder="PIN-код" onkeydown="if(event.key==='Enter')loginDo()"></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>`;
-h+=`<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться (я новый сотрудник)</button></div></div>`;return h}
-function loginPick(id){const u=DB.users.find(x=>x.id===id);if(!u.pin){DB.session=id;save();go('home');return}loginFor=id;render();setTimeout(()=>{const e=document.getElementById('pinIn');e&&e.focus()},0)}
-function loginDo(){const u=DB.users.find(x=>x.id===loginFor);const v=document.getElementById('pinIn').value;
-if(v!==u.pin)return alert('Неверный PIN');DB.session=u.id;loginFor=null;save();go('home')}
-function regView(){openDlg(`<h3>Анкета сотрудника</h3><label>ФИО</label><input id="rName">
-<label>PIN-код для входа</label><input id="rPin" type="password" inputmode="numeric">
-<label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric">
-<p style="font-size:13px;color:var(--mut)">Первый зарегистрированный становится администратором.</p>
-<p><button class="btn" onclick="regDo()">Создать</button><button class="btn sec" onclick="closeDlg();render()">Отмена</button></p>`)}
-function regDo(){const n=rName.value.trim();if(!n)return alert('Введите ФИО');
-if(rPin.value!==rPin2.value)return alert('PIN не совпадает');
-const role=DB.users.length?'user':'admin';
-const u={id:uid(),name:n,pin:rPin.value,role,cars:[],bags:[],channel:'app'};DB.users.push(u);DB.session=u.id;save();closeDlg();go('home');
-if(role==='admin')alert('Вы администратор: доступно управление людьми и всеми справочниками')}
-let clockTimer=null;
-function startClock(){clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
-function tick(){const e=document.getElementById('clk');if(!e)return;const d=new Date();
-e.textContent=d.toLocaleTimeString('ru-RU')+'\n'+d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}
-function calGrid(){const n=new Date(),y=n.getFullYear(),mo=n.getMonth(),first=(new Date(y,mo,1).getDay()+6)%7,days=new Date(y,mo+1,0).getDate();
-let h='<div class="cal">'+['пн','вт','ср','чт','пт','сб','вс'].map(d=>`<div class="hd">${d}</div>`).join('');
-for(let i=0;i<first;i++)h+='<div></div>';for(let d=1;d<=days;d++)h+=`<div class="${d===n.getDate()?'td':''}">${d}</div>`;return h+'</div>'}
-function wCode(c){return c===0?'☀️ ясно':c<=3?'⛅ облачно':c<=48?'🌫 туман':c<=67?'🌧 дождь':c<=77?'❄️ снег':c<=82?'🌦 ливень':'⛈ гроза'}
-function loadWeather(){const el=document.getElementById('wgt');if(!el)return;const s=S();
-if(!s.city){el.innerHTML='<small>город не задан</small>';return}
-const g=s.geo;if(g&&g.city===s.city&&Date.now()-g.ts<18e5){el.innerHTML=`<div class="big">${wCode(g.code)} ${g.temp}°C</div><small>${esc(s.city)}</small>`;return}
-el.innerHTML='…';fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(s.city)}&count=1&language=ru`).then(r=>r.json()).then(j=>{
-if(!j.results||!j.results[0])throw 0;const c=j.results[0];
-return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.latitude}&longitude=${c.longitude}&current_weather=true`).then(r=>r.json()).then(w=>{
-s.geo={city:s.city,ts:Date.now(),temp:Math.round(w.current_weather.temperature),code:w.current_weather.weathercode};save();
-el.innerHTML=`<div class="big">${wCode(s.geo.code)} ${s.geo.temp}°C</div><small>${esc(s.city)}</small>`})}).catch(()=>el.innerHTML='<small>нет связи</small>')}
-function homeView(){const a=alerts();const reps=(isBoss()?DB.reports:DB.reports.filter(r=>r.userId===(me()||{}).id)).slice(-8).reverse();
-let h='<div class="wgrid"><div class="wgt"><div class="big" id="clk"></div></div><div class="wgt" id="wgt"></div><div class="wgt" style="grid-column:span 2">'+calGrid()+'</div></div>';
-loadWeather();
-h+='<div class="card"><b>🔔 Тревоги</b>'+(a.length?'<table>'+a.map(x=>`<tr><td><span class="badge ${x.l}">!</span> ${x.t}</td></tr>`).join('')+'</table>':'<p>✅ Всё в порядке</p>')+'</div>';
-h+='<div class="card"><b>📨 Отчёты</b>'+(reps.length?'<table>'+reps.map(r=>`<tr><td><span class="badge ${r.status==='green'?'bG':r.status==='yellow'?'bY':'bR'}">${r.status==='green'?'без замечаний':r.status==='yellow'?'с замечаниями':'красный'}</span> ${new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${esc(r.car)} · ${esc(r.user)}<br><small>сумка №${esc(r.bagNum||'—')}, ЭКГ №${esc(r.ecgNum||'—')}${r.remarks?' · '+esc(r.remarks):''}</small></td></tr>`).join('')+'</table>':'<p>Отчётов пока нет</p>')+'</div>';
+function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';
+DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.id+')">👤 <b>'+esc(u.name)+'</b></button>'});
+if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN"></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
+h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button></div></div>';return h}
+function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
+if(!u.pin){DB.session=id;save();go('home');return}
+loginFor=id;render()}
+function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
+var v=document.getElementById('pinIn').value;
+if(v!==u.pin)return alert('Неверный PIN');
+DB.session=u.id;loginFor=null;save();go('home')}
+function regView(){openDlg('<h3>Анкета</h3><label>ФИО</label><input id="rName"><label>PIN</label><input id="rPin" type="password" inputmode="numeric"><label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric"><p><button class="btn" onclick="regDo()">Создать</button></p>')}
+function regDo(){var n=document.getElementById('rName').value.trim();
+if(!n)return alert('Введите ФИО');
+var p1=document.getElementById('rPin').value,p2=document.getElementById('rPin2').value;
+if(p1!==p2)return alert('PIN не совпадает');
+var role=DB.users.length?'user':'admin';
+DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[]});
+DB.session=DB.users[DB.users.length-1].id;save();closeDlg();go('home');
+if(role==='admin')alert('Вы администратор')}
+var clockTimer=null;
+function startClock(){if(clockTimer)clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
+function tick(){var e=document.getElementById('clk');if(!e)return;var d=new Date();
+e.innerHTML='<b>'+d.toLocaleTimeString('ru-RU')+'</b><br>'+d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}
+function homeView(){var a=alerts();var h='<div class="card" id="clk"></div>';
+h+='<div class="card"><b>🔔 Тревоги</b>';
+if(a.length){h+='<table>';a.forEach(function(x){h+='<tr><td><span class="badge '+x.l+'">!</span> '+esc(x.t)+'</td></tr>'});h+='</table>'}
+else h+='<p>✅ Всё в порядке</p>';
+h+='</div><div class="card"><b>📨 Последние отчёты</b>';
+var reps=DB.reports.slice(-6).reverse();
+if(reps.length){h+='<table>';reps.forEach(function(r){h+='<tr><td><span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+(r.status==='green'?'без замечаний':r.status==='yellow'?'с замечаниями':'КРАСНЫЙ')+'</span> '+esc(r.car)+' · '+esc(r.user)+'<br><small>'+new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(r.remarks?' · '+esc(r.remarks):'')+'</small></td></tr>'});h+='</table>'}
+else h+='<p>Отчётов пока нет</p>';
+h+='</div>';return h}
+function bagsView(){if(curBag)return bagView();
+var h='<button class="btn" onclick="openBagDlg()">+ Сумка</button>';
+if(!DB.bags.length)h+='<p>Сумок пока нет</p>';
+DB.bags.forEach(function(b){var bad=0;
+b.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++});
+h+='<div class="card"><b>👜 '+esc(b.name)+'</b> · '+b.items.length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+'<br><button class="btn sec mini" onclick="curBag='+b.id+';render()">Открыть</button> <button class="btn del" onclick="delBag('+b.id+')">🗑</button></div>'});
 return h}
-function chatView(){const rooms=['общая',...DB.cars.map(c=>c.name)];if(!rooms.includes(room))room='общая';
-const msgs=DB.chat.filter(m=>m.room===room).slice(-100);
-let h=`<select onchange="room=this.value;render()">${rooms.map(r=>`<option ${r===room?'selected':''}>${esc(r)}</option>`).join('')}</select>
-<div class="chatbox" id="cbox">${msgs.map(m=>`<div class="msg"><b>${esc(m.author)}</b> <small>${new Date(m.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small><br>${esc(m.text)}</div>`).join('')||'<p style="color:var(--mut)">Сообщений нет</p>'}</div>
-<div class="row"><input id="cIn" placeholder="Сообщение… (вы: ${esc((me()||{}).name||'')})" onkeydown="if(event.key==='Enter')sendMsg()"><button class="btn" style="width:auto" onclick="sendMsg()">➤</button></div>`;
-setTimeout(()=>{const b=document.getElementById('cbox');if(b)b.scrollTop=b.scrollHeight},0);return h}
-function sendMsg(){const v=document.getElementById('cIn').value.trim();if(!v)return;
-DB.chat.push({id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room,text:v});save();render()}
-function setView(){const u=me();let h=`<div class="card"><h3>Мой профиль</h3>
-<label>ФИО</label><input value="${esc(u.name)}" onchange="me().name=this.value;save()">
-<label>Новый PIN (оставьте пустым — не менять)</label><input id="sPin" type="password" inputmode="numeric" onchange="if(this.value){me().pin=this.value;save();this.value=''}">
-<label>Канал оповещений-дублёров</label><select onchange="me().channel=this.value;save()"><option value="app" ${u.channel==='app'?'selected':''}>Только приложение</option><option value="tg" ${u.channel==='tg'?'selected':''}>Telegram</option><option value="max" ${u.channel==='max'?'selected':''}>MAX</option></select>
-<label>Мои ответственные машины</label>${DB.cars.map(c=>`<label class="chk"><input type="checkbox" ${(u.cars||[]).includes(c.id)?'checked':''} onchange="toggleResp('cars',${c.id},this.checked)"> ${esc(c.name)}</label>`).join('')||'<p style="color:var(--mut)">машин пока нет</p>'}
-<label>Мои ответственные сумки</label>${DB.bags.map(b=>`<label class="chk"><input type="checkbox" ${(u.bags||[]).includes(b.id)?'checked':''} onchange="toggleResp('bags',${b.id},this.checked)"> ${esc(b.name)}</label>`).join('')||'<p style="color:var(--mut)">сумок пока нет</p>'}
-</div>`;
-h+=`<div class="card"><h3>Внешний вид и правила</h3>
-<label>Город (погода)</label><input value="${esc(S().city)}" onchange="S().city=this.value;S().geo=null;save();render()">
-<label>Предупреждать за дней</label><input type="number" value="${S().warnDays}" onchange="S().warnDays=+this.value||10;save()">
-<div class="row"><div><label>Цвет темы</label><input type="color" value="${S().accent}" onchange="S().accent=this.value;save();applyTheme()"></div>
-<div><label>Тема</label><select onchange="S().dark=this.value==='1';save();applyTheme();render()"><option value="0" ${S().dark?'':'selected':''}>Светлая</option><option value="1" ${S().dark?'selected':''}>Тёмная</option></select></div></div>
-<p><button class="btn sec" onclick="reqNotif()">🔔 Разрешить уведомления</button></p></div>`;
-if(u.role==='admin'){h+=`<div class="card"><h3>👑 Админ-зона: сотрудники</h3><table><tr><th>ФИО</th><th>Роль</th><th>Канал</th><th></th></tr>`+
-DB.users.map(x=>`<tr><td>${esc(x.name)}</td><td><select onchange="setRole(${x.id},this.value)" ${x.id===u.id?'disabled':''}><option value="user" ${x.role==='user'?'selected':''}>сотрудник</option><option value="lead" ${x.role==='lead'?'selected':''}>руководитель</option><option value="admin" ${x.role==='admin'?'selected':''}>админ</option></select></td><td>${x.channel}</td><td>${x.id!==u.id?`<button class="btn del" onclick="delUser(${x.id})">🗑</button>`:''}</td></tr>`).join('')+'</table></div>'}
-h+=`<div class="card"><h3>Данные</h3>
-<p><button class="btn sec" onclick="exportDB()">⬇️ Экспорт (backup)</button><label class="btn sec" style="display:inline-block">⬆️ Импорт<input type="file" hidden accept=".json" onchange="importDB(this)"></label></p>
-<p><button class="btn sec" onclick="DB.session=null;save();go('home')">🚪 Выйти</button>
-<button class="btn del" onclick="if(confirm('Полный сброс базы?')){localStorage.removeItem(LS);location.reload()}">Сброс</button></p>
-<p style="font-size:12px;color:var(--mut)">v3 · локальный режим. Сервер синхронизации подключается отдельным модулем.</p></div>`;
-return h}
-function toggleResp(kind,id,on){const u=me();u[kind]=u[kind]||[];if(on){if(!u[kind].includes(id))u[kind].push(id)}else u[kind]=u[kind].filter(x=>x!==id);save()}
-function setRole(id,r){DB.users.find(x=>x.id===id).role=r;save();render()}
-function delUser(id){if(confirm('Удалить сотрудника?')){DB.users=DB.users.filter(x=>x.id!==id);save();render()}}
-function reqNotif(){Notification.requestPermission().then(()=>alert(Notification.permission==='granted'?'Уведомления включены':'Разрешение не дано'))}
-function checkAlarm(){if(!me())return;const a=alerts();alarm.innerHTML=a.length?`<span class="badge bExp">⚠ ${a.length}</span>`:'';
-if(a.length&&Notification.permission==='granted'&&document.hidden){const ts=+localStorage.getItem('lastNotif')||0;
-if(Date.now()-ts>36e5){localStorage.setItem('lastNotif',Date.now());new Notification('МедСмена',{body:a.slice(0,3).map(x=>x.t).join('\n')})}}}
-setInterval(checkAlarm,60000);
-addEventListener('storage',e=>{if(e.key===LS&&e.newValue){DB=JSON.parse(e.newValue);applyTheme();render()}});
-function exportDB(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='medshift-'+todayStr()+'.json';a.click()}
-function importDB(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{DB=JSON.parse(r.result);save();location.reload()}catch(e){alert('Ошибка файла')}};r.readAsText(f)}
-
-/* ===== IMPORT ===== */
-let scanCb=null,scanTimer=null,scanStream=null,h5=null,impTarget=null,impDrafts=[];
-function openScan(cb){scanCb=cb;dlgScanShow();
-if('BarcodeDetector' in window){scanVid.style.display='';_scanMsg('Наведите камеру на код DataMatrix');
-navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(st=>{scanStream=st;scanVid.srcObject=st;
-const bd=new BarcodeDetector({formats:['data_matrix','qr_code']});
-scanTimer=setInterval(async()=>{try{const r=await bd.detect(scanVid);if(r.length){const p=parseGS1(r[0].rawValue);stopScan();scanCb&&scanCb(p)}}catch(e){}},400)})
-.catch(()=>_scanMsg('Нет доступа к камере'));return}
-scanVid.style.display='none';_scanMsg('Загрузка сканера…');
-new Promise((res,rej)=>{if(window.Html5Qrcode)return res();const s=document.createElement('script');
-s.src='https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';s.onload=res;s.onerror=()=>rej(new Error('нет сети'));document.head.appendChild(s)})
-.then(()=>{let w=document.getElementById('scanWrap');if(!w){w=document.createElement('div');w.id='scanWrap';scanVid.parentNode.insertBefore(w,scanVid.nextSibling)}
-w.innerHTML='';h5=new Html5Qrcode('scanWrap');
-return h5.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},txt=>{const p=parseGS1(txt);stopScan();scanCb&&scanCb(p)},()=>{})})
-.then(()=>_scanMsg('Наведите камеру на код DataMatrix')).catch(e=>_scanMsg('Сканер недоступен: '+e.message))}
-function dlgScanShow(){openDlg(`<h3>Сканер</h3><video id="scanVid" autoplay playsinline style="width:100%;border-radius:10px"></video><p id="scanMsg" style="font-size:13px;color:var(--mut)"></p><p><button class="btn sec" onclick="stopScan()">Закрыть</button></p>`)}
-function _scanMsg(t){const e=document.getElementById('scanMsg');if(e)e.textContent=t}
-function stopScan(){clearInterval(scanTimer);if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}
-if(h5){try{h5.stop().then(()=>h5.clear())}catch(e){}h5=null}closeDlg()}
-function parseGS1(v){v=v.replace(/^\]..?/,'');const L={'01':14,'17':6};const out={};let i=0;
-while(i<v.length-1){const ai=v.slice(i,i+2);i+=2;let val;if(L[ai]){val=v.slice(i,i+L[ai]);i+=L[ai]}else{let j=v.indexOf('\x1d',i);val=j<0?v.slice(i):v.slice(i,j);i=j<0?v.length:j+1}out[ai]=val}
-if(out['17'])out.expiry=expFrom17(out['17']);if(out['10'])out.batch=out['10'];if(out['01'])out.gtin=out['01'];return out}
-function expFrom17(v){if(!/^\d{6}$/.test(v))return'';let yy=+v.slice(0,2),mm=+v.slice(2,4),dd=+v.slice(4,6);
-let y=yy<50?2000+yy:1900+yy;if(mm<1||mm>12)mm=12;const last=new Date(y,mm,0).getDate();if(dd<1||dd>last)dd=last;
-return y+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0')}
-function loadTess(){return new Promise((res,rej)=>{if(window.Tesseract)return res();const s=document.createElement('script');
-s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=()=>rej(new Error('нет сети для OCR'));document.head.appendChild(s)})}
-function ocrFile(f){if(!f)return;impMsgEl('Загрузка распознавания…');
-loadTess().then(()=>Tesseract.recognize(f,'rus+eng',{logger:m=>{if(m.progress!==undefined)impMsgEl('Распознавание: '+Math.round(m.progress*100)+'%')}}))
-.then(r=>{impText.value=r.data.text;doParse()}).catch(e=>impMsgEl('Ошибка OCR: '+e.message))}
-function readTxt(f){if(!f)return;const r=new FileReader();r.onload=()=>{impText.value=r.result;doParse()};r.readAsText(f)}
-function impMsgEl(t){const e=document.getElementById('impMsg');if(e)e.textContent=t}
-const UNITS='амп|ампул|ампула|фл|шт|пар|пары|бл|блистер|уп|упак|туб|тюба|туба|компл|комплект';
-function normUnit(u){u=(u||'').toLowerCase().replace('.','');if(/^(амп|ампул|ампула)$/.test(u))return'амп';if(/^(фл|флак)$/.test(u))return'фл';
-if(/^(бл|блистер)$/.test(u))return'блистер';if(/^(уп|упак)$/.test(u))return'уп';if(/^(туб|тюба|туба)$/.test(u))return'туба';
-if(/^(пар|пары)$/.test(u))return'пар';if(/^(компл|комплект)$/.test(u))return'компл';return u||'шт'}
-function parseItems(text){const out=[];text.split(/\r?\n/).forEach(raw=>{let line=raw.trim();if(!line)return;
-line=line.replace(/^\s*\d{1,3}\s*[.)]\s*/,'');if(!line)return;let qty=1,unit='';
-const m=line.match(new RegExp('^(.*?)\\s*[—-]?\\s*(\\d{1,4})\\s*('+UNITS+')\\.?$','i'));
-if(m){line=m[1].trim();qty=+m[2];unit=normUnit(m[3])}
-let name=line,spec='';const sm=line.match(/^(.*?)(\s(?:р-р|раствор|таб|табл|капс|пор|аэр|сусп|мазь|гель|конц|конт|система|шприц|перчатки|бинт|салфетка|пластырь|игла|катетер|жгут|контейнер|маска|настойка|туба|набор|шина|зажим|стилет|фильтр|чехол|одеяло|грелка|воронка|зонд|аспиратор|ларингоскоп|повязка|покрывало|ножницы|пинцет|стетоскоп|языкодержатель|иглодержатель|роторасширитель|переходник|устройство|комплект)\b[\s\S]*)$/i);
-if(sm&&sm[1].trim().length>=3){name=sm[1].trim();spec=sm[2].trim()}
-if(name)out.push({on:true,name,spec,qty,unit})});return out}
-function parseEquip(text){const out=[];text.split(/\r?\n/).forEach(raw=>{let line=raw.trim();if(!line)return;
-line=line.replace(/^\s*\d{1,3}\s*[.)]\s*/,'');if(!line)return;
-const om=line.match(/((?:ОС|ОБМ|ОВМ|ос|обм|овм)\s?-\s?\d{3,6}|\b\d{4,6}(?:\s?,\s?\d{4,6})+\b|\b0\d{3,5}\b)/);
-let ovm='';if(om){ovm=om[1].trim();line=line.replace(om[0],'').trim()}
-line=line.replace(/\s*[—-]\s*$/,'').trim();
-if(line)out.push({on:true,ovm:ovm.replace(/\s/g,''),name:line,status:'ok',charge:''})});return out}
-function doParse(){const t=impText.value||'';
-impDrafts=impTarget.kind==='equip'?parseEquip(t):parseItems(t);renderPrev()}
-function renderPrev(){const d=document.getElementById('impPrev');if(!d)return;
-if(!impDrafts.length){d.innerHTML='<p style="color:var(--mut)">Ничего не распознано — проверьте текст</p>';return}
-if(impTarget.kind==='equip'){d.innerHTML='<table><tr><th></th><th>Инв. №</th><th>Наименование</th></tr>'+impDrafts.map((r,i)=>`<tr>
-<td><input type="checkbox" style="width:auto" ${r.on?'checked':''} onchange="impDrafts[${i}].on=this.checked"></td>
-<td><input style="width:110px" value="${esc(r.ovm)}" onchange="impDrafts[${i}].ovm=this.value"></td>
-<td><input value="${esc(r.name)}" onchange="impDrafts[${i}].name=this.value"></td></tr>`).join('')+'</table>';return}
-d.innerHTML='<table><tr><th></th><th>Название</th><th>Форма</th><th>Кол-во</th><th>Ед.</th></tr>'+impDrafts.map((r,i)=>`<tr>
-<td><input type="checkbox" style="width:auto" ${r.on?'checked':''} onchange="impDrafts[${i}].on=this.checked"></td>
-<td><input value="${esc(r.name)}" onchange="impDrafts[${i}].name=this.value"></td>
-<td><input value="${esc(r.spec||'')}" onchange="impDrafts[${i}].spec=this.value"></td>
-<td><input type="number" style="width:60px" value="${r.qty}" onchange="impDrafts[${i}].qty=+this.value||1"></td>
-<td><input style="width:60px" value="${esc(r.unit)}" onchange="impDrafts[${i}].unit=this.value"></td></tr>`).join('')+'</table>'}
-function openImport(target){impTarget=target;impDrafts=[];
-openDlg(`<h3>📥 Импорт списка</h3>
-<p><label class="btn sec" style="display:inline-block">📷 Фото (OCR)<input type="file" hidden accept="image/*" onchange="ocrFile(this.files[0])"></label>
-<label class="btn sec" style="display:inline-block">📄 Файл .txt/.csv<input type="file" hidden accept=".txt,.csv,text/plain" onchange="readTxt(this.files[0])"></label>
-<button class="btn sec" onclick="doParse()">⚙️ Распарсить текст</button></p>
-<p id="impMsg" style="font-size:13px;color:var(--mut)"></p>
-<textarea id="impText" placeholder="Или вставьте текст списка сюда…"></textarea>
-<div class="prev" id="impPrev"></div>
-<p><button class="btn" onclick="commitImport()">➕ Добавить отмеченные</button><button class="btn sec" onclick="closeDlg()">Закрыть</button></p>`)}
-function commitImport(){const rows=impDrafts.filter(r=>r.on);if(!rows.length)return alert('Нет отмеченных строк');
-const t=impTarget;let n=0;
-if(t.kind==='equip'){const c=DB.cars.find(x=>x.id===t.id);rows.forEach(r=>{c.equip.push({id:uid(),qty:1,ovm:r.ovm,name:r.name.trim(),status:'ok',charge:r.charge||'',defect:''});n++})}
-else if(t.kind==='kit'){const k=DB.cars.find(x=>x.id===t.id).kits.find(k=>k.id===t.kitId);rows.forEach(r=>{k.items.push({name:r.name.trim(),spec:(r.spec||'').trim(),unit:r.unit,qty:r.qty,expiry:'',batch:'',gtin:''});n++})}
-else if(t.kind==='bag'){const b=DB.bags.find(x=>x.id===t.id);rows.forEach(r=>{b.items.push({name:r.name.trim(),spec:(r.spec||'').trim(),unit:r.unit,qty:r.qty,expiry:'',batch:'',gtin:''});n++})}
-else if(t.kind==='type'){const ty=DB.bagTypes.find(x=>x.id===t.id);rows.forEach(r=>{ty.items.push({name:r.name.trim(),spec:(r.spec||'').trim(),unit:r.unit,qty:r.qty});n++})}
-else if(t.kind==='uchet'){const k=DB.uchet.find(x=>x.id===t.id);rows.forEach(r=>{k.items.push({name:r.name.trim(),spec:(r.spec||'').trim(),unit:r.unit,qty:r.qty,expiry:''});n++})}
-else{rows.forEach(r=>{DB.meds.push({id:uid(),group:'',num:null,name:r.name.trim(),spec:(r.spec||'').trim(),unit:r.unit,qty:r.qty,gtin:''});n++})}
-save();closeDlg();render();alert('Добавлено: '+n)}
-
-/* ===== PACKS ===== */
-DB.meds=DB.meds||(window.SEED||[]).map(s=>({id:0,group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5],gtin:''}));
-DB.meds.forEach(m=>{if(!m.id)m.id=uid()});save();
-let bagsTab='bags',curBag=null,curType=null,refMode=false,refQ='',editCtx=null,showMissBag=false;
-
-function bagsView(){
-if(refMode)return refView();
-if(curBag)return bagView();
-if(curType)return typeView();
-let h=`<button class="btn" onclick="openBagDlg(null)">+ Сумка</button>
-<button class="btn sec" onclick="curType=-1;render()">📑 Типы сумок</button>
-<button class="btn sec" onclick="refMode=true;render()">📚 Справочник</button>`;
-if(!DB.bags.length)h+='<p style="color:var(--mut)">Сумок пока нет. Создайте из типа или залейте перечень импортом.</p>';
-DB.bags.forEach(b=>{const bad=b.items.filter(i=>i.expiry&&daysLeft(i.expiry)<=S().warnDays).length;
-const resp=DB.users.filter(u=>(u.bags||[]).includes(b.id)).map(u=>u.name).join(', ');
-h+=`<div class="card"><b>👜 ${esc(b.name)}</b> · тип: ${esc((DB.bagTypes.find(t=>t.id===b.typeId)||{}).name||'—')} · ${b.items.length} поз.${bad?` <span class="badge bSoon">⚠ ${bad}</span>`:''}<br><small>Ответственный: ${esc(resp||'не назначен')}</small><br>
-<button class="btn sec mini" onclick="curBag=${b.id};showMissBag=false;render()">Открыть</button>
-<button class="btn sec mini" onclick="openBagDlg(${b.id})">✏️</button>
-<button class="btn del" onclick="delBag(${b.id})">🗑</button></div>`});
-return h}
-function openBagDlg(id){const b=id?DB.bags.find(x=>x.id===id):null;
-openDlg(`<h3>${b?'Сумка':'Новая сумка'}</h3>
-<label>Название / номер</label><input id="bName" value="${b?esc(b.name):''}">
-<label>Тип (перечень)</label><select id="bType">${DB.bagTypes.map(t=>`<option value="${t.id}" ${b&&b.typeId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
-${b?'':`<label class="chk"><input type="checkbox" id="bFill" checked> заполнить перечнем типа</label>`}
-<p><button class="btn" onclick="saveBagDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveBagDlg(id){const n=bName.value.trim();if(!n)return alert('Введите название');const t=+bType.value;
-if(id){const b=DB.bags.find(x=>x.id===id);b.name=n;if(b.typeId!==t){b.typeId=t}}
-else{const items=(document.getElementById('bFill')||{}).checked?(DB.bagTypes.find(x=>x.id===t)||{items:[]}).items.map(i=>({...i,expiry:'',batch:'',gtin:''})):[];
-DB.bags.push({id:uid(),name:n,typeId:t,items})}
-save();closeDlg();render()}
-function delBag(id){if(confirm('Удалить сумку со всеми сроками?')){DB.bags=DB.bags.filter(b=>b.id!==id);DB.users.forEach(u=>u.bags=(u.bags||[]).filter(x=>x!==id));if(curBag===id)curBag=null;save();render()}}
-function missingOfType(b){const t=DB.bagTypes.find(x=>x.id===b.typeId);if(!t)return[];
-return t.items.filter(ti=>!b.items.some(it=>(ti.num&&it.num===ti.num&&it.group===ti.group)||it.name===ti.name))}
-function bagView(){const b=DB.bags.find(x=>x.id===curBag);if(!b){curBag=null;return bagsView()}
-let h=`<button class="btn sec" onclick="curBag=null;render()">← Сумки</button>
-<h3>👜 ${esc(b.name)}</h3>
-<button class="btn" onclick="openItemDlgCtx({kind:'bag',id:${b.id}})">+ Позиция</button>
-<button class="btn sec" onclick="openImport({kind:'bag',id:${b.id}})">📥 Импорт</button>
-<button class="btn sec" onclick="showMissBag=!showMissBag;render()">✅ Комплектность</button>
-<button class="btn sec" onclick="openMonthly('bag',${b.id})">📋 Месячная проверка</button>`;
-if(showMissBag){const ms=missingOfType(b);h+=ms.length?`<div class="miss"><b>Нет ${ms.length} поз. типа:</b><br>`+ms.map(s=>`№${s.group==='t'?'Т'+s.num:s.num} ${esc(s.name)}`).join('<br>')+'</div>':'<div class="miss">✅ Комплектность по типу полная</div>'}
-h+='<table><tr><th>№</th><th>Наименование</th><th>Норма</th><th>Срок</th><th>Статус</th><th></th></tr>';
-b.items.forEach((it,i)=>{h+=`<tr class="${rowCls(it.expiry)}"><td>${it.group?(it.group==='t'?'Т'+it.num:it.num):'—'}</td>
-<td>${esc(it.name)}<br><small>${esc(it.spec||'')}${it.batch?' · сер. '+esc(it.batch):''}</small></td><td>${it.qty} ${esc(it.unit)}</td>
-<td><input type="date" style="width:145px" value="${it.expiry||''}" onchange="setExpBag(${i},this.value)"></td><td>${badgeExp(it.expiry)}</td>
-<td><button class="btn sec mini" onclick="openItemDlgCtx({kind:'bag',id:${b.id},idx:${i}})">✏️</button>
-<button class="btn sec mini" onclick="openScan(p=>applyScanBag(${i},p))">📷</button>
-<button class="btn del" onclick="delItemBag(${i})">🗑</button></td></tr>`});
-return h+'</table>'}
-function setExpBag(i,v){DB.bags.find(x=>x.id===curBag).items[i].expiry=v;save();render()}
-function delItemBag(i){const b=DB.bags.find(x=>x.id===curBag);if(confirm('Удалить позицию?')){b.items.splice(i,1);save();render()}}
-function applyScanBag(i,p){const it=DB.bags.find(x=>x.id===curBag).items[i];
-if(p.expiry)it.expiry=p.expiry;if(p.batch)it.batch=p.batch;
-if(p.gtin){it.gtin=p.gtin;const m=DB.meds.find(x=>x.gtin===p.gtin);if(m){it.medId=m.id;it.name=m.name;it.spec=m.spec;it.group=m.group;it.num=m.num}}
-save();render()}
-function typeView(){if(curType===-1){let h=`<button class="btn sec" onclick="curType=null;render()">← Сумки</button>
-<button class="btn" onclick="openTypeDlg(null)">+ Тип сумки</button>`;
-DB.bagTypes.forEach(t=>{h+=`<div class="card"><b>📑 ${esc(t.name)}</b> · ${t.items.length} поз.<br>
-<button class="btn sec mini" onclick="curType=${t.id};render()">Открыть</button>
-<button class="btn sec mini" onclick="openTypeDlg(${t.id})">✏️</button>
-${t.std?'':`<button class="btn del" onclick="delType(${t.id})">🗑</button>`}</div>`});
-return h}
-const t=DB.bagTypes.find(x=>x.id===curType);if(!t){curType=-1;return typeView()}
-let h=`<button class="btn sec" onclick="curType=-1;render()">← Типы</button><h3>📑 ${esc(t.name)}</h3>
-<button class="btn" onclick="openItemDlgCtx({kind:'type',id:${t.id}})">+ Позиция</button>
-<button class="btn sec" onclick="openImport({kind:'type',id:${t.id}})">📥 Импорт перечня</button>
-<button class="btn sec" onclick="openBagDlg(null)">👜 Создать сумку из типа</button>
-<table><tr><th>№</th><th>Наименование</th><th>Форма</th><th>Норма</th><th></th></tr>`;
-t.items.forEach((it,i)=>{h+=`<tr><td>${it.group?(it.group==='t'?'Т'+it.num:it.num):'—'}</td><td>${esc(it.name)}</td><td>${esc(it.spec||'')}</td><td>${it.qty} ${esc(it.unit)}</td>
-<td><button class="btn sec mini" onclick="openItemDlgCtx({kind:'type',id:${t.id},idx:${i}})">✏️</button><button class="btn del" onclick="delItemType(${i})">🗑</button></td></tr>`});
-return h+'</table>'}
-function openTypeDlg(id){const t=id?DB.bagTypes.find(x=>x.id===id):null;
-openDlg(`<h3>${t?'Тип сумки':'Новый тип'}</h3><label>Название типа</label><input id="tName" value="${t?esc(t.name):''}">
-<p><button class="btn" onclick="saveTypeDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveTypeDlg(id){const n=tName.value.trim();if(!n)return alert('Введите название');
-if(id){DB.bagTypes.find(x=>x.id===id).name=n}else DB.bagTypes.push({id:uid(),name:n,std:false,items:[]});
-save();closeDlg();render()}
-function delType(id){if(confirm('Удалить тип? Созданные сумки останутся со своими позициями.')){DB.bagTypes=DB.bagTypes.filter(t=>t.id!==id);curType=-1;save();render()}}
-function delItemType(i){const t=DB.bagTypes.find(x=>x.id===curType);if(confirm('Удалить?')){t.items.splice(i,1);save();render()}}
-function refView(){const q=refQ.toLowerCase();const list=DB.meds.filter(m=>!q||m.name.toLowerCase().includes(q)||(m.spec||'').toLowerCase().includes(q));
-let h=`<button class="btn sec" onclick="refMode=false;render()">← Сумки</button>
-<button class="btn" onclick="openMedDlg(null)">+ Добавить</button>
-<button class="btn sec" onclick="openImport({kind:'ref'})">📥 Импорт</button>
-<input placeholder="Поиск…" value="${esc(refQ)}" oninput="refQ=this.value;render()">
-<table><tr><th>№</th><th>Название</th><th>Форма</th><th>Норма</th><th></th></tr>`;
-list.forEach(m=>{h+=`<tr><td>${m.group?(m.group==='t'?'Т'+m.num:m.num):'—'}</td><td>${esc(m.name)}</td><td>${esc(m.spec||'')}</td><td>${m.qty} ${esc(m.unit)}</td>
-<td><button class="btn sec mini" onclick="openMedDlg(${m.id})">✏️</button><button class="btn del" onclick="delMed(${m.id})">🗑</button></td></tr>`});
-return h+'</table>'}
-function openMedDlg(id){const m=id?DB.meds.find(x=>x.id===id):{};
-openDlg(`<h3>Позиция справочника</h3><label>Название</label><input id="mName" value="${esc(m.name||'')}">
-<label>Форма / дозировка</label><input id="mSpec" value="${esc(m.spec||'')}">
-<div class="row"><div><label>Ед.</label><input id="mUnit" value="${esc(m.unit||'')}"></div><div><label>Норма</label><input id="mQty" type="number" value="${m.qty||1}"></div></div>
-<label>GTIN (Честный знак)</label><input id="mGtin" value="${esc(m.gtin||'')}">
-<p><button class="btn" onclick="saveMedDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveMedDlg(id){const o={name:mName.value.trim(),spec:mSpec.value.trim(),unit:mUnit.value.trim()||'шт',qty:+mQty.value||1,gtin:mGtin.value.trim()};
+function openBagDlg(){openDlg('<h3>Новая сумка</h3><label>Название</label><input id="bName"><p><button class="btn" onclick="saveBagDlg()">Создать</button></p>')}
+function saveBagDlg(){var n=document.getElementById('bName').value.trim();
+if(!n)return alert('Введите название');
+DB.bags.push({id:uid(),name:n,items:[]});save();closeDlg();render()}
+function delBag(id){if(confirm('Удалить сумку?')){DB.bags=DB.bags.filter(function(b){return b.id!==id});save();render()}}
+function bagView(){var b=DB.bags.find(function(x){return x.id===curBag});
+if(!b){curBag=null;return bagsView()}
+var h='<button class="btn sec" onclick="curBag=null;render()">← Сумки</button><h3>👜 '+esc(b.name)+'</h3>';
+h+='<button class="btn" onclick="openItemDlg('+b.id+',-1)">+ Позиция</button>';
+h+='<table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
+b.items.forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+esc(it.name)+'<br><small>'+esc(it.spec||'')+'</small></td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExp('+curBag+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delItem('+curBag+','+i+')">🗑</button></td></tr>'});
+h+='</table>';return h}
+function setExp(bid,i,v){var b=DB.bags.find(function(x){return x.id===bid});b.items[i].expiry=v;save();render()}
+function delItem(bid,i){var b=DB.bags.find(function(x){return x.id===bid});
+if(confirm('Удалить позицию?')){b.items.splice(i,1);save();render()}}
+function openItemDlg(bid,idx){var it=idx<0?{}:DB.bags.find(function(x){return x.id===bid}).items[idx];
+openDlg('<h3>Позиция</h3><label>Название</label><input id="iName" value="'+esc(it.name||'')+'"><label>Форма</label><input id="iSpec" value="'+esc(it.spec||'')+'"><div class="row"><div><label>Кол-во</label><input id="iQty" type="number" value="'+(it.qty||1)+'"></div><div><label>Ед.</label><input id="iUnit" value="'+esc(it.unit||'шт')+'"></div></div><label>Срок годности</label><input id="iExp" type="date" value="'+(it.expiry||'')+'"><p><button class="btn" onclick="saveItemDlg('+bid+','+idx+')">Сохранить</button></p>')}
+function saveItemDlg(bid,idx){var b=DB.bags.find(function(x){return x.id===bid});
+var o={name:document.getElementById('iName').value.trim(),spec:document.getElementById('iSpec').value.trim(),qty:+document.getElementById('iQty').value||1,unit:document.getElementById('iUnit').value.trim()||'шт',expiry:document.getElementById('iExp').value};
 if(!o.name)return alert('Введите название');
-if(id)Object.assign(DB.meds.find(x=>x.id===id),o);else DB.meds.push({id:uid(),group:'',num:null,...o});
-save();closeDlg();render()}
-function delMed(id){if(confirm('Удалить из справочника?')){DB.meds=DB.meds.filter(m=>m.id!==id);save();render()}}
-function ctxList(c){if(c.kind==='bag')return DB.bags.find(x=>x.id===c.id).items;
-if(c.kind==='type')return DB.bagTypes.find(x=>x.id===c.id).items;
-if(c.kind==='kit')return DB.cars.find(x=>x.id===c.id).kits.find(k=>k.id===c.kitId).items;
-if(c.kind==='uchet')return DB.uchet.find(x=>x.id===c.id).items;return[]}
-function openItemDlgCtx(c){editCtx=c;const it=c.idx==null?{}:ctxList(c)[c.idx];const noExp=c.kind==='type';
-openDlg(`<h3>${c.idx==null?'Новая позиция':'Позиция'}</h3>
-<div class="sugg"><label>Название (печатайте — автоподбор)</label><input id="iName" value="${esc(it.name||'')}" oninput="suggMed()" autocomplete="off"><ul id="iSugg" hidden></ul></div>
-<label>Форма / дозировка</label><input id="iSpec" value="${esc(it.spec||'')}">
-<div class="row"><div><label>Ед.</label><input id="iUnit" value="${esc(it.unit||'')}"></div><div><label>Норма/кол-во</label><input id="iQty" type="number" value="${it.qty||1}"></div></div>
-${noExp?'':`<div class="row"><div><label>Срок годности</label><input id="iExp" type="date" value="${it.expiry||''}"></div><div><label>Серия</label><input id="iBatch" value="${esc(it.batch||'')}"></div></div>`}
-<input id="iMedId" type="hidden" value="${it.medId||''}"><input id="iGtin" type="hidden" value="${it.gtin||''}">
-<input id="iGroup" type="hidden" value="${it.group||''}"><input id="iNum" type="hidden" value="${it.num||''}">
-${noExp?'':`<p><button class="btn sec" onclick="openScan(scanToItemDlg)">📷 Честный знак</button></p>`}
-<p><button class="btn" onclick="saveItemDlg()">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function suggMed(){const v=iName.value.toLowerCase();const ul=iSugg;if(!v){ul.hidden=true;return}
-const list=DB.meds.filter(m=>m.name.toLowerCase().includes(v)||(m.spec||'').toLowerCase().includes(v)).slice(0,8);
-ul.innerHTML=list.map(m=>`<li onclick="pickMedI(${m.id})">${m.group?(m.group==='t'?'Т'+m.num:m.num)+'. ':''}${esc(m.name)} <small>${esc(m.spec||'')}</small></li>`).join('');ul.hidden=!list.length}
-function pickMedI(id){const m=DB.meds.find(x=>x.id===id);iName.value=m.name;iSpec.value=m.spec||'';iUnit.value=m.unit;iQty.value=m.qty;
-iMedId.value=m.id;iGroup.value=m.group||'';iNum.value=m.num||'';iSugg.hidden=true}
-function saveItemDlg(){const c=editCtx;const noExp=c.kind==='type';
-const it={medId:+iMedId.value||null,group:iGroup.value,num:+iNum.value||null,name:iName.value.trim(),spec:iSpec.value.trim(),unit:iUnit.value.trim()||'шт',qty:+iQty.value||1};
-if(!it.name)return alert('Введите название');
-if(!noExp){it.expiry=iExp.value;it.batch=iBatch.value.trim();it.gtin=iGtin.value;
-if(it.gtin&&it.medId){const m=DB.meds.find(x=>x.id===it.medId);if(m)m.gtin=it.gtin}}
-const L=ctxList(c);if(c.idx==null)L.push(it);else L[c.idx]=Object.assign(L[c.idx],it);
-save();closeDlg();render()}
-function scanToItemDlg(p){if(p.expiry&&document.getElementById('iExp'))iExp.value=p.expiry;
-if(p.batch&&document.getElementById('iBatch'))iBatch.value=p.batch;
-if(p.gtin){iGtin.value=p.gtin;const m=DB.meds.find(x=>x.gtin===p.gtin);if(m)pickMedI(m.id)}}
-
-/* ===== CARS ===== */
-let curCar=null,carTab='eq',curKit=null,repCtx=null,repModeV=null;
-function carsView(){let h='';
-if(isBoss()){const tasks=DB.tasks.filter(t=>!t.done);
-if(tasks.length)h+=`<div class="card"><b>📌 Задачи в работе</b><table>`+tasks.map(t=>`<tr><td>${esc(t.text)}<br><small>создана ${new Date(t.ts).toLocaleDateString('ru-RU')}</small></td><td><button class="btn sec mini" onclick="doneTask(${t.id})">✔ готово</button></td></tr>`).join('')+'</table></div>';
-h+=`<button class="btn" onclick="openCarDlg(null)">+ Машина</button><button class="btn sec" onclick="ecgDlg()">⚙️ Реестр ЭКГ</button>`}
-DB.cars.forEach(c=>{const df=c.equip.filter(e=>e.status==='def').length;
-const rep=DB.reports.filter(r=>r.kind!=='monthly'&&r.carId===c.id).slice(-1)[0];
-const resp=DB.users.filter(u=>(u.cars||[]).includes(c.id)).map(u=>u.name).join(', ');
-h+=`<div class="card"><b>🚑 ${esc(c.name)}</b> · оборуд.: ${c.equip.length}${df?` <span class="badge bExp">дефекты: ${df}</span>`:''} · укладок: ${c.kits.length}<br><small>ответственный: ${esc(resp||'—')} · последний отчёт: ${rep?new Date(rep.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'}</small><br>
-<button class="btn sec mini" onclick="curCar=${c.id};carTab='eq';curKit=null;render()">Открыть</button>
-${isBoss()?`<button class="btn sec mini" onclick="openCarDlg(${c.id})">✏️</button><button class="btn del" onclick="delCar(${c.id})">🗑</button>`:''}</div>`});
+if(idx<0)b.items.push(o);else b.items[idx]=o;save();closeDlg();render()}
+function carsView(){if(curCar)return carView();var h=isBoss()?'<button class="btn" onclick="openCarDlg()">+ Машина</button>':'';
+if(isBoss()){var tasks=DB.tasks.filter(function(t){return !t.done});
+if(tasks.length){h+='<div class="card"><b>📌 Задачи</b><table>';tasks.forEach(function(t){h+='<tr><td>'+esc(t.text)+'</td><td><button class="btn sec mini" onclick="doneTask('+t.id+')">✔</button></td></tr>'});h+='</table></div>'}}
+if(!DB.cars.length)h+='<p>Машин пока нет</p>';
+DB.cars.forEach(function(c){var df=0;
+c.equip.forEach(function(e){if(e.status==='def')df++});
+h+='<div class="card"><b>🚑 '+esc(c.name)+'</b> · оборуд. '+c.equip.length+(df?' <span class="badge bExp">дефекты: '+df+'</span>':'')+' · укладок: '+c.kits.length+'<br><button class="btn sec mini" onclick="curCar='+c.id+';curKit=null;render()">Открыть</button></div>'});
 return h}
-function openCarDlg(id){const c=id?DB.cars.find(x=>x.id===id):null;
-openDlg(`<h3>${c?'Машина':'Новая машина'}</h3><label>Название / номер</label><input id="cName" value="${c?esc(c.name):''}">
-<p><button class="btn" onclick="saveCarDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveCarDlg(id){const n=cName.value.trim();if(!n)return alert('Введите название');
-if(id)DB.cars.find(x=>x.id===id).name=n;else DB.cars.push({id:uid(),name:n,equip:[],kits:[]});
-save();closeDlg();render()}
-function delCar(id){if(confirm('Удалить машину со всем содержимым?')){DB.cars=DB.cars.filter(c=>c.id!==id);DB.users.forEach(u=>u.cars=(u.cars||[]).filter(x=>x!==id));if(curCar===id)curCar=null;save();render()}}
-function ecgDlg(){openDlg(`<h3>Реестр ЭКГ</h3><label>Номера, по одному в строку</label><textarea id="ecgTa">${DB.ecg.join('\n')}</textarea>
-<p><button class="btn" onclick="DB.ecg=document.getElementById('ecgTa').value.split(/\\n+/).map(s=>s.trim()).filter(Boolean);save();closeDlg();render()">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function carView(){const c=DB.cars.find(x=>x.id===curCar);if(!c){curCar=null;return carsView()}
-let h=`<button class="btn sec" onclick="curCar=null;render()">← Машины</button><h3>🚑 ${esc(c.name)}</h3>
-<button class="btn sec ${carTab==='eq'?'on':''}" onclick="carTab='eq';curKit=null;render()">Оборудование</button>
-<button class="btn sec ${carTab==='kt'?'on':''}" onclick="carTab='kt';curKit=null;render()">Укладки</button>
-<button class="btn sec ${carTab==='rp'?'on':''}" onclick="carTab='rp';render()">Отчёты</button>
-<button class="btn" onclick="openRep(${c.id})">📨 Отчёт по смене</button>
-<button class="btn sec" onclick="openMonthly('car',${c.id})">📋 Месячная</button>`;
-if(carTab==='eq'){h+=isBoss()?`<button class="btn" onclick="openEquipDlg(null)">+ Оборудование</button><button class="btn sec" onclick="openImport({kind:'equip',id:${c.id}})">📥 Импорт</button>`:'';
-h+='<table><tr><th>Инв. №</th><th>Наименование</th><th>Статус</th><th>Заряд/кислород</th><th>Пометка</th><th></th></tr>';
-c.equip.forEach(e=>{h+=`<tr class="${e.status==='def'?'exp':e.status==='miss'?'warn':''}"><td>${esc(e.ovm||'—')}</td><td>${esc(e.name)}</td>
-<td>${isBoss()?`<select onchange="setEq(${c.id},${e.id},'status',this.value)"><option value="ok" ${e.status==='ok'?'selected':''}>исправен</option><option value="def" ${e.status==='def'?'selected':''}>дефект</option><option value="miss" ${e.status==='miss'?'selected':''}>отсутствует</option></select>`:(e.status==='ok'?'<span class="badge bOk">исправен</span>':e.status==='def'?'<span class="badge bExp">дефект</span>':'<span class="badge bWarn">нет</span>')}</td>
-<td><input style="width:90px" value="${esc(e.charge||'')}" onchange="setEq(${c.id},${e.id},'charge',this.value)" placeholder="заряд"></td>
-<td><input value="${esc(e.defect||'')}" onchange="setEq(${c.id},${e.id},'defect',this.value)" placeholder="пометка"></td>
-<td>${isBoss()?`<button class="btn sec mini" onclick="openEquipDlg(${e.id})">✏️</button><button class="btn del" onclick="delEq(${e.id})">🗑</button>`:''}</td></tr>`});
-h+='</table>'}
-else if(carTab==='kt'){if(curKit)return h+kitView(c);
-h+=isBoss()?`<button class="btn" onclick="openKitDlg(null)">+ Укладка</button>`:'';
-c.kits.forEach(k=>{const bad=k.items.filter(i=>i.expiry&&daysLeft(i.expiry)<=S().warnDays).length;
-h+=`<div class="card"><b>🧰 ${esc(k.name)}</b> · ${k.items.length} поз.${bad?` <span class="badge bSoon">⚠ ${bad}</span>`:''}<br>
-<button class="btn sec mini" onclick="curKit=${k.id};render()">Открыть</button>
-${isBoss()?`<button class="btn sec mini" onclick="openKitDlg(${k.id})">✏️</button><button class="btn del" onclick="delKit(${k.id})">🗑</button>`:''}</div>`});
-if(!c.kits.length)h+='<p style="color:var(--mut)">Укладок нет.</p>'}
-else{const reps=DB.reports.filter(r=>r.carId===c.id).slice(-20).reverse();
-h+=reps.length?'<table>'+reps.map(r=>`<tr><td><span class="badge ${r.status==='green'?'bG':r.status==='yellow'?'bY':'bR'}">${r.status==='green'?'без зам.':r.status==='yellow'?'с замеч.':r.kind==='monthly'?'месячная':'КРАСНЫЙ'}</span> ${new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${esc(r.user)}${r.kind==='monthly'?' · месячная':''}<br><small>сумка №${esc(r.bagNum||'—')}, ЭКГ №${esc(r.ecgNum||'—')}${r.remarks?' · '+esc(r.remarks):''}${r.viewed?' · просмотрен':''}</small></td>
-${isBoss()&&!r.viewed&&r.kind!=='monthly'?`<td><button class="btn sec mini" onclick="viewReport(${r.id})">👁 просмотреть</button></td>`:''}</tr>`).join('')+'</table>':'<p>Отчётов нет</p>'}
+function carView(){var c=DB.cars.find(function(x){return x.id===curCar});
+if(!c){curCar=null;return carsView()}
+var h='<button class="btn sec" onclick="curCar=null;render()">← Машины</button><h3>🚑 '+esc(c.name)+'</h3>';
+h+='<button class="btn" onclick="openRep('+c.id+')">📨 Отчёт по смене</button>';
+if(curKit)return h+kitView(c);
+h+='<div class="card"><b>Оборудование</b><table><tr><th>Инв. №</th><th>Наименование</th><th>Статус</th><th>Заряд</th></tr>';
+c.equip.forEach(function(e){h+='<tr class="'+(e.status==='def'?'exp':'')+'"><td>'+esc(e.ovm||'—')+'</td><td>'+esc(e.name)+'</td><td>'+(isBoss()?'<select onchange="setEq('+c.id+','+e.id+',this.value)"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>нет</option></select>':(e.status==='ok'?'<span class="badge bOk">исправен</span>':'<span class="badge bExp">'+e.status+'</span>'))+'</td><td><input style="width:80px" value="'+esc(e.charge||'')+'" onchange="setCh('+c.id+','+e.id+',this.value)"></td></tr>'});
+h+='</table></div><div class="card"><b>Укладки</b>';
+c.kits.forEach(function(k){var bad=0;
+k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++});
+h+='<p>🧰 <b>'+esc(k.name)+'</b> · '+k.items.length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+' <button class="btn sec mini" onclick="curKit='+k.id+';render()">Открыть</button></p>'});
+h+='</div><div class="card"><b>Отчёты по машине</b>';
+var reps=DB.reports.filter(function(r){return r.carId===c.id}).slice(-10).reverse();
+if(reps.length){h+='<table>';reps.forEach(function(r){h+='<tr><td><span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+r.status+'</span> '+new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+esc(r.user)+(isBoss()&&!r.viewed?' <button class="btn sec mini" onclick="viewReport('+r.id+')">👁</button>':'')+'</td></tr>'});h+='</table>'}
+else h+='<p>Нет отчётов</p>';
+h+='</div>';return h}
+function kitView(c){var k=c.kits.find(function(x){return x.id===curKit});
+if(!k){curKit=null;return carView(c)}
+var h='<button class="btn sec" onclick="curKit=null;render()">← Укладки</button><h4>🧰 '+esc(k.name)+'</h4>';
+h+='<button class="btn" onclick="openKitItem('+c.id+','+k.id+',-1)">+ Позиция</button>';
+h+='<table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
+k.items.forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+esc(it.name)+'</td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExpKit('+c.id+','+k.id+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delKitItem('+c.id+','+k.id+','+i+')">🗑</button></td></tr>'});
+h+='</table>';return h}
+function setEq(cid,eid,v){var c=DB.cars.find(function(x){return x.id===cid});
+var e=c.equip.find(function(x){return x.id===eid});e.status=v;save();render()}
+function setCh(cid,eid,v){var c=DB.cars.find(function(x){return x.id===cid});
+var e=c.equip.find(function(x){return x.id===eid});e.charge=v;save()}
+function setExpKit(cid,kid,i,v){var c=DB.cars.find(function(x){return x.id===cid});
+var k=c.kits.find(function(x){return x.id===kid});k.items[i].expiry=v;save();render()}
+function delKitItem(cid,kid,i){var c=DB.cars.find(function(x){return x.id===cid});
+var k=c.kits.find(function(x){return x.id===kid});
+if(confirm('Удалить?')){k.items.splice(i,1);save();render()}}
+function openKitItem(cid,kid,idx){var k=DB.cars.find(function(x){return x.id===cid}).kits.find(function(x){return x.id===kid});
+var it=idx<0?{}:k.items[idx];
+openDlg('<h3>Позиция укладки</h3><label>Название</label><input id="kName" value="'+esc(it.name||'')+'"><div class="row"><div><label>Кол-во</label><input id="kQty" type="number" value="'+(it.qty||1)+'"></div><div><label>Ед.</label><input id="kUnit" value="'+esc(it.unit||'шт')+'"></div></div><label>Срок</label><input id="kExp" type="date" value="'+(it.expiry||'')+'"><p><button class="btn" onclick="saveKitItem('+cid+','+kid+','+idx+')">Сохранить</button></p>')}
+function saveKitItem(cid,kid,idx){var k=DB.cars.find(function(x){return x.id===cid}).kits.find(function(x){return x.id===kid});
+var o={name:document.getElementById('kName').value.trim(),qty:+document.getElementById('kQty').value||1,unit:document.getElementById('kUnit').value.trim()||'шт',expiry:document.getElementById('kExp').value,spec:''};
+if(!o.name)return alert('Введите название');
+if(idx<0)k.items.push(o);else k.items[idx]=o;save();closeDlg();render()}
+function openRep(cid){repCar=cid;var c=DB.cars.find(function(x){return x.id===cid});
+var h='<h3>📨 Отчёт по смене · '+esc(c.name)+'</h3>';
+h+='<div class="row"><div><label>№ бригады</label><input id="rpBrig" inputmode="numeric"></div><div><label>Сумка</label><select id="rpBag">';
+DB.bags.forEach(function(b){h+='<option>'+esc(b.name)+'</option>'});
+h+='</select></div></div>';
+h+='<div class="row"><div><label>ЭКГ №</label><select id="rpEcg">';
+DB.ecg.forEach(function(n){h+='<option>'+esc(n)+'</option>'});
+h+='</select></div><div><label>Заряд ЭКГ</label><input id="rpEcgCh"></div></div>';
+h+='<label>Примечания</label><textarea id="rpRem"></textarea>';
+h+='<p><button class="btn wide" onclick="submitRep(\'ok\')">✅ Без замечаний</button>';
+h+='<button class="btn sec wide" onclick="submitRep(\'rem\')">⚠ Есть замечания</button></p>';
+openDlg(h)}
+function submitRep(mode){if(mode==='rem'&&!document.getElementById('rpRem').value.trim())return alert('Опишите замечания');
+var c=DB.cars.find(function(x){return x.id===repCar});var u=me();
+var exp=soonList();
+var st=(exp.length>0)?'red':(mode==='rem'?'yellow':'green');
+DB.reports.push({id:uid(),ts:Date.now(),kind:'shift',carId:c.id,car:c.name,userId:u.id,user:u.name,brigade:document.getElementById('rpBrig').value.trim(),bagNum:document.getElementById('rpBag').value,ecgNum:document.getElementById('rpEcg').value,ecgCharge:document.getElementById('rpEcgCh').value.trim(),status:st,remarks:document.getElementById('rpRem').value.trim(),expired:exp,viewed:false});
+save();closeDlg();render();alert('Отчёт отправлен: '+st)}
+function viewReport(id){var r=DB.reports.find(function(x){return x.id===id});r.viewed=true;
+r.expired.forEach(function(d){DB.tasks.push({id:uid(),ts:Date.now(),text:r.car+': заменить — '+d,done:false})});
+if(r.remarks)DB.tasks.push({id:uid(),ts:Date.now(),text:r.car+': замечание — '+r.remarks,done:false});
+save();render();alert('Задачи созданы')}
+function doneTask(id){var t=DB.tasks.find(function(x){return x.id===id});t.done=true;save();render()}
+function setView(){var u=me();
+var h='<div class="card"><h3>Профиль</h3><label>ФИО</label><input value="'+esc(u.name)+'" onchange="me().name=this.value;save()">';
+h+='<label>Ответственные машины</label>';
+DB.cars.forEach(function(c){h+='<label><input type="checkbox" style="width:auto"'+((u.cars||[]).indexOf(c.id)>=0?' checked':'')+' onchange="togResp(\'cars\','+c.id+',this.checked)"> '+esc(c.name)+'</label>'});
+h+='<label>Ответственные сумки</label>';
+DB.bags.forEach(function(b){h+='<label><input type="checkbox" style="width:auto"'+((u.bags||[]).indexOf(b.id)>=0?' checked':'')+' onchange="togResp(\'bags\','+b.id+',this.checked)"> '+esc(b.name)+'</label>'});
+h+='</div>';
+h+='<div class="card"><h3>Правила</h3><label>Предупреждать за дней</label><input type="number" value="'+S().warnDays+'" onchange="S().warnDays=+this.value||10;save()"></div>';
+if(isBoss()){h+='<div class="card"><h3>👑 Сотрудники</h3>';DB.users.forEach(function(u){h+='<p><b>'+esc(u.name)+'</b> · '+u.role+' <button class="btn sec mini" onclick="openRespDlg('+u.id+')">ответственность</button></p>'});h+='</div>'}
+h+='<div class="card"><h3>Данные</h3><p><button class="btn sec" onclick="exportDB()">⬇ Экспорт</button> <label class="btn sec" style="display:inline-block">⬆ Импорт<input type="file" hidden accept=".json" onchange="importDB(this)"></label></p>';
+h+='<p><button class="btn sec" onclick="logout()">🚪 Выйти</button> <button class="btn del" onclick="resetDB()">Сброс</button></p></div>';
 return h}
-function kitView(c){const k=c.kits.find(x=>x.id===curKit);if(!k){curKit=null;return carView(c)}
-let h=`<button class="btn sec" onclick="curKit=null;render()">← Укладки</button><h4>🧰 ${esc(k.name)}</h4>
-<button class="btn" onclick="openItemDlgCtx({kind:'kit',id:${c.id},kitId:${k.id}})">+ Позиция</button>
-${isBoss()?`<button class="btn sec" onclick="openImport({kind:'kit',id:${c.id},kitId:${k.id}})">📥 Импорт</button>`:''}
-<table><tr><th>Наименование</th><th>Норма</th><th>Срок</th><th>Статус</th><th></th></tr>`;
-k.items.forEach((it,i)=>{h+=`<tr class="${rowCls(it.expiry)}"><td>${esc(it.name)}<br><small>${esc(it.spec||'')}</small></td><td>${it.qty} ${esc(it.unit)}</td>
-<td><input type="date" style="width:140px" value="${it.expiry||''}" onchange="setExpKit(${k.id},${i},this.value)"></td><td>${badgeExp(it.expiry)}</td>
-<td><button class="btn sec mini" onclick="openItemDlgCtx({kind:'kit',id:${c.id},kitId:${k.id},idx:${i}})">✏️</button>
-<button class="btn sec mini" onclick="openScan(p=>{const it=DB.cars.find(x=>x.id===${c.id}).kits.find(k=>k.id===${k.id}).items[${i}];if(p.expiry)it.expiry=p.expiry;if(p.batch)it.batch=p.batch;save();render()})">📷</button>
-<button class="btn del" onclick="delItemKit(${k.id},${i})">🗑</button></td></tr>`});
-return h+'</table>'}
-function setExpKit(kid,i,v){DB.cars.find(x=>x.id===curCar).kits.find(k=>k.id===kid).items[i].expiry=v;save();render()}
-function delItemKit(kid,i){const k=DB.cars.find(x=>x.id===curCar).kits.find(k=>k.id===kid);if(confirm('Удалить?')){k.items.splice(i,1);save();render()}}
-function openKitDlg(id){const k=id?DB.cars.find(x=>x.id===curCar).kits.find(x=>x.id===id):null;
-openDlg(`<h3>${k?'Укладка':'Новая укладка'}</h3><label>Название</label><input id="kName" value="${k?esc(k.name):''}">
-<p><button class="btn" onclick="saveKitDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveKitDlg(id){const n=kName.value.trim();if(!n)return alert('Введите название');const c=DB.cars.find(x=>x.id===curCar);
-if(id)c.kits.find(x=>x.id===id).name=n;else c.kits.push({id:uid(),name:n,items:[]});save();closeDlg();render()}
-function delKit(id){if(confirm('Удалить укладку?')){const c=DB.cars.find(x=>x.id===curCar);c.kits=c.kits.filter(k=>k.id!==id);curKit=null;save();render()}}
-function openEquipDlg(id){const c=DB.cars.find(x=>x.id===curCar);const e=id?c.equip.find(x=>x.id===id):{};
-openDlg(`<h3>Оборудование</h3><label>Инвентарный номер (ОВМ/ОС/ОБМ)</label><input id="eOvm" value="${esc(e.ovm||'')}">
-<label>Наименование</label><input id="eName" value="${esc(e.name||'')}">
-<div class="row"><div><label>Статус</label><select id="eStat"><option value="ok" ${e.status==='ok'||!e.status?'selected':''}>исправен</option><option value="def" ${e.status==='def'?'selected':''}>дефект</option><option value="miss" ${e.status==='miss'?'selected':''}>отсутствует</option></select></div>
-<div><label>Заряд / кислород</label><input id="eCharge" value="${esc(e.charge||'')}"></div></div>
-<label>Пометка / дефект</label><input id="eDef" value="${esc(e.defect||'')}">
-<p><button class="btn" onclick="saveEquipDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveEquipDlg(id){const c=DB.cars.find(x=>x.id===curCar);
-const o={ovm:eOvm.value.trim(),name:eName.value.trim(),status:eStat.value,charge:eCharge.value.trim(),defect:eDef.value.trim()};
-if(!o.name)return alert('Введите наименование');
-if(id)Object.assign(c.equip.find(x=>x.id===id),o);else c.equip.push({id:uid(),qty:1,...o});save();closeDlg();render()}
-function delEq(id){const c=DB.cars.find(x=>x.id===curCar);if(confirm('Удалить?')){c.equip=c.equip.filter(e=>e.id!==id);save();render()}}
-function setEq(carId,eqId,f,v){DB.cars.find(x=>x.id===carId).equip.find(e=>e.id===eqId)[f]=v;save();render()}
-function openRep(carId){const c=DB.cars.find(x=>x.id===carId);repCtx={carId};repModeV=null;
-const last=DB.reports.filter(r=>r.carId===carId&&r.kind!=='monthly'&&r.equip).slice(-1)[0]||{equip:[]};
-const u=me();const myBag=DB.bags.find(b=>(u.bags||[]).includes(b.id))||DB.bags[0];
-openDlg(`<h3>📨 Отчёт по смене · ${esc(c.name)}</h3>
-<p style="color:var(--mut)">Дата и время: <b>${new Date().toLocaleString('ru-RU')}</b> · Сотрудник: <b>${esc(u.name)}</b> (ставятся автоматически)</p>
-<div class="row"><div><label>№ бригады</label><input id="rpBrig" inputmode="numeric"></div>
-<div><label>Рабочая сумка</label><select id="rpBag">${DB.bags.map(b=>`<option value="${esc(b.name)}" ${myBag&&b.id===myBag.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
-<div><label>ЭКГ №</label><select id="rpEcg">${DB.ecg.map(n=>`<option>${esc(n)}</option>`).join('')}</select></div></div>
-<label>Заряд ЭКГ</label><input id="rpEcgCh" placeholder="напр. 100%">
-<p style="color:var(--mut)">Отметки по оборудованию (значения подставлены из прошлого отчёта):</p>
-<div class="prev"><table><tr><th>Инв. №</th><th>Наименование</th><th>Статус</th><th>Заряд/кислород</th></tr>`+
-c.equip.map(e=>{const pe=last.equip.find(x=>x.ovm===e.ovm&&x.ovm)||{};
-return `<tr><td>${esc(e.ovm||'—')}</td><td>${esc(e.name)}</td>
-<td><select id="re_${e.id}"><option value="ok" ${(pe.status||e.status||'ok')==='ok'?'selected':''}>исправен</option><option value="def" ${pe.status==='def'?'selected':''}>дефект</option><option value="miss" ${pe.status==='miss'?'selected':''}>отсутствует</option></select></td>
-<td><input id="rc_${e.id}" style="width:90px" value="${esc(pe.charge||e.charge||'')}"></td></tr>`}).join('')+`</table></div>
-<p id="rpIssues"></p>
-<label>Примечания (свободная форма)</label><textarea id="rpRem"></textarea>
-<p><button class="btn wide" onclick="repMode('ok')">✅ Проверил, без замечаний</button>
-<button class="btn sec wide" onclick="repMode('rem')">⚠ Проверил, есть замечания</button></p>
-<p id="rpStat"></p>
-<p><button class="btn wide" id="rpSave" hidden onclick="submitRep()">💾 Сохранить и отправить отчёт</button>
-<button class="btn sec" onclick="closeDlg()">Отмена</button></p>`);
-calcIssues()}
-function calcIssues(){const c=DB.cars.find(x=>x.id===repCtx.carId);const exp=[];
-c.kits.forEach(k=>k.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)exp.push(k.name+': '+it.name)}));
-const el=document.getElementById('rpIssues');if(el)el.innerHTML=exp.length?`<span class="badge bExp">авто: просрочки/истечения ${exp.length}</span><br><small>${exp.map(esc).join('; ')}</small>`:'<span class="badge bOk">авто: просрочек нет</span>';
-return exp}
-function repMode(m){repModeV=m;const box=document.getElementById('rpRem');
-if(m==='rem'){box.focus()}
-const exp=calcIssues();const defSel=[...document.querySelectorAll('[id^=re_]')].filter(s=>s.value!=='ok').length;
-const st=(exp.length>0||(m==='rem'&&defSel>=3))?'red':(m==='rem'?'yellow':'green');
-document.getElementById('rpStat').innerHTML='Отчёт будет: '+`<span class="badge ${st==='green'?'bG':st==='yellow'?'bY':'bR'}">${st==='green'?'🟢 без замечаний':st==='yellow'?'🟡 с замечаниями':'🔴 красный'}</span>`;
-document.getElementById('rpSave').hidden=false}
-function submitRep(){if(repModeV==='rem'&&!rpRem.value.trim())return alert('Опишите замечания');
-const c=DB.cars.find(x=>x.id===repCtx.carId);const u=me();
-const equip=c.equip.map(e=>({id:e.id,ovm:e.ovm,name:e.name,status:(document.getElementById('re_'+e.id)||{}).value||'ok',charge:(document.getElementById('rc_'+e.id)||{}).value||''}));
-const exp=calcIssues();const defSel=equip.filter(e=>e.status!=='ok').length;
-const st=(exp.length>0||(repModeV==='rem'&&defSel>=3))?'red':(repModeV==='rem'?'yellow':'green');
-DB.reports.push({id:uid(),ts:Date.now(),date:todayStr(),kind:'shift',carId:c.id,car:c.name,userId:u.id,user:u.name,
-brigade:rpBrig.value.trim(),bagNum:rpBag.value,ecgNum:rpEcg.value,ecgCharge:rpEcgCh.value.trim(),
-status:st,remarks:rpRem.value.trim(),equip,expired:exp,defects:equip.filter(e=>e.status!=='ok').map(e=>e.name),viewed:false});
-equip.forEach(e=>{const eq=c.equip.find(x=>x.id===e.id);if(eq){eq.status=e.status;eq.charge=e.charge}});
-save();closeDlg();render();alert('Отчёт отправлен руководителю ✔')}
-function viewReport(id){const r=DB.reports.find(x=>x.id===id);r.viewed=true;r.viewedBy=me().name;r.viewTs=Date.now();
-r.defects.forEach(d=>DB.tasks.push({id:uid(),ts:Date.now(),text:`${r.car}: дефект/отсутствует — ${d}`,carId:r.carId,done:false}));
-r.expired.forEach(d=>DB.tasks.push({id:uid(),ts:Date.now(),text:`${r.car}: заменить — ${d}`,carId:r.carId,done:false}));
-if(r.remarks)DB.tasks.push({id:uid(),ts:Date.now(),text:`${r.car}: замечание смены — ${r.remarks}`,carId:r.carId,done:false});
-save();render();alert('Задачи созданы: '+(r.defects.length+r.expired.length+(r.remarks?1:0)))}
-function doneTask(id){const t=DB.tasks.find(x=>x.id===id);t.done=true;t.doneTs=Date.now();save();render()}
-function openMonthly(kind,id){const obj=kind==='bag'?DB.bags.find(x=>x.id===id):DB.cars.find(x=>x.id===id);
-const mk=todayStr().slice(0,7);
-if(DB.monthly.some(m=>m.kind===kind&&m.objId===id&&m.month===mk))return alert('За этот месяц проверка уже отправлена');
-const issues=[];
-if(kind==='bag'){obj.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)issues.push(it.name)});issues.push(...missingOfType(obj).map(s=>'нет: '+s.name))}
-else{obj.equip.forEach(e=>{if(e.status!=='ok')issues.push(e.name+' ('+e.status+')')});obj.kits.forEach(k=>k.items.forEach(it=>{if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)issues.push(k.name+': '+it.name)}))}
-openDlg(`<h3>📋 Месячная проверка · ${esc(obj.name)}</h3>
-<p style="color:var(--mut)">Месяц: <b>${mk}</b> · Ответственный: <b>${esc(me().name)}</b></p>
-<p>${issues.length?'<span class="badge bWarn">авто-находки: '+issues.length+'</span><br><small>'+issues.map(esc).join('; ')+'</small>':'<span class="badge bOk">авто-находок нет</span>'}</p>
-<label>Замечания (свободная форма, можно пусто)</label><textarea id="moRem"></textarea>
-<p><button class="btn wide" onclick="submitMonthly('${kind}',${id},false)">✅ Проверил, без замечаний</button>
-<button class="btn sec wide" onclick="submitMonthly('${kind}',${id},true)">⚠ Проверил, есть замечания</button></p>`)}
-function submitMonthly(kind,id,withRem){if(withRem&&!moRem.value.trim())return alert('Опишите замечания');
-const obj=kind==='bag'?DB.bags.find(x=>x.id===id):DB.cars.find(x=>x.id===id);const u=me();const mk=todayStr().slice(0,7);
-DB.monthly.push({id:uid(),month:mk,kind,objId:id,objName:obj.name,userId:u.id,ts:Date.now(),remarks:moRem.value.trim()});
-DB.reports.push({id:uid(),ts:Date.now(),date:todayStr(),kind:'monthly',carId:kind==='car'?id:null,car:obj.name,userId:u.id,user:u.name,
-bagNum:'',ecgNum:'',status:withRem?'yellow':'green',remarks:moRem.value.trim(),defects:[],expired:[],viewed:false});
-save();closeDlg();render();alert('Месячный отчёт отправлен руководителю ✔')}
-function uchetView(){let h=isBoss()?`<button class="btn" onclick="openUchetDlg(null)">+ Комплект</button>`:'';
-if(!DB.uchet.length)h+='<p style="color:var(--mut)">Учётных комплектов нет. Создает руководитель/админ; сотрудники отмечают «взял/вернул».</p>';
-DB.uchet.forEach(k=>{const bad=k.items.filter(i=>i.expiry&&daysLeft(i.expiry)<=S().warnDays).length;
-h+=`<div class="card"><b>🔐 ${esc(k.name)}</b> · ${k.items.length} поз.${bad?` <span class="badge bExp">⚠ ${bad}</span>`:''}<br>
-<button class="btn sec mini" onclick="openUchet(${k.id})">Открыть</button>
-${isBoss()?`<button class="btn sec mini" onclick="openUchetDlg(${k.id})">✏️</button><button class="btn del" onclick="delUchet(${k.id})">🗑</button>`:''}</div>`});
-return h}
-let curUchet=null;
-function openUchet(id){curUchet=id;const k=DB.uchet.find(x=>x.id===id);
-let h=`<button class="btn sec" onclick="curUchet=null;render()">← Учёт</button><h3>🔐 ${esc(k.name)}</h3>
-${isBoss()?`<button class="btn" onclick="openItemDlgCtx({kind:'uchet',id:${k.id}})">+ Позиция</button><button class="btn sec" onclick="openImport({kind:'uchet',id:${k.id}})">📥 Импорт</button>`:''}
-<table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>`;
-k.items.forEach((it,i)=>{h+=`<tr class="${rowCls(it.expiry)}"><td>${esc(it.name)}</td><td>${it.qty} ${esc(it.unit)}</td>
-<td>${isBoss()?`<input type="date" style="width:140px" value="${it.expiry||''}" onchange="DB.uchet.find(x=>x.id===${k.id}).items[${i}].expiry=this.value;save();render()">`:esc(it.expiry||'—')}</td>
-<td>${badgeExp(it.expiry)}</td>
-<td>${isBoss()?`<button class="btn sec mini" onclick="openItemDlgCtx({kind:'uchet',id:${k.id},idx:${i}})">✏️</button><button class="btn del" onclick="delItemUchet(${k.id},${i})">🗑</button>`:''}</td></tr>`});
-h+='</table><p><button class="btn" onclick="uchetLog('+k.id+',\'took\')">✋ Взял</button><button class="btn sec" onclick="uchetLog('+k.id+',\'ret\')">↩ Вернул</button></p>';
-h+='<b>Журнал (зеркало бумажного)</b><table>'+k.log.slice(-15).reverse().map(l=>`<tr><td>${new Date(l.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · <b>${l.action==='took'?'взял':'вернул'}</b> · ${esc(l.user)}</td></tr>`).join('')+'</table>';
-return h}
-function uchetLog(id,act){const k=DB.uchet.find(x=>x.id===id);k.log=k.log||[];k.log.push({id:uid(),ts:Date.now(),userId:me().id,user:me().name,action:act});save();render()}
-function openUchetDlg(id){const k=id?DB.uchet.find(x=>x.id===id):null;
-openDlg(`<h3>${k?'Комплект':'Новый комплект'}</h3><label>Название</label><input id="uName" value="${k?esc(k.name):''}">
-<p><button class="btn" onclick="saveUchetDlg(${id||'null'})">Сохранить</button><button class="btn sec" onclick="closeDlg()">Отмена</button></p>`)}
-function saveUchetDlg(id){const n=uName.value.trim();if(!n)return alert('Введите название');
-if(id)DB.uchet.find(x=>x.id===id).name=n;else DB.uchet.push({id:uid(),name:n,items:[],log:[]});save();closeDlg();render()}
-function delUchet(id){if(confirm('Удалить комплект с журналом?')){DB.uchet=DB.uchet.filter(k=>k.id!==id);curUchet=null;save();render()}}
-function delItemUchet(kid,i){const k=DB.uchet.find(x=>x.id===kid);if(confirm('Удалить?')){k.items.splice(i,1);save();render()}}
-
-/* ===== STARTER ===== */
-const EQ=[['','Антисептик с курком'],['ОС-0072','Аппарат ИВЛ Medumat Standart с принадлежностями, наличие кислорода'],['ОС-0011','Аппарат ингаляционного наркоза АИНпСП-01/15, маска'],['','Баллон закись 10л (1шт) и наличие закиси'],['','Баллон кислородный 10л (2шт) и наличие кислорода'],['ОС-0049','Дефибриллятор-монитор ДКИ-Н-10'],['000854','Ёмкость для отходов класс А'],['00024','Ёмкость для отходов класс Б'],['ОБМ-0117','Ингалятор OMRON NE-U22'],['ОС-0100','Каталка FERNO 28-Z'],['000023','Контейнер для транспортировки отходов'],['ОБМ-0095','Контейнер теплоизоляционный'],['ОБМ-0096','Набор акушерский НИСП-06.01'],['ОБМ-0099','Набор травматологический НИТ-01сс'],['0425','Набор шин Крамера (3 б, 1 м)'],['0115,0120,0119,0122,0121','Набор шин транспортных складных (5 шт)'],['ОС-0021','Насос инфузионный Перфузор Компакт С'],['ОБМ-0201','Носилки ковшовые'],['ОБМ-0171','Носилки кресельные складные'],['','Носилки мягкие «Медтехника»'],['','Папка с действующей документацией'],['','Плед'],['ОБМ-0100','Реанимационная укладка+токсик'],['ОС-0001','Транспортный монитор MEC 1200 с принадлежностями'],['','Укладка Covid, комбинезоны'],['ОБМ-0097','Шины детские вакуумные ВШДм-2'],['ОБМ-0098','Шины взрослые вакуумные ВШВ-2'],['ОБМ-0114','Штатив разборный для вливаний ШР-01'],['ОБМ-0189','Электрокардиограф'],['ОС-0051','Электроотсасыватель ACCUVAC']];
-const TR=[['Бинт стерильный 5x10',2,'шт'],['Бинт стерильный 7x14',2,'шт'],['Бинт эластичный сетчато-трубчатый фиксирующий №1',1,'шт'],['Бинт эластичный сетчато-трубчатый фиксирующий №3',1,'шт'],['Бинт эластичный сетчато-трубчатый фиксирующий №4',1,'шт'],['Губка гемостатическая коллагеновая 50x50',1,'шт'],['Жгут кровоостанавливающий',1,'шт'],['Лейкопластырь 2x500',1,'шт'],['Лейкопластырь антимикробный 1,9x7,2',10,'шт'],['Пакет охлаждающий',5,'шт'],['Перчатки смотровые текстурированные н/о',3,'пар'],['Перчатки стерильные',4,'пар'],['Пластырь SFM-Strip 4x10 см',2,'шт'],['Повязка косыночная',1,'шт'],['Покрывало спасательное',1,'шт'],['Салфетки стерильные 16x14 №10',2,'уп'],['Салфетки стерильные 45x29 №5',2,'уп'],['Шина складная для ноги',1,'шт'],['Шина складная для руки',1,'шт'],['Шина-воротник транспортная',2,'шт']];
-const RE=[['Аспиратор механический',1,'шт'],['Воронка пластмассовая',1,'шт'],['Зажим кровоостанавливающий зубчатый изогнутый N1, 158 мм',1,'шт'],['Зажим кровоостанавливающий зубчатый прямой N1, 160 мм',1,'шт'],['Зонд желудочный',3,'шт'],['Игла хирургическая',2,'шт'],['Иглодержатель',1,'шт'],['Катетер аспирационный',2,'шт'],['Комплект дыхательный для ручной ИВЛ',1,'компл'],['Комплект трубок эндотрахеальных (3 шт)',1,'компл'],['Ларингоскоп (3 клинка)',1,'шт'],['Маска ларингеальная либо комбитьюб',1,'шт'],['Переходник гибкий для интубационных трубок одноразовый',1,'шт'],['Роторасширитель',1,'шт'],['Скальпель стерильный одноразовый',1,'шт'],['Стилет №10',1,'шт'],['Стилет №6',1,'шт'],['Устройство для крепления эндотрахеальной трубки (держатель Томаса)',1,'шт'],['Фильтр дыхательной бактериовирусный',1,'шт'],['Чехол (саквояж) для размещения набора',1,'шт'],['Шовный материал',1,'уп'],['Шприц одноразовый 10 мл',2,'шт'],['Шприц трехдетальный 150 мл типа Жане',1,'шт'],['Языкодержатель',1,'шт']];
-const AK=[['Воротник-шина шейная для новорожденных',1,'шт'],['Глазная повязка стерильная (не менее 55x70 мм)',2,'шт'],['Грелка',1,'шт'],['Зажим Кохера стерильный',2,'шт'],['Зажим кровоостанавливающий зубчатый изогнутый N1, 158 мм',1,'шт'],['Зажим кровоостанавливающий прямой зубчатый N1, 160 мм',1,'шт'],['Зажим пуповины',6,'шт'],['Игла атравматическая',1,'шт'],['Иглодержатель общехирургический',1,'шт'],['Катетер для отсоса слизи с фильтром или спринцовка резиновая',1,'шт'],['Комплект акушерского белья для роженицы',1,'компл'],['Комплект новорожденного',2,'компл'],['Комплект одежды хирургической одноразовый',2,'компл'],['Ножницы для пересечения пуповины',1,'шт'],['Пинцет стерильный',2,'шт'],['Скальпель стерильный одноразовый',1,'шт'],['Стетоскоп акушерский деревянный',1,'шт'],['Одеяло байковое детское',1,'шт'],['Чехол (саквояж) для размещения набора',1,'шт']];
-const TM=[['Система для инфузий',2,'шт'],['Натрия хлорид 0,9% 200-250 мл',1,'фл'],['Глюкоза 200 мл',1,'фл'],['Реамберин',1,'фл'],['Раствор Рингера 200 мл',2,'фл'],['Парацетамол (Ифимол) 100 мл',1,'фл']];
-function mkKit(a){return a.map(r=>({name:r[0],spec:'',unit:r[2],qty:r[1],expiry:'',batch:'',gtin:''}))}
-if(DB.cars.length===0&&DB.bags.length===0){
-DB.cars.push({id:uid(),name:'977',equip:EQ.map(e=>({id:uid(),ovm:e[0],name:e[1],qty:1,status:'ok',charge:'',defect:''})),
-kits:[{id:uid(),name:'Травма',items:mkKit(TR)},{id:uid(),name:'Реанимация',items:mkKit(RE)},{id:uid(),name:'Акушерская',items:mkKit(AK)},{id:uid(),name:'Термосумка (растворы)',items:mkKit(TM)}]});
-DB.bags.push({id:uid(),name:'Рабочая сумка 8',typeId:DB.bagTypes[0].id,items:DB.bagTypes[0].items.map(i=>({...i,expiry:'',batch:'',gtin:''}))});
-DB.ecg=['1','2','3','4','5','6','7','8','9','10'];
+function logout(){DB.session=null;save();go('home')}
+function resetDB(){if(confirm('Полный сброс базы?')){localStorage.removeItem(LS);location.reload()}}
+function togResp(kind,id,on){var u=me();u[kind]=u[kind]||[];
+if(on){if(u[kind].indexOf(id)<0)u[kind].push(id)}
+else u[kind]=u[kind].filter(function(x){return x!==id});save()}
+function exportDB(){var a=document.createElement('a');
+a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
+a.download='medshift-'+todayStr()+'.json';a.click()}
+function importDB(inp){var f=inp.files[0];if(!f)return;var r=new FileReader();
+r.onload=function(){try{DB=JSON.parse(r.result);save();location.reload()}catch(e){alert('Ошибка файла')}};
+r.readAsText(f)}
+var EQ=[['','Антисептик с курком'],['ОС-0072','Аппарат ИВЛ Medumat Standart'],['ОС-0011','Аппарат ингаляционного наркоза АИНпСП-01/15'],['','Баллон закись 10л'],['','Баллон кислородный 10л (2шт)'],['ОС-0049','Дефибриллятор-монитор ДКИ-Н-10'],['000854','Ёмкость для отходов класс А'],['00024','Ёмкость для отходов класс Б'],['ОБМ-0117','Ингалятор OMRON NE-U22'],['ОС-0100','Каталка FERNO 28-Z'],['000023','Контейнер для транспортировки отходов'],['ОБМ-0095','Контейнер теплоизоляционный'],['ОБМ-0096','Набор акушерский НИСП-06.01'],['ОБМ-0099','Набор травматологический НИТ-01сс'],['0425','Набор шин Крамера'],['0115,0120,0119,0122,0121','Набор шин транспортных складных (5 шт)'],['ОС-0021','Насос инфузионный Перфузор Компакт С'],['ОБМ-0201','Носилки ковшовые'],['ОБМ-0171','Носилки кресельные складные'],['','Носилки мягкие «Медтехника»'],['','Папка с действующей документацией'],['','Плед'],['ОБМ-0100','Реанимационная укладка+токсик'],['ОС-0001','Транспортный монитор MEC 1200'],['','Укладка Covid, комбинезоны'],['ОБМ-0097','Шины детские вакуумные ВШДм-2'],['ОБМ-0098','Шины взрослые вакуумные ВШВ-2'],['ОБМ-0114','Штатив разборный для вливаний ШР-01'],['ОБМ-0189','Электрокардиограф'],['ОС-0051','Электроотсасыватель ACCUVAC']];
+var TR=[['Бинт стерильный 5x10',2,'шт'],['Бинт стерильный 7x14',2,'шт'],['Бинт эластичный сетчато-трубчатый №1',1,'шт'],['Бинт эластичный сетчато-трубчатый №3',1,'шт'],['Бинт эластичный сетчато-трубчатый №4',1,'шт'],['Губка гемостатическая коллагеновая 50x50',1,'шт'],['Жгут кровоостанавливающий',1,'шт'],['Лейкопластырь 2x500',1,'шт'],['Лейкопластырь антимикробный 1,9x7,2',10,'шт'],['Пакет охлаждающий',5,'шт'],['Перчатки смотровые',3,'пар'],['Перчатки стерильные',4,'пар'],['Пластырь SFM-Strip 4x10 см',2,'шт'],['Повязка косыночная',1,'шт'],['Покрывало спасательное',1,'шт'],['Салфетки стерильные 16x14 №10',2,'уп'],['Салфетки стерильные 45x29 №5',2,'уп'],['Шина складная для ноги',1,'шт'],['Шина складная для руки',1,'шт'],['Шина-воротник транспортная',2,'шт']];
+var RE=[['Аспиратор механический',1,'шт'],['Воронка пластмассовая',1,'шт'],['Зажим кровоостанавливающий изогнутый N1',1,'шт'],['Зажим кровоостанавливающий прямой N1',1,'шт'],['Зонд желудочный',3,'шт'],['Игла хирургическая',2,'шт'],['Иглодержатель',1,'шт'],['Катетер аспирационный',2,'шт'],['Комплект дыхательный для ручной ИВЛ',1,'компл'],['Комплект трубок эндотрахеальных',1,'компл'],['Ларингоскоп (3 клинка)',1,'шт'],['Маска ларингеальная либо комбитьюб',1,'шт'],['Переходник гибкий для трубок',1,'шт'],['Роторасширитель',1,'шт'],['Скальпель стерильный одноразовый',1,'шт'],['Стилет №10',1,'шт'],['Стилет №6',1,'шт'],['Держатель Томаса',1,'шт'],['Фильтр дыхательной бактериовирусный',1,'шт'],['Чехол (саквояж) для набора',1,'шт'],['Шовный материал',1,'уп'],['Шприц 10 мл',2,'шт'],['Шприц Жане 150 мл',1,'шт'],['Языкодержатель',1,'шт']];
+var AK=[['Воротник-шина шейная для новорожденных',1,'шт'],['Глазная повязка стерильная',2,'шт'],['Грелка',1,'шт'],['Зажим Кохера стерильный',2,'шт'],['Зажим кровоостанавливающий изогнутый N1',1,'шт'],['Зажим кровоостанавливающий прямой N1',1,'шт'],['Зажим пуповины',6,'шт'],['Игла атравматическая',1,'шт'],['Иглодержатель общехирургический',1,'шт'],['Катетер для отсоса слизи',1,'шт'],['Комплект акушерского белья',1,'компл'],['Комплект новорожденного',2,'компл'],['Комплект одежды хирургической',2,'компл'],['Ножницы для пуповины',1,'шт'],['Пинцет стерильный',2,'шт'],['Скальпель стерильный',1,'шт'],['Стетоскоп акушерский деревянный',1,'шт'],['Одеяло байковое детское',1,'шт'],['Чехол (саквояж) для набора',1,'шт']];
+var TM=[['Система для инфузий',2,'шт'],['Натрия хлорид 0,9% 200-250 мл',1,'фл'],['Глюкоза 200 мл',1,'фл'],['Реамберин',1,'фл'],['Раствор Рингера 200 мл',2,'фл'],['Парацетамол (Ифимол) 100 мл',1,'фл']];
+function mkKit(a){return a.map(function(r){return {name:r[0],spec:'',unit:r[2],qty:r[1],expiry:''}})}
+if(DB.cars.length===0){
+DB.cars.push({id:uid(),name:'977',equip:EQ.map(function(e){return {id:uid(),ovm:e[0],name:e[1],status:'ok',charge:''}}),kits:[{id:uid(),name:'Травма',items:mkKit(TR)},{id:uid(),name:'Реанимация',items:mkKit(RE)},{id:uid(),name:'Акушерская',items:mkKit(AK)},{id:uid(),name:'Термосумка (растворы)',items:mkKit(TM)}]});
+DB.ecg=['1','2','3','4','5','6','7','8','9','10'];save()}
+if(DB.bags.length===0&&window.SEED.length){
+DB.bagTypes.push({id:1,name:'Стандарт 117',items:window.SEED.map(function(s){return {group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}})});
+DB.bags.push({id:uid(),name:'Рабочая сумка 8',typeId:1,items:DB.bagTypes[0].items.map(function(i){return {name:i.name,spec:i.spec,unit:i.unit,qty:i.qty,expiry:''}})});
 save()}
-
-applyTheme();go('home');
+go('home');
+  function openCarDlg(){openDlg('<h3>Новая машина</h3><label>Название / номер</label><input id="cName"><p><button class="btn" onclick="saveCarDlg()">Создать</button></p>')}
+function saveCarDlg(){var n=document.getElementById('cName').value.trim();
+if(!n)return alert('Введите номер');
+DB.cars.push({id:uid(),name:n,equip:[],kits:[]});save();closeDlg();render()}
+function openRespDlg(uid){var u=DB.users.find(function(x){return x.id===uid});
+var h='<h3>Ответственность: '+esc(u.name)+'</h3>';
+h+='<label>Роль</label><select id="rsRole"><option value="user"'+(u.role==='user'?' selected':'')+'>сотрудник</option><option value="lead"'+(u.role==='lead'?' selected':'')+'>руководитель</option><option value="admin"'+(u.role==='admin'?' selected':'')+'>админ</option></select>';
+h+='<label>Машины</label>';
+DB.cars.forEach(function(c){h+='<label><input type="checkbox" style="width:auto"'+((u.cars||[]).indexOf(c.id)>=0?' checked':'')+' data-k="cars" data-id="'+c.id+'"> '+esc(c.name)+'</label>'});
+h+='<label>Сумки</label>';
+DB.bags.forEach(function(b){h+='<label><input type="checkbox" style="width:auto"'+((u.bags||[]).indexOf(b.id)>=0?' checked':'')+' data-k="bags" data-id="'+b.id+'"> '+esc(b.name)+'</label>'});
+h+='<p><button class="btn" onclick="saveRespDlg('+uid+')">Сохранить</button></p>';
+openDlg(h)}
+function saveRespDlg(uid){var u=DB.users.find(function(x){return x.id===uid});
+u.role=document.getElementById('rsRole').value;u.cars=[];u.bags=[];
+var boxes=dlgBody.querySelectorAll('input[type=checkbox]');
+for(var i=0;i<boxes.length;i++){var b=boxes[i];if(!b.checked)continue;
+var id=+b.getAttribute('data-id');
+if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
+save();closeDlg();render()}
 </script>
 </body>
-<script>window.addEventListener('error',function(e){var m=document.getElementById('main');if(m)m.innerHTML='<div class="card"><b>ОШИБКА:</b> '+e.message+'<br><b>СТРОКА:</b> '+e.lineno+'</div>'},true);</script>
 </html>
