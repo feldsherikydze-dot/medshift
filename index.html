@@ -62,6 +62,7 @@ body.dark .miss{background:#443a10;color:#fff3c2}
 </style>
 </head>
 <body>
+  <script>window.addEventListener('error',function(e){var m=document.getElementById('main');if(m)m.innerHTML='<div class="card"><b>ОШИБКА:</b> '+e.message+'<br><b>СТРОКА:</b> '+e.lineno+'</div>'},true);</script>
 <header>МедСмена <span id="alarm" onclick="go('home')"></span></header>
 <nav id="nav"></nav>
 <main id="main"></main>
