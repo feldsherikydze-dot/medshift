@@ -8,19 +8,5 @@
 </head>
 <body>
 <header>МедСмена <span id="alarm" onclick="go('home')"></span></header>
-<nav id="nav"></nav>
-<main id="main"></main>
-<dialog id="dlg" style="width:min(680px,95%)"><div id="dlgBody"></div></dialog>
-<script src="seed.js"></script>
-<script src="core.js"></script>
-<script src="import.js"></script>
-<script src="packs.js"></script>
-<script src="cars.js"></script>
-<script src="starter.js"></script>
 </body>
-<script>
-addEventListener('error',function(e){var m=document.getElementById('main');if(!m)return;
-if(e.target&&e.target.tagName){m.innerHTML='<div class="card"><b>Не загрузился файл:</b> '+(e.target.src||e.target.href)+'</div>';return}
-m.innerHTML='<div class="card"><b>Ошибка JS:</b> '+e.message+'<br>файл: '+(e.filename||'')+', строка '+e.lineno+'</div>'},true);
-</script>
 </html>
