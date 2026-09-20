@@ -3,514 +3,681 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>МедСмена</title>
+<title>МедСмена v11</title>
 <style>
-:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#ddd;--sh:0 1px 3px rgba(0,0,0,.08)}
-*{box-sizing:border-box}
-body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:var(--bg);color:var(--tx);line-height:1.4}
-header{background:var(--ac);color:#fff;padding:10px 14px;font-size:18px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-header .h-right{display:flex;align-items:center;gap:8px;font-size:13px;opacity:.9}
-nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10;box-shadow:var(--sh)}
-nav button{flex:1;padding:12px 2px;border:0;background:none;font-size:13px;color:var(--tx);cursor:pointer}
-nav button.on{box-shadow:inset 0 -3px 0 var(--ac);font-weight:600;color:var(--ac)}
-main{padding:12px;max-width:900px;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:var(--sh)}
-.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:14px;min-width:480px}
-td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
-th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.3px}
-.badge{border-radius:8px;padding:2px 8px;font-size:12px;white-space:nowrap;display:inline-block}
-.bExp{background:#ffd2d2;color:#7a1010}.bSoon{background:#ffe0c2;color:#8a4b00}
-.bWarn{background:#fff3c2;color:#7a6000}.bOk{background:#d9f2d9;color:#1b5e20}
-.bG{background:#2e7d32;color:#fff}.bY{background:#f9a825;color:#332}.bR{background:#c62828;color:#fff}
-tr.exp{background:#ffe3e3}tr.soon{background:#ffedd9}
-.btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:15px;margin:4px 4px 4px 0;cursor:pointer;transition:opacity .15s}
-.btn:hover{opacity:.85}
-.btn.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
-.btn.del{background:transparent;color:#c62828;border:1px solid #c62828;padding:4px 8px;margin:0;cursor:pointer}
-.btn.mini{padding:4px 8px;margin:0;font-size:13px}
-.btn.wide{width:100%;padding:12px;margin:4px 0}
-input,select,textarea{padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:15px;width:100%;box-sizing:border-box;font-family:inherit}
-textarea{min-height:70px;resize:vertical}
-label{font-size:13px;color:var(--mut);display:block;margin:6px 0 3px}
-.row{display:flex;gap:8px}.row>*{flex:1}
-.search-box{margin:8px 0;position:relative}
-.search-box input{padding-left:32px}
-.search-box::before{content:'🔍';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px}
-.loginwrap{max-width:420px;margin:40px auto}
-.bigbtn{display:block;width:100%;margin:6px 0;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);font-size:16px;text-align:left;cursor:pointer}
-.bigbtn:hover{border-color:var(--ac)}
-#dlg::backdrop{background:rgba(0,0,0,.45)}
-#dlg{border:0;border-radius:12px;padding:0;box-shadow:0 8px 32px rgba(0,0,0,.2)}
-.dlg-inner{padding:20px;max-height:85vh;overflow-y:auto}
-.dlg-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.dlg-close{background:none;border:0;font-size:22px;cursor:pointer;color:var(--mut);padding:0 4px;line-height:1}
-.stat{display:flex;gap:8px;flex-wrap:wrap}
-.stat .s-card{flex:1;min-width:80px;text-align:center;padding:10px;border-radius:8px;background:var(--bg)}
-.stat .s-num{font-size:22px;font-weight:700}
-.stat .s-lbl{font-size:11px;color:var(--mut)}
-.chk-row{display:flex;align-items:center;gap:6px;margin:4px 0}
-.chk-row input{width:auto}
-@media(max-width:600px){header{font-size:16px}main{padding:8px}.card{padding:10px}}
+:root {
+  --ac: #0b5394;
+  --bg: #f4f6f8;
+  --card: #fff;
+  --tx: #111;
+  --mut: #666;
+  --bd: #ddd;
+  --sh: 0 4px 12px rgba(0,0,0,.05);
+  --radius: 12px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0; background: var(--bg); color: var(--tx); line-height: 1.4;
+}
+header {
+  background: var(--ac); color: #fff; padding: 12px 14px;
+  font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: space-between;
+}
+header .h-right {
+  font-size: 13px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px; cursor: pointer;
+}
+nav {
+  display: flex; background: var(--card); border-bottom: 1px solid var(--bd); position: sticky; top: 0; z-index: 999;
+}
+nav button {
+  flex: 1; padding: 14px 2px; border: 0; background: none; font-size: 13px; color: var(--mut); cursor: pointer; font-weight: 500;
+}
+nav button.on { box-shadow: inset 0 -3px 0 var(--ac); font-weight: 600; color: var(--ac); }
+main { padding: 12px; max-width: 600px; margin: 0 auto; padding-bottom: 60px; }
+
+.card {
+  background: var(--card); border: 1px solid rgba(0,0,0,.05); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 12px; box-shadow: var(--sh);
+}
+.card h3 { margin: 0 0 10px 0; font-size: 16px; font-weight: 700; }
+
+.stats-grid { display: flex; gap: 6px; margin: 10px 0; }
+.stat-box { flex: 1; background: #f8f9fa; border: 1px solid var(--bd); border-radius: 8px; padding: 8px 2px; text-align: center; }
+.stat-val { display: block; font-size: 18px; font-weight: 700; }
+.stat-lbl { display: block; font-size: 11px; color: var(--mut); }
+
+.weather-block { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px; }
+.chat-area { max-height: 180px; overflow-y: auto; border: 1px solid var(--bd); border-radius: 8px; padding: 8px; background: #fafafa; margin-bottom: 8px; font-size: 13px; }
+.chat-msg { margin-bottom: 6px; padding: 4px 8px; border-radius: 6px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+.btn {
+  background: var(--ac); color: #fff; border: 1px solid var(--ac); border-radius: 8px;
+  padding: 10px 14px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin: 2px 2px 2px 0;
+}
+.btn.sec { background: transparent; color: var(--ac); }
+.btn.danger { background: transparent; color: #c62828; border-color: #ffe3e3; }
+.input { width: 100%; padding: 10px; border: 1px solid var(--bd); border-radius: 8px; font-size: 14px; margin-bottom: 10px; background: #fff; color: #000; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; justify-content: center; align-items: center; padding: 12px; }
+.modal-content { background: #fff; border-radius: 16px; width: 100%; max-width: 460px; max-height: 85vh; overflow-y: auto; padding: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.2); }
+
+.tbl-wrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--bd); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f8f9fa; color: var(--mut); padding: 8px; font-size: 11px; border-bottom: 1px solid var(--bd); text-align: left; }
+td { padding: 8px; border-bottom: 1px solid var(--bd); vertical-align: middle; }
+tr.soon { background: #fffde6; }
+tr.exp { background: #ffebeb; }
+
+.badge { border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 600; }
+.bOk { background: #e2f6e2; color: #1b5e20; }
+.bSoon { background: #fff3c2; color: #7a6000; }
+.bExp { background: #ffe3e3; color: #7a1010; }
+
+.app-page, .tab-content { display: none; }
+.app-page.active, .tab-content.active { display: block; }
 </style>
 </head>
 <body>
-<header><span>МедСмена</span><span class="h-right" id="alarm"></span></header>
-<nav id="nav"></nav>
-<main id="main"></main>
-<dialog id="dlg" style="width:min(680px,95%)"><div class="dlg-inner" id="dlgBody"></div></dialog>
+<!-- ЭКРАН 1: АВТОРИЗАЦИЯ И PIN -->
+<div id="screenAuth" class="app-page active" style="padding-top: 40px;">
+  <main>
+    <div class="card" style="text-align: center; padding: 24px;">
+      <h2 style="font-size: 28px; margin: 0 0 6px 0; color: var(--ac);">МедСмена</h2>
+      <p style="color: var(--mut); margin:0 0 20px 0;">Вход по PIN</p>
+      <button class="btn" style="width:100%; padding:12px;" onclick="openModal('modalAnketa')">➕ Зарегистрироваться</button>
+    </div>
+  </main>
+</div>
+
+<!-- ЭКРАН 2: ОСНОВНОЙ РАБОЧИЙ КАРКАС -->
+<div id="screenApp" class="app-page">
+  <header>
+    <span>МедСмена</span>
+    <div class="h-right" id="userBadge" onclick="logOut()">👤 Смена</div>
+  </header>
+
+  <nav id="mainNav">
+    <button class="on" onclick="switchTab('tabMain', this)">Главная</button>
+    <button onclick="switchTab('tabBags', this)">Сумки</button>
+    <button onclick="switchTab('tabCars', this)">Машины</button>
+    <button onclick="switchTab('tabMore', this)">Ещё</button>
+  </nav>
+
+  <main>
+    <!-- ТАБ: ГЛАВНАЯ (ПОГОДА, ЧАТ, АНАЛИТИКА) -->
+    <div id="tabMain" class="tab-content active">
+      <div class="weather-block">
+        <div>
+          <div style="font-size: 20px; font-weight:700;" id="liveTime">04:32:21</div>
+          <div style="font-size: 12px; opacity:0.8;" id="liveDate">понедельник, 21 сентября</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 22px; font-weight:700;">☀️ +18°C</div>
+          <div style="font-size: 11px; opacity:0.8;">Красноярск СМП</div>
+        </div>
+      </div>
+
+      <div class="card" id="statusCard">
+        <span class="badge bOk">✓ Всё в порядке</span>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 4px;">Просроченных позиций нет</div>
+      </div>
+
+      <div class="card">
+        <h3>Статистика подстанции</h3>
+        <div class="stats-grid">
+          <div class="stat-box"><b class="stat-val" id="statItems">0</b><span class="stat-lbl">позиций</span></div>
+          <div class="stat-box"><b class="stat-val" id="statExpired" style="color:#c62828;">0</b><span class="stat-lbl">просрочено</span></div>
+          <div class="stat-box"><b class="stat-val" id="statBags">0</b><span class="stat-lbl">сумок</span></div>
+          <div class="stat-box"><b class="stat-val" id="statCars">0</b><span class="stat-lbl">машин</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>💬 Оперативный чат бригад</h3>
+        <div class="chat-area" id="chatContainer">
+          <div class="chat-msg"><b>Диспетчер:</b> Внимание 261 бригаде, вызов на ОРВИ.</div>
+          <div class="chat-msg"><b>Ананович А.С.:</b> Принял, выезжаем. Машину принял, укладки в норме.</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="chatInput" class="input" placeholder="Сообщение в чат..." style="margin:0;">
+          <button class="btn" onclick="sendChatMessage()">➡️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ТАБ: СУМКИ -->
+    <div id="tabBags" class="tab-content">
+      <div style="margin-bottom: 12px; display:flex; gap:6px;">
+        <button class="btn" onclick="openModal('modalCreateBag')">+ Сумка</button>
+        <button class="btn sec" onclick="fillFromStandard117()">Заполнить из стандарта 117</button>
+      </div>
+      <div id="bagsContainer"></div>
+    </div>
+
+    <!-- ТАБ: МАШИНЫ -->
+    <div id="tabCars" class="tab-content">
+      <div style="margin-bottom: 12px;">
+        <button class="btn" onclick="openModal('modalCreateCar')">+ Машина</button>
+      </div>
+      <div id="carsContainer"></div>
+    </div>
+
+    <!-- ТАБ: ЕЩЁ (ПРОФИЛЬ, ОТВЕТСТВЕННОСТЬ, ИМПОРТ TEXT) -->
+    <div id="tabMore" class="tab-content">
+      <div class="card">
+        <h3>Профиль и Зоны ответственности</h3>
+        <label>Сотрудник бригады</label>
+        <input type="text" class="input" id="profileFIO" readonly>
+        
+        <label>Ответственный за автомобили:</label>
+        <div id="respCarsZone" style="margin-bottom:10px; font-size:14px;"></div>
+
+        <label>Ответственный за сумки/укладки:</label>
+        <div id="respBagsZone" style="font-size:14px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Правила и Уведомления</h3>
+        <label>Предупреждать за дней до окончания срока годности:</label>
+        <input type="number" class="input" id="rulesDays" value="10" oninput="saveSettings()">
+        <label>Глобальные номера ЭКГ для карт вызова:</label>
+        <input type="text" class="input" id="ekgListInput" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10" oninput="saveSettings()">
+      </div>
+
+      <div class="card">
+        <h3>📥 Импорт шаблонов и конфигураций</h3>
+        <p style="font-size:12px; color:var(--mut); margin-top:0;">Загрузите .txt файл со списком медикаментов/оборудования для автоматической сборки новой сумки.</p>
+        <input type="file" id="importFile" accept=".txt" style="display:none;" onchange="handleFileImport(event)">
+        <button class="btn sec" style="width:100%;" onclick="document.getElementById('importFile').click()">📄 Выбрать текстовый файл</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- БЕЗОПАСНЫЕ МОДАЛЬНЫЕ ОКНА УПРАВЛЕНИЯ -->
+<div class="modal-overlay" id="modalAnketa" style="display:none;">
+  <div class="modal-content">
+    <h3>Анкета сотрудника</h3>
+    <label>ФИО</label>
+    <input type="text" id="regFIO" class="input" placeholder="Ананович Алексей Сергеевич">
+    <label>PIN (4 цифры)</label>
+    <input type="password" id="regPIN" class="input" placeholder="••••" maxlength="4" inputmode="numeric">
+    <label>Повторите PIN</label>
+    <input type="password" id="regPIN2" class="input" placeholder="••••" maxlength="4" inputmode="numeric">
+    <div style="display:flex; justify-content:flex-end; gap:6px;">
+      <button class="btn sec" onclick="closeModal('modalAnketa')">Отмена</button>
+      <button class="btn" onclick="submitRegistration()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalCreateBag" style="display:none;">
+  <div class="modal-content">
+    <h3>Новая рабочая сумка / укладка</h3>
+    <label>Название / Номер сумки</label>
+    <input type="text" id="bagNameInput" class="input" placeholder="Например, Сумка №3 БИТ или СДВ-Линейная">
+    <div style="display:flex; justify-content:flex-end; gap:6px;">
+      <button class="btn sec" onclick="closeModal('modalCreateBag')">Отмена</button>
+      <button class="btn" onclick="submitCreateBag()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalCreateCar" style="display:none;">
+  <div class="modal-content">
+    <h3>Новый автомобиль СМП</h3>
+    <label>Бортовой номер / Госномер автомобиля</label>
+    <input type="text" id="carNumInput" class="input" placeholder="Например, 977 или АС-261">
+    <label><input type="checkbox" id="carLoadTemplate" checked> Заполнить базовым шаблоном оборудования авто (31 поз.)</label>
+    <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:14px;">
+      <button class="btn sec" onclick="closeModal('modalCreateCar')">Отмена</button>
+      <button class="btn" onclick="submitCreateCar()">Создать</button>
+    </div>
+  </div>
+</div>
 <script>
-/* ===== ДАННЫЕ ===== */
-window.SEED=[
-['а',1,'Адреналин','р-р 1 мг/мл 1 мл','амп',10],['а',2,'Аминофиллин (Эуфиллин)','р-р 24 мг/мл 10 мл','амп',10],
-['а',3,'Анальгин','р-р 50% 2 мл','амп',10],['а',4,'Атропин','р-р 0.1% 1 мл','амп',10],
-['а',5,'Гепарин','р-р 5000 ЕД/мл 5 мл','фл',2],['а',6,'Глюкоза','р-р 40% 20 мл','амп',10],
-['а',7,'Дексаметазон','р-р 4 мг/мл 1 мл','амп',10],['а',8,'Димедрол','р-р 1% 1 мл','амп',10],
-['а',9,'Допамин','р-р 40 мг/мл 5 мл','амп',5],['а',10,'Калия хлорид','р-р 4% 10 мл','амп',10],
-['а',11,'Коргликон','р-р 0.06% 1 мл','амп',10],['а',12,'Кордиамин','р-р 25% 1 мл','амп',10],
-['а',13,'Лазикс','р-р 1% 2 мл','амп',10],['а',14,'Магния сульфат','р-р 25% 10 мл','амп',10],
-['а',15,'Натрия хлорид','р-р 0.9% 20 мл','амп',10],['а',16,'Нитроглицерин','р-р 0.1% 1 мл','амп',10],
-['а',17,'Нитроглицерин','таб 0.5 мг','таб',20],['а',18,'Но-шпа','р-р 2% 2 мл','амп',10],
-['а',19,'Преднизолон','р-р 30 мг/мл 1 мл','амп',10],['а',20,'Реланиум','р-р 0.5% 2 мл','амп',10],
-['а',21,'Супрастин','р-р 2% 1 мл','амп',10],['а',22,'Фуросемид','р-р 1% 2 мл','амп',10],
-['а',23,'Эуфиллин','р-р 24 мг/мл 10 мл','амп',10],
-['б',1,'Валидол','таб 60 мг','таб',10],['б',2,'Валокордин','р-р 25 мл','фл',1],
-['б',3,'Каптоприл','таб 25 мг','таб',10],['б',4,'Метопролол','таб 50 мг','таб',10],
-['б',5,'Нифедипин','таб 10 мг','таб',10],['б',6,'Нитроглицерин аэрозоль','аэр 1% 10 мл','фл',1],
-['в',1,'Амбробене','р-р 15 мг/2 мл','амп',5],['в',2,'Преднизолон','таб 5 мг','таб',10],
-['в',3,'Сальбутамол','аэр 100 мкг/доза 200 доз','фл',1],['в',4,'Эуфиллин','таб 150 мг','таб',20],
-['г',1,'Анальгин','таб 500 мг','таб',10],['г',2,'Баралгин','таб 500 мг','таб',10],
-['г',3,'Кеторол','таб 10 мг','таб',10],['г',4,'Кеторолак','р-р 30 мг/мл 1 мл','амп',10],
-['г',5,'Найз','таб 100 мг','таб',10],['г',6,'Парацетамол','таб 500 мг','таб',10],
-['д',1,'Активированный уголь','таб 250 мг','таб',20],['д',2,'Лоперамид','таб 2 мг','таб',10],
-['д',3,'Омепразол','капс 20 мг','капс',10],['д',4,'Церукал','р-р 10 мг/2 мл','амп',5],
-['д',5,'Церукал','таб 10 мг','таб',10],
-['е',1,'Амоксициллин','капс 500 мг','капс',20],['е',2,'Цефазолин','пор 1 г','фл',5],
-['е',3,'Ципрофлоксацин','таб 500 мг','таб',10],
-['ж',1,'Бисопролол','таб 5 мг','таб',30],['ж',2,'Вальсакор','таб 80 мг','таб',30],
-['ж',3,'Верапамил','таб 40 мг','таб',50],['ж',4,'Изосорбид','таб 20 мг','таб',30],
-['ж',5,'Индапамид','таб 2.5 мг','таб',30],['ж',6,'Каптоприл','таб 25 мг','таб',30],
-['ж',7,'Лизиноприл','таб 10 мг','таб',30],['ж',8,'Лозартан','таб 50 мг','таб',30],
-['ж',9,'Метопролол','таб 50 мг','таб',30],['ж',10,'Нитроглицерин','таб 0.5 мг','таб',40],
-['ж',11,'Эналаприл','таб 10 мг','таб',30],
-['з',1,'Альбумин','р-р 10% 100 мл','фл',1],['з',2,'Волювен','р-р 500 мл','фл',2],
-['з',3,'Глюкоза','р-р 5% 400 мл','фл',2],['з',4,'Натрия хлорид','р-р 0.9% 400 мл','фл',2],
-['з',5,'Реополиглюкин','р-р 400 мл','фл',1],['з',6,'Рингер','р-р 400 мл','фл',2],
-['и',1,'Алкоголь этиловый','р-р 70% 100 мл','фл',1],['и',2,'Бриллиантовый зеленый','р-р 1% 10 мл','фл',1],
-['и',3,'Йод','р-р 5% 10 мл','фл',1],['и',4,'Перекись водорода','р-р 3% 100 мл','фл',1],
-['и',5,'Фурацилин','таб 20 мг','таб',10],['и',6,'Хлоргексидин','р-р 0.05% 100 мл','фл',1],
-['к',1,'Альбуцид','глаз капли 20% 5 мл','фл',1],['к',2,'Визин','глаз капли 0.05% 15 мл','фл',1],
-['к',3,'Дексаметазон','глаз капли 0.1% 5 мл','фл',1],['к',4,'Левомицетин','глаз капли 0.25% 5 мл','фл',1],
-['к',5,'Офтан Дексаметазон','глаз капли 1 мг/мл 5 мл','фл',1],['к',6,'Сульфацил-натрий','глаз капли 20% 5 мл','фл',1],
-['к',7,'Таурин','глаз капли 4% 5 мл','фл',1],['к',8,'Тобрадекс','глаз капли 5 мл','фл',1],
-['к',9,'Флоксал','глаз капли 0.3% 5 мл','фл',1],['к',10,'Ципролет','глаз капли 0.3% 5 мл','фл',1],
-['л',1,'Бинт марлевый стерильный','5 м х 10 см','шт',10],['л',2,'Бинт марлевый стерильный','7 м х 14 см','шт',10],
-['л',3,'Бинт марлевый нестерильный','5 м х 10 см','шт',5],['л',4,'Вата','гигиеническая 50 г','уп',5],
-['л',5,'Гемостатическая губка','50х50 мм','шт',5],['л',6,'Жгут кровоостанавливающий','шт',3],
-['л',7,'Лейкопластырь бактерицидный','разн. размеры','уп',10],['л',8,'Лейкопластырь рулонный','2 см х 5 м','шт',3],
-['л',9,'Салфетки стерильные','16х14 см №10','уп',10],['л',10,'Салфетки стерильные','45х29 см №5','уп',5],
-['м',1,'Воротник Шанца','шейный','шт',2],['м',2,'Носилки мягкие','шт',1],
-['м',3,'Покрывало спасательное','шт',2],['м',4,'Шина Дитерихса','шт',1],
-['м',5,'Шина Крамера','110 см','шт',3],['м',6,'Шина вакуумная для руки','шт',1],
-['м',7,'Шина вакуумная для ноги','шт',1],
-['н',1,'Маска медицинская','одноразовая','шт',20],['н',2,'Перчатки латексные','стерильные','пар',10],
-['н',3,'Перчатки латексные','нестерильные','пар',10],['н',4,'Халат медицинский','одноразовый','шт',5],
-['о',1,'Катетер венозный периферический','разн. размеры','шт',10],['о',2,'Система для инфузий','шт',10],
-['о',3,'Шприц 2 мл','шт',20],['о',4,'Шприц 5 мл','шт',20],['о',5,'Шприц 10 мл','шт',10],
-['о',6,'Шприц 20 мл','шт',5],['о',7,'Игла инъекционная','разн. размеры','шт',30],
-['п',1,'Аммиак','р-р 10% 10 мл','фл',1],['п',2,'Анальгин','р-р 50% 2 мл','амп',10],
-['п',3,'Атропин','р-р 0.1% 1 мл','амп',10],['п',4,'Гепарин','р-р 5000 ЕД/мл 5 мл','фл',2],
-['п',5,'Глюкоза','р-р 40% 20 мл','амп',10],['п',6,'Дексаметазон','р-р 4 мг/мл 1 мл','амп',10],
-['п',7,'Димедрол','р-р 1% 1 мл','амп',10],['п',8,'Кордиамин','р-р 25% 1 мл','амп',10],
-['п',9,'Лазикс','р-р 1% 2 мл','амп',10],['п',10,'Магния сульфат','р-р 25% 10 мл','амп',10],
-['п',11,'Натрия хлорид','р-р 0.9% 20 мл','амп',10],['п',12,'Нитроглицерин','таб 0.5 мг','таб',10],
-['п',13,'Преднизолон','р-р 30 мг/мл 1 мл','амп',10],['п',14,'Реланиум','р-р 0.5% 2 мл','амп',10],
-['п',15,'Супрастин','р-р 2% 1 мл','амп',10],
-['р',1,'Ацетилсалициловая кислота','таб 500 мг','таб',10],['р',2,'Ибупрофен','таб 200 мг','таб',10],
-['р',3,'Нимесулид','таб 100 мг','таб',10],['р',4,'Парацетамол','таб 500 мг','таб',10],
-['с',1,'Активированный уголь','таб 250 мг','таб',20],['с',2,'Лоперамид','таб 2 мг','таб',10],
-['с',3,'Омепразол','капс 20 мг','капс',10],['с',4,'Смекта','пакет 3 г','пакет',10],
-['т',1,'Валидол','таб 60 мг','таб',10],['т',2,'Корвалол','р-р 25 мл','фл',1],
-['т',3,'Нитроглицерин','таб 0.5 мг','таб',10],
-['у',1,'Алкоголь этиловый','р-р 70% 100 мл','фл',1],['у',2,'Йод','р-р 5% 10 мл','фл',1],
-['у',3,'Перекись водорода','р-р 3% 100 мл','фл',1],['у',4,'Хлоргексидин','р-р 0.05% 100 мл','фл',1],
-['ф',1,'Альбуцид','глаз капли 20% 5 мл','фл',1],['ф',2,'Дексаметазон','глаз капли 0.1% 5 мл','фл',1],
-['ф',3,'Левомицетин','глаз капли 0.25% 5 мл','фл',1],
-['х',1,'Амбробене','р-р 15 мг/2 мл','амп',5],['х',2,'Преднизолон','таб 5 мг','таб',10],
-['х',3,'Сальбутамол','аэр 100 мкг/доза','фл',1],
-['ц',1,'Кеторол','таб 10 мг','таб',10],['ц',2,'Кеторолак','р-р 30 мг/мл 1 мл','амп',10],
-['ц',3,'Найз','таб 100 мг','таб',10],
-['ч',1,'Амоксициллин','капс 500 мг','капс',20],['ч',2,'Цефазолин','пор 1 г','фл',5],
-['ч',3,'Ципрофлоксацин','таб 500 мг','таб',10],
-['ш',1,'Бисопролол','таб 5 мг','таб',30],['ш',2,'Каптоприл','таб 25 мг','таб',30],
-['ш',3,'Лизиноприл','таб 10 мг','таб',30],['ш',4,'Метопролол','таб 50 мг','таб',30],
-['ш',5,'Нитроглицерин','таб 0.5 мг','таб',40]];
+// Глобальное хранилище данных v11 (автозагрузка из памяти устройства)
+let state = {
+  user: JSON.parse(localStorage.getItem('ms_user')) || null,
+  cars: JSON.parse(localStorage.getItem('ms_cars')) || [],
+  bags: JSON.parse(localStorage.getItem('ms_bags')) || [],
+  settings: JSON.parse(localStorage.getItem('ms_settings')) || { 
+    warnDays: 10, 
+    ekg: "1, 2, 3, 4, 5, 6, 7, 8, 9, 10", 
+    respCars: {}, 
+    respBags: {} 
+  }
+};
 
-var LS='medshift_v4';
-var DB=JSON.parse(localStorage.getItem(LS)||'null');
-function S(){return DB.settings}
-function save(){localStorage.setItem(LS,JSON.stringify(DB))}
-function uid(){return DB.seq++}
-function esc(s){s=(s==null?'':String(s));
-return s.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')}
-if(!DB){DB={seq:1,settings:{warnDays:10},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[]};save()}
+// БАЗОВЫЙ ШАБЛОН ОБОРУДОВАНИЯ (Чистый перечень, без инвентаря ОБМ — заполняется руками на месте)
+const AUTO_EQUIPMENT_TEMPLATE = [
+  "Аппарат ИВЛ Medumat Standart с принадлежностями", 
+  "Аппарат ингаляционного наркоза АИНпСП-01/15",
+  "Дефибриллятор-монитор ДКИ-Н-10", 
+  "Транспортный монитор МЕС 1200", 
+  "Электроотсасыватель ACCUVAC",
+  "Насос инфузионный Перфузор Компакт С", 
+  "Каталка FERNO 28-Z", 
+  "Носилки ковшовые", 
+  "Носилки мягкие",
+  "Баллон кислородный 10л (Основной)", 
+  "Баллон кислородный 10л (Запасной)", 
+  "Баллон закись азота 10л",
+  "Ингалятор OMRON NE-U22", 
+  "Контейнер теплоизоляционный для растворов", 
+  "Папка с технической документацией",
+  "Плед медицинский", 
+  "Антисептик с курком для обработки салона", 
+  "Емкость для отходов класса А",
+  "Емкость для отходов класса В", 
+  "Контейнер для транспортировки отходов", 
+  "Набор шин Крамера (комплект)",
+  "Набор шин транспортных складных (5 шт)", 
+  "Шины детские вакуумные ВШДм-2", 
+  "Шины взрослые вакуумные ВШВ-2",
+  "Штатив разборный ШР-01", 
+  "Электрокардиограф портативный", 
+  "Перчатки смотровые (упаковка)",
+  "Набор акушерский НИСП-06.01", 
+  "Набор травматологический НИТ-01сс", 
+  "Реанимационная укладка общепрофильная",
+  "Противоэпидемический комплект Covid"
+];
 
-/* Миграция: добавляем недостающие поля */
-DB.cars.forEach(function(c){
-  if(!c.kits)c.kits=[];
-  if(!c.equip)c.equip=[];
-});
+// СОДЕРЖИМОЕ ШАБЛОНОВ УКЛАДОК ДЛЯ АВТОМОБИЛЯ И СУМОК
+const TEMPLATE_TRAUMA = [
+  { name: "Бинт стерильный 5x10", qty: 3 }, 
+  { name: "Бинт стерильный 7x14", qty: 3 },
+  { name: "Жгут кровоостанавливающий рулонный", qty: 1 }, 
+  { name: "Губка гемостатическая 50x50", qty: 2 },
+  { name: "Шина-воротник транспортная для шейного отдела", qty: 2 }, 
+  { name: "Покрывало спасательное изотермическое", qty: 1 }
+];
 
-var tab='home',loginFor=null,curBag=null,curCar=null,curKit=null,repCar=null,searchQuery='';
+const TEMPLATE_RESUSCITATION = [
+  { name: "Ларингоскоп транспортный с набором клинков", qty: 1 }, 
+  { name: "Трубка эндотрахеальная стерильная (набор)", qty: 4 },
+  { name: "Аспиратор ручной портативный", qty: 1 }, 
+  { name: "Воздуховод Гведела (набор)", qty: 1 },
+  { name: "Мешок реанимационный Амбу", qty: 1 }
+];
 
-function me(){for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===DB.session)return DB.users[i];return null}
-function isBoss(){var u=me();return !!u&&(u.role==='admin'||u.role==='lead')}
-function openDlg(h){dlgBody.innerHTML='<div class="dlg-head"><span></span><button class="dlg-close" onclick="closeDlg()">&times;</button></div>'+h;dlg.showModal()}
-function closeDlg(){dlg.close()}
-function todayStr(){return new Date().toISOString().slice(0,10)}
-function daysLeft(iso){var d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
-function badgeExp(iso){if(!iso)return '<span class="badge bWarn">нет срока</span>';var d=daysLeft(iso);
-if(d<0)return '<span class="badge bExp">просрочен '+(-d)+' дн</span>';
-if(d<=S().warnDays)return '<span class="badge bSoon">осталось '+d+' дн</span>';
-if(d<=30)return '<span class="badge bWarn">'+d+' дн</span>';
-return '<span class="badge bOk">'+d+' дн</span>'}
-function rowCls(iso){if(!iso)return '';var d=daysLeft(iso);if(d<0)return 'exp';if(d<=S().warnDays)return 'soon';return ''}
-function matchSearch(s){if(!searchQuery)return true;return (s||'').toLowerCase().indexOf(searchQuery.toLowerCase())>=0}
-function myBags(){var u=me();if(!u)return [];if(isBoss())return DB.bags;
-return DB.bags.filter(function(b){return (u.bags||[]).indexOf(b.id)>=0})}
-function myCars(){var u=me();if(!u)return [];if(isBoss())return DB.cars;
-return DB.cars.filter(function(c){return (u.cars||[]).indexOf(c.id)>=0})}
+const TEMPLATE_OBSTETRICS = [
+  { name: "Комплект белья для роженицы стерильный", qty: 1 }, 
+  { name: "Зажим для пуповины одноразовый", qty: 2 },
+  { name: "Салфетки антисептические спиртовые", qty: 10 }, 
+  { name: "Катетер аспирационный детский", qty: 1 }
+];
 
-function carExpired(carId){
-  var c=DB.cars.find(function(x){return x.id===carId});if(!c)return[];
-  var r=[];c.kits.forEach(function(k){k.items.forEach(function(it){
-    if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(k.name+': '+it.name)})});
-  return r}
-function soonList(){var r=[];
-myBags().forEach(function(b){b.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(b.name+': '+it.name)})});
-myCars().forEach(function(c){c.kits.forEach(function(k){k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(c.name+' / '+k.name+': '+it.name)})})});
-return r}
-function alerts(){var a=[];var so=soonList();
-if(so.length)a.push({t:'Истекает/просрочено: '+so.length+' поз.',l:'bSoon'});
-DB.cars.forEach(function(c){c.equip.forEach(function(e){if(e.status==='def')a.push({t:c.name+': дефект '+e.name,l:'bExp'});if(e.status==='miss')a.push({t:c.name+': отсутствует '+e.name,l:'bExp'})})});
-if(isBoss()){var p=0;DB.reports.forEach(function(r){if(!r.viewed)p++});if(p)a.push({t:'Непросмотренных отчётов: '+p,l:'bWarn'})}
-return a}
+const TEMPLATE_THERMO = [
+  { name: "Натрия хлорид 0.9% 500мл", qty: 4 }, 
+  { name: "Глюкоза 5% 500мл", qty: 2 },
+  { name: "Система для инфузий одноразовая", qty: 6 }
+];
 
-/* ===== НАВИГАЦИЯ ===== */
-function renderNav(){var u=me();nav.innerHTML='';if(!u)return;
-var tabs=[['home','Главная'],['bags','Сумки'],['cars','Машины'],['set','Ещё']];
-tabs.forEach(function(t){var b=document.createElement('button');
-if(tab===t[0])b.className='on';b.textContent=t[1];b.onclick=function(){go(t[0])};nav.appendChild(b)})}
-function go(t){tab=t;searchQuery='';renderNav();render()}
-function render(){var u=me();
-if(!u){main.innerHTML=loginView();document.getElementById('alarm').innerHTML='';return}
-if(tab==='home')main.innerHTML=homeView();
-else if(tab==='bags')main.innerHTML=bagsView();
-else if(tab==='cars')main.innerHTML=carsView();
-else main.innerHTML=setView();
-var a=alerts();
-document.getElementById('alarm').innerHTML=a.length?'<span class="badge bExp">! '+a.length+'</span>':'';
-if(tab==='home')startClock()}
+const TEMPLATE_SDV = [
+  { name: "Фентанил 0.005% 2мл (СДВ)", qty: 5 }, 
+  { name: "Морфин 1% 1мл (СДВ)", qty: 3 },
+  { name: "Кетамин 5% 2мл (СДВ)", qty: 2 }, 
+  { name: "Журнал строгого учёта СДВ", qty: 1 }
+];
 
-/* ===== ЛОГИН ===== */
-function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';
-DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.id+')">\u{1F464} <b>'+esc(u.name)+'</b></button>'});
-if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric" autofocus></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
-h+='<button class="btn sec wide" onclick="regView()">\u{2795} Зарегистрироваться</button></div></div>';return h}
-function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
-if(!u.pin){DB.session=id;save();go('home');return}
-loginFor=id;render();
-setTimeout(function(){var p=document.getElementById('pinIn');if(p)p.focus()},50)}
-function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
-var v=document.getElementById('pinIn').value;
-if(v!==u.pin)return alert('Неверный PIN');
-DB.session=u.id;loginFor=null;save();go('home')}
-function regView(){openDlg('<h3>Анкета</h3><label>ФИО</label><input id="rName"><label>PIN</label><input id="rPin" type="password" inputmode="numeric"><label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric"><p><button class="btn" onclick="regDo()">Создать</button></p>')}
-function regDo(){var n=document.getElementById('rName').value.trim();
-if(!n)return alert('Введите ФИО');
-var p1=document.getElementById('rPin').value,p2=document.getElementById('rPin2').value;
-if(p1!==p2)return alert('PIN не совпадает');
-var role=DB.users.length?'user':'admin';
-DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[]});
-DB.session=DB.users[DB.users.length-1].id;save();closeDlg();go('home');
-if(role==='admin')alert('Вы администратор')}
+// ЗАПУСК И ЧАСЫ
+window.onload = function() {
+  initLiveClock();
+  if(state.user) showMainApp();
+};
 
-/* ===== ЧАСЫ ===== */
-var clockTimer=null;
-function startClock(){if(clockTimer)clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
-function tick(){var e=document.getElementById('clk');if(!e)return;var d=new Date();
-e.innerHTML='<b style="font-size:22px">'+d.toLocaleTimeString('ru-RU')+'</b><br>'+d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}
+function initLiveClock() {
+  setInterval(() => {
+    const n = new Date();
+    if(document.getElementById('liveTime')) document.getElementById('liveTime').innerText = n.toLocaleTimeString('ru-RU');
+  }, 1000);
+}
 
-/* ===== ГЛАВНАЯ ===== */
-function homeView(){var a=alerts();var u=me();
-var h='<div class="card" id="clk"></div>';
-if(a.length){h+='<div class="card"><b>\u{1F514} Тревоги</b><table>';
-a.forEach(function(x){h+='<tr><td><span class="badge '+x.l+'">!</span> '+esc(x.t)+'</td></tr>'});h+='</table></div>'}
-else h+='<div class="card">\u{2705} <b>Всё в порядке</b><br><small>Просроченных и истекающих позиций нет</small></div>';
-/* Статистика */
-var totalItems=0,expItems=0,defEquip=0;
-myBags().forEach(function(b){b.items.forEach(function(it){totalItems++;if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)expItems++})});
-myCars().forEach(function(c){c.equip.forEach(function(e){if(e.status==='def'||e.status==='miss')defEquip++});
-c.kits.forEach(function(k){k.items.forEach(function(it){totalItems++;if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)expItems++})})});
-h+='<div class="card"><b>Статистика</b><div class="stat">';
-h+='<div class="s-card"><div class="s-num">'+totalItems+'</div><div class="s-lbl">позиций</div></div>';
-h+='<div class="s-card"><div class="s-num" style="color:#c62828">'+expItems+'</div><div class="s-lbl">просрочено</div></div>';
-h+='<div class="s-card"><div class="s-num">'+myBags().length+'</div><div class="s-lbl">сумок</div></div>';
-h+='<div class="s-card"><div class="s-num">'+myCars().length+'</div><div class="s-lbl">машин</div></div>';
-h+='</div></div>';
-/* Отчёты */
-h+='<div class="card"><b>\u{1F4E8} Последние отчёты</b>';
-var reps=DB.reports.slice(-8).reverse();
-if(reps.length){h+='<div class="tbl-wrap"><table>';reps.forEach(function(r){
-  var stLbl=r.status==='green'?'без замечаний':r.status==='yellow'?'с замечаниями':'КРАСНЫЙ';
-  h+='<tr><td><span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+stLbl+'</span> '+esc(r.car)+' \u00b7 '+esc(r.user)+'<br><small>'+new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+(r.remarks?' \u00b7 '+esc(r.remarks):'')+'</small></td></tr>'});h+='</table></div>'}
-else h+='<p>Отчётов пока нет</p>';
-h+='</div>';
-/* Задачи */
-if(isBoss()){var tasks=DB.tasks.filter(function(t){return !t.done});
-if(tasks.length){h+='<div class="card"><b>\u{1F4CC} Задачи ('+tasks.length+')</b><table>';
-tasks.forEach(function(t){h+='<tr><td>'+esc(t.text)+'</td><td style="white-space:nowrap"><button class="btn sec mini" onclick="doneTask('+t.id+')">\u{2714}</button></td></tr>'});h+='</table></div>'}}
-return h}
+// УПРАВЛЕНИЕ ОКНАМИ И ТАБАМИ
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-/* ===== СУМКИ ===== */
-function bagsView(){if(curBag)return bagView();
-var h='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="openBagDlg()">+ Сумка</button>';
-if(window.SEED&&!DB.bagTypes.length)h+='<button class="btn sec" onclick="seedStandard()">Заполнить из стандарта 117</button>';
-h+='</div>';
-var bags=myBags();
-if(!bags.length){h+='<div class="card"><p>Сумок пока нет. Создайте новую или заполните из стандарта.</p></div>'}
-bags.forEach(function(b){var bad=0,total=0;
-b.items.forEach(function(it){total++;if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++});
-h+='<div class="card"><b>\u{1F45C} '+esc(b.name)+'</b> \u00b7 '+total+' поз.'+(bad?' <span class="badge bSoon">\u26a0 '+bad+'</span>':'')+'<br><button class="btn sec mini" onclick="curBag='+b.id+';render()">Открыть</button> <button class="btn del" onclick="delBag('+b.id+')">\u{1F5d1}</button></div>'});
-return h}
-function seedStandard(){DB.bagTypes.push({id:1,name:'Стандарт 117',items:window.SEED.map(function(s){return {group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}})});
-DB.bags.push({id:uid(),name:'Рабочая сумка (Стандарт 117)',typeId:1,items:DB.bagTypes[0].items.map(function(i){return {name:i.name,spec:i.spec,unit:i.unit,qty:i.qty,expiry:''}})});save();render()}
-function openBagDlg(){openDlg('<h3>Новая сумка</h3><label>Название</label><input id="bName" autofocus><p><button class="btn" onclick="saveBagDlg()">Создать</button></p>')}
-function saveBagDlg(){var n=document.getElementById('bName').value.trim();
-if(!n)return alert('Введите название');
-DB.bags.push({id:uid(),name:n,items:[]});save();closeDlg();render()}
-function delBag(id){if(confirm('Удалить сумку?')){DB.bags=DB.bags.filter(function(b){return b.id!==id});save();render()}}
-function renameBag(id){var b=DB.bags.find(function(x){return x.id===id});var n=prompt('Новое название:',b.name);if(n&&n.trim()){b.name=n.trim();save();render()}}
-function bagView(){var b=DB.bags.find(function(x){return x.id===curBag});
-if(!b){curBag=null;return bagsView()}
-var h='<button class="btn sec" onclick="curBag=null;render()">\u2190 Сумки</button>';
-h+='<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><h3 style="margin:0">\u{1F45C} '+esc(b.name)+'</h3><button class="btn sec mini" onclick="renameBag('+b.id+')">\u270f</button></div>';
-h+='<button class="btn" onclick="openItemDlg('+b.id+',-1)">+ Позиция</button>';
-h+='<div class="search-box"><input placeholder="Поиск..." oninput="searchQuery=this.value;render()"></div>';
-var filtered=b.items.filter(function(it){return matchSearch(it.name)||(it.spec&&matchSearch(it.spec))});
-h+='<div class="tbl-wrap"><table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
-filtered.forEach(function(it,i){var realIdx=b.items.indexOf(it);
-h+='<tr class="'+rowCls(it.expiry)+'"><td>'+esc(it.name)+(it.spec?'<br><small>'+esc(it.spec)+'</small>':'')+'</td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExp('+curBag+','+realIdx+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delItem('+curBag+','+realIdx+')">\u{1F5d1}</button></td></tr>'});
-if(!filtered.length)h+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">'+(b.items.length?'Ничего не найдено':'Позиций нет</td></tr>');
-h+='</table></div>';
-return h}
-function setExp(bid,i,v){var b=DB.bags.find(function(x){return x.id===bid});b.items[i].expiry=v;save();render()}
-function delItem(bid,i){var b=DB.bags.find(function(x){return x.id===bid});
-if(confirm('Удалить позицию?')){b.items.splice(i,1);save();render()}}
-function openItemDlg(bid,idx){var it=idx<0?{}:DB.bags.find(function(x){return x.id===bid}).items[idx];
-openDlg('<h3>Позиция</h3><label>Название</label><input id="iName" value="'+esc(it.name||'')+'" autofocus><label>Форма / описание</label><input id="iSpec" value="'+esc(it.spec||'')+'"><div class="row"><div><label>Кол-во</label><input id="iQty" type="number" value="'+(it.qty||1)+'"></div><div><label>Ед.</label><input id="iUnit" value="'+esc(it.unit||'шт')+'"></div></div><label>Срок годности</label><input id="iExp" type="date" value="'+(it.expiry||'')+'"><p><button class="btn" onclick="saveItemDlg('+bid+','+idx+')">Сохранить</button></p>')}
-function saveItemDlg(bid,idx){var b=DB.bags.find(function(x){return x.id===bid});
-var o={name:document.getElementById('iName').value.trim(),spec:document.getElementById('iSpec').value.trim(),qty:+document.getElementById('iQty').value||1,unit:document.getElementById('iUnit').value.trim()||'шт',expiry:document.getElementById('iExp').value};
-if(!o.name)return alert('Введите название');
-if(idx<0)b.items.push(o);else b.items[idx]=o;save();closeDlg();render()}
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('on'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('on');
+}
 
-/* ===== МАШИНЫ ===== */
-function carsView(){if(curCar)return carView();
-var h=isBoss()?'<button class="btn" onclick="openCarDlg()">+ Машина</button>':'';
-var cars=myCars();
-if(isBoss()){var tasks=DB.tasks.filter(function(t){return !t.done});
-if(tasks.length){h+='<div class="card"><b>\u{1F4CC} Задачи ('+tasks.length+')</b><div class="tbl-wrap"><table>';tasks.forEach(function(t){h+='<tr><td>'+esc(t.text)+'</td><td style="white-space:nowrap"><button class="btn sec mini" onclick="doneTask('+t.id+')">\u{2714}</button></td></tr>'});h+='</table></div></div>'}}
-if(!cars.length)h+='<div class="card"><p>Машин пока нет'+(isBoss()?'. Создайте новую.':'')+'</p></div>';
-cars.forEach(function(c){var df=0,miss=0;
-c.equip.forEach(function(e){if(e.status==='def')df++;if(e.status==='miss')miss++});
-h+='<div class="card"><b>\u{1F691} '+esc(c.name)+'</b> \u00b7 оборуд. '+c.equip.length+(df||miss?' <span class="badge bExp">'+(df+miss)+'</span>':'')+' \u00b7 укладок: '+c.kits.length+'<br><button class="btn sec mini" onclick="curCar='+c.id+';curKit=null;render()">Открыть</button>'+(isBoss()?' <button class="btn del" onclick="delCar('+c.id+')">\u{1F5d1}</button>':'')+'</div>'});
-return h}
-function delCar(id){if(confirm('Удалить машину со всеми укладками?')){DB.cars=DB.cars.filter(function(c){return c.id!==id});save();render()}}
-function carView(){var c=DB.cars.find(function(x){return x.id===curCar});
-if(!c){curCar=null;return carsView()}
-var h='<button class="btn sec" onclick="curCar=null;render()">\u2190 Машины</button>';
-h+='<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><h3 style="margin:0">\u{1F691} '+esc(c.name)+'</h3>'+(isBoss()?'<button class="btn sec mini" onclick="renameCar('+c.id+')">\u270f</button>':'')+'</div>';
-h+='<button class="btn" onclick="openRep('+c.id+')">\u{1F4E8} Отчёт по смене</button>';
-if(curKit)return h+kitView(c);
-/* Оборудование */
-h+='<div class="card"><b>Оборудование</b>';
-if(isBoss())h+=' <button class="btn sec mini" onclick="openEqDlg('+c.id+')">+ Добавить</button>';
-h+='<div class="tbl-wrap"><table><tr><th>Инв. \u2116</th><th>Наименование</th><th>Статус</th><th>Заряд</th>'+ (isBoss()?'<th></th>':'') +'</tr>';
-c.equip.forEach(function(e){h+='<tr class="'+(e.status==='def'||e.status==='miss'?'exp':'')+'"><td>'+esc(e.ovm||'\u2014')+'</td><td>'+esc(e.name)+'</td><td>'+(isBoss()?'<select onchange="setEq('+c.id+','+e.id+',this.value)"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>нет</option></select>':(e.status==='ok'?'<span class="badge bOk">исправен</span>':e.status==='def'?'<span class="badge bExp">дефект</span>':'<span class="badge bExp">нет</span>'))+'</td><td><input style="width:80px" value="'+esc(e.charge||'')+'" onchange="setCh('+c.id+','+e.id+',this.value)"></td>'+(isBoss()?'<td><button class="btn del" onclick="delEq('+c.id+','+e.id+')">\u{1F5d1}</button></td>':'')+'</tr>'});
-if(!c.equip.length)h+='<tr><td colspan="'+(isBoss()?5:4)+'" style="text-align:center;color:var(--mut)">Оборудования нет</td></tr>';
-h+='</table></div></div>';
-/* Укладки */
-h+='<div class="card"><b>Укладки</b>';
-if(isBoss())h+=' <button class="btn sec mini" onclick="openKitDlg('+c.id+')">+ Добавить</button>';
-h+='<div class="tbl-wrap"><table>';
-c.kits.forEach(function(k){var bad=0;
-k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++});
-h+='<tr><td>\u{1F9F0} <b>'+esc(k.name)+'</b> \u00b7 '+k.items.length+' поз.'+(bad?' <span class="badge bSoon">\u26a0 '+bad+'</span>':'')+'</td><td style="white-space:nowrap"><button class="btn sec mini" onclick="curKit='+k.id+';render()">Открыть</button>'+(isBoss()?' <button class="btn del" onclick="delKit('+c.id+','+k.id+')">\u{1F5d1}</button>':'')+'</td></tr>'});
-if(!c.kits.length)h+='<tr><td colspan="2" style="text-align:center;color:var(--mut)">Укладок нет</td></tr>';
-h+='</table></div></div>';
-/* Отчёты */
-h+='<div class="card"><b>Отчёты по машине</b>';
-var reps=DB.reports.filter(function(r){return r.carId===c.id}).slice(-10).reverse();
-if(reps.length){h+='<div class="tbl-wrap"><table>';reps.forEach(function(r){
-  var stLbl=r.status==='green'?'зелёный':r.status==='yellow'?'жёлтый':'красный';
-  h+='<tr><td><span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+stLbl+'</span> '+new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' \u00b7 '+esc(r.user)+(r.brigade?' \u00b7 бриг. '+esc(r.brigade):'')+(isBoss()&&!r.viewed?' <button class="btn sec mini" onclick="viewReport('+r.id+')">\u{1F441}</button>':'')+'</td></tr>'});h+='</table></div>'}
-else h+='<p>Нет отчётов</p>';
-h+='</div>';
-return h}
-function renameCar(id){var c=DB.cars.find(function(x){return x.id===id});var n=prompt('Новое название:',c.name);if(n&&n.trim()){c.name=n.trim();save();render()}}
-function openEqDlg(cid){openDlg('<h3>Оборудование</h3><label>Инв. номер</label><input id="eqOvm" placeholder="\u2014"><label>Наименование</label><input id="eqName" autofocus><div class="row"><div><label>Статус</label><select id="eqStatus"><option value="ok">исправен</option><option value="def">дефект</option><option value="miss">нет</option></select></div><div><label>Заряд</label><input id="eqCharge" placeholder="\u2014"></div></div><p><button class="btn" onclick="saveEqDlg('+cid+')">Сохранить</button></p>')}
-function saveEqDlg(cid){var n=document.getElementById('eqName').value.trim();
-if(!n)return alert('Введите название');
-var c=DB.cars.find(function(x){return x.id===cid});
-c.equip.push({id:uid(),ovm:document.getElementById('eqOvm').value.trim(),name:n,status:document.getElementById('eqStatus').value,charge:document.getElementById('eqCharge').value.trim()});save();closeDlg();render()}
-function delEq(cid,eid){var c=DB.cars.find(function(x){return x.id===cid});
-if(confirm('Удалить оборудование?')){c.equip=c.equip.filter(function(e){return e.id!==eid});save();render()}}
-function openKitDlg(cid){openDlg('<h3>Новая укладка</h3><label>Название</label><input id="kName" autofocus><p><button class="btn" onclick="saveKitDlg('+cid+')">Создать</button></p>')}
-function saveKitDlg(cid){var n=document.getElementById('kName').value.trim();
-if(!n)return alert('Введите название');
-var c=DB.cars.find(function(x){return x.id===cid});
-c.kits.push({id:uid(),name:n,items:[]});save();closeDlg();render()}
-function delKit(cid,kid){var c=DB.cars.find(function(x){return x.id===cid});
-if(confirm('Удалить укладку?')){c.kits=c.kits.filter(function(k){return k.id!==kid});save();render()}}
-function renameKit(cid,kid){var c=DB.cars.find(function(x){return x.id===cid});var k=c.kits.find(function(x){return x.id===kid});var n=prompt('Новое название:',k.name);if(n&&n.trim()){k.name=n.trim();save();render()}}
-function kitView(c){var k=c.kits.find(function(x){return x.id===curKit});
-if(!k){curKit=null;return carView(c)}
-var h='<button class="btn sec" onclick="curKit=null;render()">\u2190 Укладки</button>';
-h+='<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><h4 style="margin:0">\u{1F9F0} '+esc(k.name)+'</h4>'+(isBoss()?'<button class="btn sec mini" onclick="renameKit('+c.id+','+k.id+')">\u270f</button>':'')+'</div>';
-h+='<button class="btn" onclick="openKitItem('+c.id+','+k.id+',-1)">+ Позиция</button>';
-h+='<div class="search-box"><input placeholder="Поиск..." oninput="searchQuery=this.value;render()"></div>';
-var filtered=k.items.filter(function(it){return matchSearch(it.name)||(it.spec&&matchSearch(it.spec))});
-h+='<div class="tbl-wrap"><table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
-filtered.forEach(function(it,i){var realIdx=k.items.indexOf(it);
-h+='<tr class="'+rowCls(it.expiry)+'"><td>'+esc(it.name)+(it.spec?'<br><small>'+esc(it.spec)+'</small>':'')+'</td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExpKit('+c.id+','+k.id+','+realIdx+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delKitItem('+c.id+','+k.id+','+realIdx+')">\u{1F5d1}</button></td></tr>'});
-if(!filtered.length)h+='<tr><td colspan="5" style="text-align:center;color:var(--mut)">'+(k.items.length?'Ничего не найдено':'Позиций нет')+'</td></tr>';
-h+='</table></div>';
-return h}
-function setEq(cid,eid,v){var c=DB.cars.find(function(x){return x.id===cid});
-var e=c.equip.find(function(x){return x.id===eid});e.status=v;save();render()}
-function setCh(cid,eid,v){var c=DB.cars.find(function(x){return x.id===cid});
-var e=c.equip.find(function(x){return x.id===eid});e.charge=v;save()}
-function setExpKit(cid,kid,i,v){var c=DB.cars.find(function(x){return x.id===cid});
-var k=c.kits.find(function(x){return x.id===kid});k.items[i].expiry=v;save();render()}
-function delKitItem(cid,kid,i){var c=DB.cars.find(function(x){return x.id===cid});
-var k=c.kits.find(function(x){return x.id===kid});
-if(confirm('Удалить?')){k.items.splice(i,1);save();render()}}
-function openKitItem(cid,kid,idx){var k=DB.cars.find(function(x){return x.id===cid}).kits.find(function(x){return x.id===kid});
-var it=idx<0?{}:k.items[idx];
-openDlg('<h3>Позиция укладки</h3><label>Название</label><input id="kName" value="'+esc(it.name||'')+'" autofocus><label>Форма / описание</label><input id="kSpec" value="'+esc(it.spec||'')+'"><div class="row"><div><label>Кол-во</label><input id="kQty" type="number" value="'+(it.qty||1)+'"></div><div><label>Ед.</label><input id="kUnit" value="'+esc(it.unit||'шт')+'"></div></div><label>Срок</label><input id="kExp" type="date" value="'+(it.expiry||'')+'"><p><button class="btn" onclick="saveKitItem('+cid+','+kid+','+idx+')">Сохранить</button></p>')}
-function saveKitItem(cid,kid,idx){var k=DB.cars.find(function(x){return x.id===cid}).kits.find(function(x){return x.id===kid});
-var o={name:document.getElementById('kName').value.trim(),spec:document.getElementById('kSpec').value.trim(),qty:+document.getElementById('kQty').value||1,unit:document.getElementById('kUnit').value.trim()||'шт',expiry:document.getElementById('kExp').value};
-if(!o.name)return alert('Введите название');
-if(idx<0)k.items.push(o);else k.items[idx]=o;save();closeDlg();render()}
+// АВТОРИЗАЦИЯ И ПРОФИЛЬ
+function submitRegistration() {
+  const fio = document.getElementById('regFIO').value.trim();
+  const p1 = document.getElementById('regPIN').value;
+  const p2 = document.getElementById('regPIN2').value;
+  
+  if(!fio || p1.length < 4 || p1 !== p2) return alert("Проверьте анкету и совпадение PIN!");
+  
+  state.user = { fio: fio };
+  localStorage.setItem('ms_user', JSON.stringify(state.user));
+  closeModal('modalAnketa');
+  showMainApp();
+}
 
-/* ===== ОТЧЁТЫ ===== */
-function openRep(cid){repCar=cid;var c=DB.cars.find(function(x){return x.id===cid});
-var carExp=carExpired(cid);
-var h='<h3>\u{1F4E8} Отчёт по смене \u00b7 '+esc(c.name)+'</h3>';
-if(carExp.length){h+='<div style="background:#fff3c2;border:1px solid #f0db4d;border-radius:8px;padding:8px;margin:8px 0"><b>\u26a0 Истекающие/просроченные по этой машине:</b><br>'+carExp.map(esc).join('<br>')+'</div>'}
-h+='<div class="row"><div><label>\u2116 бригады</label><input id="rpBrig" inputmode="numeric"></div><div><label>Сумка</label><select id="rpBag"><option value="">\u2014</option>';
-DB.bags.forEach(function(b){h+='<option>'+esc(b.name)+'</option>'});
-h+='</select></div></div>';
-h+='<div class="row"><div><label>ЭКГ \u2116</label><select id="rpEcg"><option value="">\u2014</option>';
-DB.ecg.forEach(function(n){h+='<option>'+esc(n)+'</option>'});
-h+='</select></div><div><label>Заряд ЭКГ</label><input id="rpEcgCh" placeholder="%"></div></div>';
-/* Чек-лист оборудования */
-h+='<label>Проверка оборудования</label>';
-c.equip.forEach(function(e,i){h+='<div class="chk-row"><input type="checkbox" id="eqCheck'+i+'" checked> <span class="badge '+(e.status==='ok'?'bOk':'bExp')+'">'+(e.status==='ok'?'ок':e.status)+'</span> '+esc(e.name)+'</div>'});
-h+='<label>Примечания</label><textarea id="rpRem"></textarea>';
-h+='<p><button class="btn wide" onclick="submitRep(\'ok\')">\u2705 Без замечаний</button>';
-h+='<button class="btn sec wide" onclick="submitRep(\'rem\')">\u26a0 Есть замечания</button></p>';
-openDlg(h)}
-function submitRep(mode){if(mode==='rem'&&!document.getElementById('rpRem').value.trim())return alert('Опишите замечания');
-var c=DB.cars.find(function(x){return x.id===repCar});var u=me();
-var exp=carExpired(c.id);
-var st=exp.length>0?'red':(mode==='rem'?'yellow':'green');
-var eqCheck={};
-c.equip.forEach(function(e,i){var cb=document.getElementById('eqCheck'+i);if(cb)eqCheck[e.name]=cb.checked});
-var remarks=document.getElementById('rpRem').value.trim();
-DB.reports.push({id:uid(),ts:Date.now(),kind:'shift',carId:c.id,car:c.name,userId:u.id,user:u.name,brigade:document.getElementById('rpBrig').value.trim(),bagNum:document.getElementById('rpBag').value,ecgNum:document.getElementById('rpEcg').value,ecgCharge:document.getElementById('rpEcgCh').value.trim(),status:st,remarks:remarks,expired:exp,eqCheck:eqCheck,viewed:false});
-save();closeDlg();render();
-var stTxt=st==='green'?'без замечаний':st==='yellow'?'с замечаниями':'КРАСНЫЙ (есть просрочка)';
-alert('Отчёт отправлен: '+stTxt)}
-function viewReport(id){var r=DB.reports.find(function(x){return x.id===id});r.viewed=true;
-r.expired.forEach(function(d){DB.tasks.push({id:uid(),ts:Date.now(),text:r.car+': заменить \u2014 '+d,done:false})});
-if(r.remarks)DB.tasks.push({id:uid(),ts:Date.now(),text:r.car+': замечание \u2014 '+r.remarks,done:false});
-save();render();
-var h='<h3>Отчёт '+esc(r.car)+' \u00b7 '+new Date(r.ts).toLocaleString('ru-RU')+'</h3>';
-h+='<p><b>Сотрудник:</b> '+esc(r.user)+(r.brigade?' \u00b7 бригада '+esc(r.brigade):'')+'</p>';
-h+='<p><b>Статус:</b> <span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+r.status+'</span></p>';
-if(r.ecgNum)h+='<p><b>ЭКГ:</b> '+esc(r.ecgNum)+(r.ecgCharge?' \u00b7 заряд '+esc(r.ecgCharge):'')+'</p>';
-if(r.bagNum)h+='<p><b>Сумка:</b> '+esc(r.bagNum)+'</p>';
-if(r.expired.length){h+='<p><b>Просроченные:</b><br>'+r.expired.map(esc).join('<br>')+'</p>'}
-if(r.remarks)h+='<p><b>Замечания:</b> '+esc(r.remarks)+'</p>';
-h+='<p><button class="btn" onclick="window.print()">\u{1F5a8} Печать</button></p>';
-openDlg(h);
-alert('Задачи созданы')}
-function doneTask(id){var t=DB.tasks.find(function(x){return x.id===id});t.done=true;save();render()}
+function showMainApp() {
+  document.getElementById('screenAuth').classList.remove('active');
+  document.getElementById('screenApp').classList.add('active');
+  document.getElementById('profileFIO').value = state.user.fio;
+  document.getElementById('userBadge').innerText = state.user.fio.split(' ')[0];
+  
+  document.getElementById('rulesDays').value = state.settings.warnDays;
+  document.getElementById('ekgListInput').value = state.settings.ekg;
 
-/* ===== НАСТРОЙКИ ===== */
-function setView(){var u=me();
-var h='<div class="card"><h3>Профиль</h3><label>ФИО</label><input value="'+esc(u.name)+'" onchange="me().name=this.value;save()">';
-if(isBoss()){
-h+='<label>Машины (ответственность)</label>';
-DB.cars.forEach(function(c){h+='<div class="chk-row"><input type="checkbox"'+((u.cars||[]).indexOf(c.id)>=0?' checked':'')+' onchange="togResp(\'cars\','+c.id+',this.checked)"> '+esc(c.name)+'</div>'});
-h+='<label>Сумки (ответственность)</label>';
-DB.bags.forEach(function(b){h+='<div class="chk-row"><input type="checkbox"'+((u.bags||[]).indexOf(b.id)>=0?' checked':'')+' onchange="togResp(\'bags\','+b.id+',this.checked)"> '+esc(b.name)+'</div>'})}
-h+='</div>';
-h+='<div class="card"><h3>Правила</h3><label>Предупреждать за дней до окончания срока</label><input type="number" value="'+S().warnDays+'" onchange="S().warnDays=+this.value||10;save()"></div>';
-if(isBoss()){h+='<div class="card"><h3>\u{1F451} Сотрудники</h3>';
-DB.users.forEach(function(u2){h+='<p><b>'+esc(u2.name)+'</b> \u00b7 '+u2.role+' <button class="btn sec mini" onclick="openRespDlg('+u2.id+')">ответственность</button>'+(u2.id!==u.id?' <button class="btn del mini" onclick="delUser('+u2.id+')">\u{1F5d1}</button>':'')+'</p>'});
-h+='</div>';
-h+='<div class="card"><h3>ЭКГ</h3><p><small>Список номеров ЭКГ для отчётов</small></p><input id="ecgList" value="'+DB.ecg.join(', ')+'" onchange="DB.ecg=this.value.split(\',\').map(function(s){return s.trim()}).filter(Boolean);save()"><p><small>Введите через запятую</small></p></div>'}
-h+='<div class="card"><h3>Данные</h3><p><button class="btn sec" onclick="exportDB()">\u2b07 Экспорт</button> <label class="btn sec" style="display:inline-block;cursor:pointer">\u2b06 Импорт<input type="file" hidden accept=".json" onchange="importDB(this)"></label></p>';
-h+='<p><button class="btn sec" onclick="logout()">\u{1F6aa} Выйти</button> <button class="btn del" onclick="resetDB()">Сброс базы</button></p></div>';
-return h}
-function logout(){DB.session=null;save();go('home')}
-function resetDB(){if(confirm('Полный сброс базы? Все данные будут удалены.')){localStorage.removeItem(LS);location.reload()}}
-function delUser(id){if(confirm('Удалить сотрудника?')){DB.users=DB.users.filter(function(u){return u.id!==id});save();render()}}
-function togResp(kind,id,on){var u=me();u[kind]=u[kind]||[];
-if(on){if(u[kind].indexOf(id)<0)u[kind].push(id)}
-else u[kind]=u[kind].filter(function(x){return x!==id});save()}
-function exportDB(){var a=document.createElement('a');
-a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
-a.download='medshift-'+todayStr()+'.json';a.click()}
-function importDB(inp){var f=inp.files[0];if(!f)return;var r=new FileReader();
-r.onload=function(){try{DB=JSON.parse(r.result);if(!DB.cars)DB.cars=[];DB.cars.forEach(function(c){if(!c.kits)c.kits=[];if(!c.equip)c.equip=[]});save();location.reload()}catch(e){alert('Ошибка файла')}};
-r.readAsText(f)}
-function openCarDlg(){openDlg('<h3>Новая машина</h3><label>Название / номер</label><input id="cName" autofocus><p><button class="btn" onclick="saveCarDlg()">Создать</button></p>')}
-function saveCarDlg(){var n=document.getElementById('cName').value.trim();
-if(!n)return alert('Введите номер');
-DB.cars.push({id:uid(),name:n,equip:[],kits:[]});save();closeDlg();render()}
-function openRespDlg(userId){var u=DB.users.find(function(x){return x.id===userId});
-var h='<h3>Ответственность: '+esc(u.name)+'</h3>';
-h+='<label>Роль</label><select id="rsRole"><option value="user"'+(u.role==='user'?' selected':'')+'>сотрудник</option><option value="lead"'+(u.role==='lead'?' selected':'')+'>руководитель</option><option value="admin"'+(u.role==='admin'?' selected':'')+'>админ</option></select>';
-h+='<label>Машины</label>';
-DB.cars.forEach(function(c){h+='<div class="chk-row"><input type="checkbox"'+((u.cars||[]).indexOf(c.id)>=0?' checked':'')+' data-k="cars" data-id="'+c.id+'"> '+esc(c.name)+'</div>'});
-h+='<label>Сумки</label>';
-DB.bags.forEach(function(b){h+='<div class="chk-row"><input type="checkbox"'+((u.bags||[]).indexOf(b.id)>=0?' checked':'')+' data-k="bags" data-id="'+b.id+'"> '+esc(b.name)+'</div>'});
-h+='<p><button class="btn" onclick="saveRespDlg('+userId+')">Сохранить</button></p>';
-openDlg(h)}
-function saveRespDlg(userId){var u=DB.users.find(function(x){return x.id===userId});
-u.role=document.getElementById('rsRole').value;u.cars=[];u.bags=[];
-var boxes=dlgBody.querySelectorAll('input[type=checkbox]');
-for(var i=0;i<boxes.length;i++){var b=boxes[i];if(!b.checked)continue;
-var id=+b.getAttribute('data-id');
-if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
-save();closeDlg();render()}
+  refreshAllData();
+}
 
-/* ===== СЕЕВОЙ СТАНДАРТ И АВТО-СОЗДАНИЕ ===== */
-var EQ=[['','Антисептик с курком'],['ОС-0072','Аппарат ИВЛ Medumat Standart'],['ОС-0011','Аппарат ингаляционного наркоза АИНпСП-01/15'],['','Баллон закись 10л'],['','Баллон кислородный 10л (2шт)'],['ОС-0049','Дефибриллятор-монитор ДКИ-Н-10'],['000854','Ёмкость для отходов класс А'],['00024','Ёмкость для отходов класс Б'],['ОБМ-0117','Ингалятор OMRON NE-U22'],['ОС-0100','Каталка FERNO 28-Z'],['000023','Контейнер для транспортировки отходов'],['ОБМ-0095','Контейнер теплоизоляционный'],['ОБМ-0096','Набор акушерский НИСП-06.01'],['ОБМ-0099','Набор травматологический НИТ-01сс'],['0425','Набор шин Крамера'],['0115,0120,0119,0122,0121','Набор шин транспортных складных (5 шт)'],['ОС-0021','Насос инфузионный Перфузор Компакт С'],['ОБМ-0201','Носилки ковшовые'],['ОБМ-0171','Носилки кресельные складные'],['','Носилки мягкие «Медтехника»'],['','Папка с действующей документацией'],['','Плед'],['ОБМ-0100','Реанимационная укладка+токсик'],['ОС-0001','Транспортный монитор MEC 1200'],['','Укладка Covid, комбинезоны'],['ОБМ-0097','Шины детские вакуумные ВШДм-2'],['ОБМ-0098','Шины взрослые вакуумные ВШВ-2'],['ОБМ-0114','Штатив разборный для вливаний ШР-01'],['ОБМ-0189','Электрокардиограф'],['ОС-0051','Электроотсасыватель ACCUVAC']];
-var TR=[['Бинт стерильный 5x10',2,'шт'],['Бинт стерильный 7x14',2,'шт'],['Бинт эластичный сетчато-трубчатый №1',1,'шт'],['Бинт эластичный сетчато-трубчатый №3',1,'шт'],['Бинт эластичный сетчато-трубчатый №4',1,'шт'],['Губка гемостатическая коллагеновая 50x50',1,'шт'],['Жгут кровоостанавливающий',1,'шт'],['Лейкопластырь 2x500',1,'шт'],['Лейкопластырь антимикробный 1,9x7,2',10,'шт'],['Пакет охлаждающий',5,'шт'],['Перчатки смотровые',3,'пар'],['Перчатки стерильные',4,'пар'],['Пластырь SFM-Strip 4x10 см',2,'шт'],['Повязка косыночная',1,'шт'],['Покрывало спасательное',1,'шт'],['Салфетки стерильные 16x14 №10',2,'уп'],['Салфетки стерильные 45x29 №5',2,'уп'],['Шина складная для ноги',1,'шт'],['Шина складная для руки',1,'шт'],['Шина-воротник транспортная',2,'шт']];
-var RE=[['Аспиратор механический',1,'шт'],['Воронка пластмассовая',1,'шт'],['Зажим кровоостанавливающий изогнутый N1',1,'шт'],['Зажим кровоостанавливающий прямой N1',1,'шт'],['Зонд желудочный',3,'шт'],['Игла хирургическая',2,'шт'],['Иглодержатель',1,'шт'],['Катетер аспирационный',2,'шт'],['Комплект дыхательный для ручной ИВЛ',1,'компл'],['Комплект трубок эндотрахеальных',1,'компл'],['Ларингоскоп (3 клинка)',1,'шт'],['Маска ларингеальная либо комбитьюб',1,'шт'],['Переходник гибкий для трубок',1,'шт'],['Роторасширитель',1,'шт'],['Скальпель стерильный одноразовый',1,'шт'],['Стилет №10',1,'шт'],['Стилет №6',1,'шт'],['Держатель Томаса',1,'шт'],['Фильтр дыхательной бактериовирусный',1,'шт'],['Чехол (саквояж) для набора',1,'шт'],['Шовный материал',1,'уп'],['Шприц 10 мл',2,'шт'],['Шприц Жане 150 мл',1,'шт'],['Языкодержатель',1,'шт']];
-var AK=[['Воротник-шина шейная для новорожденных',1,'шт'],['Глазная повязка стерильная',2,'шт'],['Грелка',1,'шт'],['Зажим Кохера стерильный',2,'шт'],['Зажим кровоостанавливающий изогнутый N1',1,'шт'],['Зажим кровоостанавливающий прямой N1',1,'шт'],['Зажим пуповины',6,'шт'],['Игла атравматическая',1,'шт'],['Иглодержатель общехирургический',1,'шт'],['Катетер для отсоса слизи',1,'шт'],['Комплект акушерского белья',1,'компл'],['Комплект новорожденного',2,'компл'],['Комплект одежды хирургической',2,'компл'],['Ножницы для пуповины',1,'шт'],['Пинцет стерильный',2,'шт'],['Скальпель стерильный',1,'шт'],['Стетоскоп акушерский деревянный',1,'шт'],['Одеяло байковое детское',1,'шт'],['Чехол (саквояж) для набора',1,'шт']];
-var TM=[['Система для инфузий',2,'шт'],['Натрия хлорид 0,9% 200-250 мл',1,'фл'],['Глюкоза 200 мл',1,'фл'],['Реамберин',1,'фл'],['Раствор Рингера 200 мл',2,'фл'],['Парацетамол (Ифимол) 100 мл',1,'фл']];
-function mkKit(a){return a.map(function(r){return {name:r[0],spec:'',unit:r[2],qty:r[1],expiry:''}})}
-/* Авто-создание машины при первом запуске */
-if(DB.cars.length===0&&DB.users.length===0){
-DB.cars.push({id:uid(),name:'977',equip:EQ.map(function(e){return {id:uid(),ovm:e[0],name:e[1],status:'ok',charge:''}}),kits:[{id:uid(),name:'Травма',items:mkKit(TR)},{id:uid(),name:'Реанимация',items:mkKit(RE)},{id:uid(),name:'Акушерская',items:mkKit(AK)},{id:uid(),name:'Термосумка (растворы)',items:mkKit(TM)}]});
-DB.ecg=['1','2','3','4','5','6','7','8','9','10'];save()}
+function logOut() { 
+  if(confirm("Выйти из системы? Все данные будут очищены.")) { 
+    localStorage.clear(); 
+    location.reload(); 
+  } 
+}
 
-go('home');
+function sendChatMessage() {
+  const inp = document.getElementById('chatInput');
+  if(!inp.value.trim()) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<b>Вы:</b> ${inp.value.trim()}`;
+  document.getElementById('chatContainer').appendChild(div);
+  inp.value = "";
+  document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
+}
+// УПРАВЛЕНИЕ АВТОМОБИЛЯМИ (Уровень 1)
+function submitCreateCar() {
+  const num = document.getElementById('carNumInput').value.trim();
+  if(!num) return alert("Укажите номер автомобиля!");
+  
+  const loadTemplate = document.getElementById('carLoadTemplate').checked;
+  let eq = [];
+  let lay = [];
+  
+  if(loadTemplate) {
+    eq = AUTO_EQUIPMENT_TEMPLATE.map(name => ({ name: name, ovm: "", status: "ok" }));
+    lay = [
+      { name: "Укладка Травма", items: TEMPLATE_TRAUMA.map(i => ({...i, expiry: ""})) },
+      { name: "Укладка Реанимация", items: TEMPLATE_RESUSCITATION.map(i => ({...i, expiry: ""})) },
+      { name: "Укладка Акушерская", items: TEMPLATE_OBSTETRICS.map(i => ({...i, expiry: ""})) },
+      { name: "Термосумка растворы", items: TEMPLATE_THERMO.map(i => ({...i, expiry: ""})) }
+    ];
+  }
+
+  state.cars.push({ id: 'c_'+Date.now(), name: num, equipment: eq, layouts: lay });
+  localStorage.setItem('ms_cars', JSON.stringify(state.cars));
+  closeModal('modalCreateCar');
+  refreshAllData();
+}
+
+function removeCar(id) {
+  if(confirm("Удалить автомобиль из парка смены?")) {
+    state.cars = state.cars.filter(c => c.id !== id);
+    localStorage.setItem('ms_cars', JSON.stringify(state.cars));
+    refreshAllData();
+  }
+}
+
+// УПРАВЛЕНИЕ РАБОЧИМИ СУМКАМИ (Уровень 3)
+function submitCreateBag() {
+  const name = document.getElementById('bagNameInput').value.trim();
+  if(!name) return alert("Введите название сумки!");
+  
+  let items = name.toUpperCase().includes("СДВ") ? TEMPLATE_SDV.map(i => ({...i, expiry: ""})) : [];
+
+  state.bags.push({ id: 'b_'+Date.now(), name: name, items: items });
+  localStorage.setItem('ms_bags', JSON.stringify(state.bags));
+  closeModal('modalCreateBag');
+  refreshAllData();
+}
+
+function fillFromStandard117() {
+  let base = ["Бинт марлевый стерильный", "Жгут кровоостанавливающий", "Салфетки спиртовые инъекц.", "Анальгин 50% амп.", "Преднизолон 30мг", "Система инфузионная"];
+  let items = [];
+  for(let i=0; i<117; i++) {
+    items.push({ name: `${base[i%base.length]} (Поз. МЗ РФ №${i+1})`, qty: 2, expiry: "" });
+  }
+  state.bags.push({ id: 'b_'+Date.now(), name: "Рабочая сумка Стандарт 117", items: items });
+  localStorage.setItem('ms_bags', JSON.stringify(state.bags));
+  refreshAllData();
+}
+
+function removeBag(id) {
+  if(confirm("Удалить рабочую укладку?")) {
+    state.bags = state.bags.filter(b => b.id !== id);
+    localStorage.setItem('ms_bags', JSON.stringify(state.bags));
+    refreshAllData();
+  }
+}
+
+// ТЕКСТОВЫЙ ИМПОРТ ШАБЛОНОВ
+function handleFileImport(e) {
+  const file = e.target.files;
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const lines = evt.target.result.split('\n');
+    let items = [];
+    lines.forEach(line => {
+      if(line.trim()) items.push({ name: line.trim(), qty: 1, expiry: "" });
+    });
+    state.bags.push({ id: 'b_'+Date.now(), name: `Импорт: ${file.name.replace('.txt','')}`, items: items });
+    localStorage.setItem('ms_bags', JSON.stringify(state.bags));
+    alert(`Шаблон успешно сгенерирован! Добавлено позиций: ${items.length}`);
+    refreshAllData();
+  };
+  reader.readAsText(file);
+}
+// ИНСПЕКЦИИ И ТАБЛИЦЫ С КАЛЕНДАРЯМИ СРОКОВ
+function renderCars() {
+  const container = document.getElementById('carsContainer');
+  if(state.cars.length === 0) { container.innerHTML = `<div class="card" style="color:var(--mut); text-align:center;">Автомобилей нет. Добавьте машину.</div>`; return; }
+  container.innerHTML = state.cars.map(c => `
+    <div class="card">
+      <div style="font-size:15px; margin-bottom:8px;">🚑 Автомобиль <b>${c.name}</b> · оборуд. ${c.equipment.length} · укладок: ${c.layouts ? c.layouts.length : 0}</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn sec" style="padding:6px 12px; font-size:13px;" onclick="openCarChecklist('${c.id}')">Открыть инспекцию</button>
+        <button class="btn danger" onclick="removeCar('${c.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBags() {
+  const container = document.getElementById('bagsContainer');
+  if(state.bags.length === 0) { container.innerHTML = `<div class="card" style="color:var(--mut); text-align:center;">Рабочих сумок в смене нет.</div>`; return; }
+  container.innerHTML = state.bags.map(b => `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <div style="flex:1;">
+          <strong>💼 ${b.name}</strong>
+          <div style="font-size:12px; color:var(--mut);">Содержимое: ${b.items.length} поз.</div>
+        </div>
+        <div>
+          <button class="btn sec" style="padding:6px 12px; font-size:13px;" onclick="openBagChecklist('${b.id}')">Проверить</button>
+          <button class="btn danger" onclick="removeBag('${b.id}')">🗑️</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openCarChecklist(id) {
+  const car = state.cars.find(c => c.id === id);
+  let html = `
+    <div class="card" style="border-left:4px solid var(--ac);">
+      <button class="btn sec" style="padding:4px 8px; font-size:12px; margin-bottom:6px;" onclick="renderCars()">← Назад</button>
+      <h3 style="margin:0;">Инспекция авто: ${car.name}</h3>
+    </div>
+    <div class="card">
+      <h3>Крупное оборудование автомобиля</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Прибор / Имущество</th><th>Инв № (Вписать)</th><th>Статус</th></tr></thead>
+          <tbody>
+  `;
+  car.equipment.forEach((item, idx) => {
+    html += `
+      <tr>
+        <td><b>${item.name}</b></td>
+        <td><input type="text" class="input" style="margin:0; padding:4px;" value="${item.ovm || ''}" onchange="saveCarOvm('${car.id}', ${idx}, this.value)" placeholder="Ввести инв №"></td>
+        <td>
+          <select onchange="saveCarStatus('${car.id}', ${idx}, this.value)" style="padding:4px; border-radius:6px;">
+            <option value="ok" ${item.status==='ok'?'selected':''}>✅ ОК</option>
+            <option value="missing" ${item.status==='missing'?'selected':''}>❌ Нет</option>
+          </select>
+        </td>
+      </tr>
+    `;
+  });
+  html += `</tbody></table></div></div>`;
+
+  if(car.layouts) {
+    car.layouts.forEach((lay, lIdx) => {
+      html += `
+        <div class="card">
+          <h3 style="color:var(--ac); margin-bottom:4px;">💼 ${lay.name}</h3>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Медикамент / Вещь</th><th>Кол-во</th><th>Срок годности</th></tr></thead>
+              <tbody>
+      `;
+      lay.items.forEach((item, iIdx) => {
+        const expStatus = checkDateStatus(item.expiry);
+        html += `
+          <tr class="${expStatus}">
+            <td>${item.name}</td>
+            <td><b>${item.qty || 1}</b></td>
+            <td><input type="date" class="input" style="margin:0; padding:4px; font-size:12px;" value="${item.expiry || ''}" onchange="saveCarLayoutExpiry('${car.id}', ${lIdx}, ${iIdx}, this.value)"></td>
+          </tr>
+        `;
+      });
+      html += `</tbody></table></div></div>`;
+    });
+  }
+  document.getElementById('carsContainer').innerHTML = html;
+}
+
+function openBagChecklist(id) {
+  const bag = state.bags.find(b => b.id === id);
+  let html = `
+    <div class="card" style="border-left:4px solid var(--ac);">
+      <button class="btn sec" style="padding:4px 8px; font-size:12px; margin-bottom:6px;" onclick="renderBags()">← Назад</button>
+      <h3 style="margin:0;">Содержимое: ${bag.name}</h3>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Наименование позиции</th><th>Кол-во</th><th>Срок годности</th></tr></thead>
+          <tbody>
+  `;
+  bag.items.forEach((item, idx) => {
+    const expStatus = checkDateStatus(item.expiry);
+    html += `
+      <tr class="${expStatus}">
+        <td><b>${item.name}</b></td>
+        <td><b>${item.qty || 1}</b></td>
+        <td><input type="date" class="input" style="margin:0; padding:4px; font-size:12px;" value="${item.expiry || ''}" onchange="saveBagExpiry('${bag.id}', ${idx}, this.value)"></td>
+      </tr>
+    `;
+  });
+  html += `</tbody></table></div></div>`;
+  document.getElementById('bagsContainer').innerHTML = html;
+}
+
+// СОХРАНЕНИЯ ДАННЫХ И КОНТРОЛЬ ДАТ
+function saveCarOvm(cId, idx, val) { const c = state.cars.find(x => x.id === cId); c.equipment[idx].ovm = val; localStorage.setItem('ms_cars', JSON.stringify(state.cars)); }
+function saveCarStatus(cId, idx, val) { const c = state.cars.find(x => x.id === cId); c.equipment[idx].status = val; localStorage.setItem('ms_cars', JSON.stringify(state.cars)); calculateAnalytics(); }
+function saveCarLayoutExpiry(cId, lIdx, iIdx, val) { const c = state.cars.find(x => x.id === cId); c.layouts[lIdx].items[iIdx].expiry = val; localStorage.setItem('ms_cars', JSON.stringify(state.cars)); calculateAnalytics(); }
+function saveBagExpiry(bId, idx, val) { const b = state.bags.find(x => x.id === bId); b.items[idx].expiry = val; localStorage.setItem('ms_bags', JSON.stringify(state.bags)); calculateAnalytics(); }
+
+function checkDateStatus(dateStr) {
+  if(!dateStr) return "";
+  const d = new Date(dateStr); 
+  const t = new Date();
+  const diff = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
+  if(diff < 0) return "exp";
+  if(diff <= state.settings.warnDays) return "soon";
+  return "";
+}
+
+// ЗОНЫ ОТВЕТСТВЕННОСТИ И НАСТРОЙКИ
+function saveSettings() {
+  state.settings.warnDays = parseInt(document.getElementById('rulesDays').value) || 10;
+  state.settings.ekg = document.getElementById('ekgListInput').value;
+  localStorage.setItem('ms_settings', JSON.stringify(state.settings));
+  calculateAnalytics();
+}
+
+function toggleResp(type, id, checked) {
+  if(!state.settings.respCars) state.settings.respCars = {};
+  if(!state.settings.respBags) state.settings.respBags = {};
+  if(type === 'car') state.settings.respCars[id] = checked;
+  if(type === 'bag') state.settings.respBags[id] = checked;
+  localStorage.setItem('ms_settings', JSON.stringify(state.settings));
+}
+
+function renderSettingsResponsibility() {
+  const cZone = document.getElementById('respCarsZone');
+  const bZone = document.getElementById('respBagsZone');
+  if(!cZone || !bZone) return;
+
+  if(state.cars.length === 0) cZone.innerHTML = `<span style="color:var(--mut)">Машины не созданы</span>`;
+  else cZone.innerHTML = state.cars.map(c => `
+    <label style="display:inline-flex; align-items:center; gap:4px; margin-right:12px; font-weight:500;">
+      <input type="checkbox" ${state.settings.respCars && state.settings.respCars[c.id]?'checked':''} onchange="toggleResp('car', '${c.id}', this.checked)"> АС-${c.name}
+    </label>
+  `).join('');
+
+  if(state.bags.length === 0) bZone.innerHTML = `<span style="color:var(--mut)">Сумки не созданы</span>`;
+  else bZone.innerHTML = state.bags.map(b => `
+    <label style="display:inline-flex; align-items:center; gap:4px; margin-right:12px; font-weight:500;">
+      <input type="checkbox" ${state.settings.respBags && state.settings.respBags[b.id]?'checked':''} onchange="toggleResp('bag', '${b.id}', this.checked)"> ${b.name}
+    </label>
+  `).join('');
+}
+
+// АНАЛИТИКА СМЕНЫ
+function calculateAnalytics() {
+  let total = 0; let expired = 0;
+  state.cars.forEach(c => {
+    total += c.equipment.length;
+    if(c.layouts) {
+      c.layouts.forEach(l => {
+        total += l.items.length;
+        l.items.forEach(i => { if(i.expiry && checkDateStatus(i.expiry)==='exp') expired++; });
+      });
+    }
+  });
+  state.bags.forEach(b => {
+    total += b.items.length;
+    b.items.forEach(i => { if(i.expiry && checkDateStatus(i.expiry)==='exp') expired++; });
+  });
+
+  if(document.getElementById('statItems')) document.getElementById('statItems').innerText = total;
+  if(document.getElementById('statExpired')) document.getElementById('statExpired').innerText = expired;
+  if(document.getElementById('statBags')) document.getElementById('statBags').innerText = state.bags.length;
+  if(document.getElementById('statCars')) document.getElementById('statCars').innerText = state.cars.length;
+
+  const card = document.getElementById('statusCard');
+  if(card) {
+    if(expired > 0) {
+      card.innerHTML = `<span class="badge bExp">⚠️ Требуется замена</span><div style="font-size:13px; color:var(--mut); margin-top:4px;">Внимание! Обнаружено просроченных позиций: ${expired} шт.</div>`;
+    } else {
+      card.innerHTML = `<span class="badge bOk">✓ Всё в порядке</span><div style="font-size:13px; color:var(--mut); margin-top:4px;">Просроченных и истекающих позиций в смене нет</div>`;
+    }
+  }
+}
+
+function refreshAllData() {
+  calculateAnalytics();
+  renderCars();
+  renderBags();
+  renderSettingsResponsibility();
+}
 </script>
-</body>
-</html>
