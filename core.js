@@ -9,7 +9,7 @@ if(!DB){DB={seq:1,ver:VER,settings:{warnDays:10,city:'',accent:'#0b5394',dark:fa
 bagTypes:[{id:1,name:'Стандарт 117 (основной + таблетки)',std:true,items:(window.SEED||[]).map(s=>({group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}))}],
 bags:[],cars:[],ecg:[],uchet:[],reports:[],tasks:[],monthly:[],chat:[]};save()}
 let tab='home',loginFor=null,room='общая';
-function me(){return DB.users.find(u=>u.id===DB.session)||null}
+function me(){return DB.(u=>u.id===DB.session)||null}
 function isBoss(){const u=me();return!!u&&(u.role==='admin'||u.role==='lead')}
 function applyTheme(){const s=S();document.documentElement.style.setProperty('--ac',s.accent);document.body.classList.toggle('dark',!!s.dark)}
 function openDlg(html){dlgBody.innerHTML=html;dlg.showModal()}
