@@ -18,4 +18,9 @@
 <script src="cars.js"></script>
 <script src="starter.js"></script>
 </body>
+<script>
+addEventListener('error',function(e){var m=document.getElementById('main');if(!m)return;
+if(e.target&&e.target.tagName){m.innerHTML='<div class="card"><b>Не загрузился файл:</b> '+(e.target.src||e.target.href)+'</div>';return}
+m.innerHTML='<div class="card"><b>Ошибка JS:</b> '+e.message+'<br>файл: '+(e.filename||'')+', строка '+e.lineno+'</div>'},true);
+</script>
 </html>
