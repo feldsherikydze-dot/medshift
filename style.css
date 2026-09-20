@@ -1,0 +1,54 @@
+:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#e0e0e0}
+body.dark{--bg:#12161c;--card:#1c232c;--tx:#e8e8e8;--mut:#9aa5b1;--bd:#2a3340}
+body{font-family:system-ui;margin:0;background:var(--bg);color:var(--tx)}
+header{background:var(--ac);color:#fff;padding:10px 14px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+header #alarm{cursor:pointer}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10}
+nav button{flex:1;padding:11px 2px;border:0;background:none;font-size:13px;color:var(--tx)}
+nav button.on{box-shadow:inset 0 -3px 0 var(--ac);font-weight:600}
+main{padding:12px;max-width:960px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+.badge{border-radius:8px;padding:2px 8px;font-size:12px;white-space:nowrap}
+.bExp{background:#ffd2d2;color:#7a1010}.bSoon{background:#ffe0c2;color:#8a4b00}.bWarn{background:#fff3c2;color:#7a6000}.bOk{background:#d9f2d9;color:#1b5e20}
+.bG{background:#2e7d32;color:#fff}.bY{background:#f9a825;color:#332}.bR{background:#c62828;color:#fff}
+body.dark .bExp{background:#5c2020;color:#ffd2d2}body.dark .bSoon{background:#5c3a1a;color:#ffe0c2}
+body.dark .bWarn{background:#54470f;color:#fff3c2}body.dark .bOk{background:#1e4620;color:#d9f2d9}
+tr.exp{background:#ffe3e3}tr.soon{background:#ffedd9}tr.warn{background:#fff8d6}
+body.dark tr.exp{background:#4d1d1d}body.dark tr.soon{background:#4d301d}body.dark tr.warn{background:#443a10}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:15px;margin:4px 4px 4px 0;cursor:pointer}
+.btn.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.btn.del{background:transparent;color:#c62828;border:1px solid #c62828;padding:4px 8px;margin:0}
+.btn.mini{padding:4px 8px;margin:0}
+.btn.wide{width:100%;padding:12px;font-size:16px;margin:4px 0}
+input,select,textarea{padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:15px;width:100%;box-sizing:border-box;background:var(--card);color:var(--tx)}
+textarea{min-height:80px;font-size:13px}
+label{font-size:13px;color:var(--mut)}
+.sugg{position:relative}
+.sugg ul{position:absolute;left:0;right:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;margin:0;padding:0;list-style:none;max-height:220px;overflow:auto;z-index:50}
+.sugg li{padding:8px;cursor:pointer}
+.sugg li:hover{background:var(--ac);color:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.alert{background:#ffe3e3;border:1px solid #e57373;border-radius:10px;padding:10px;margin-bottom:10px;color:#7a1010}
+body.dark .alert{background:#4d1d1d;color:#ffd2d2}
+.miss{background:#fff8d6;border:1px solid #e0c060;border-radius:10px;padding:10px;margin:8px 0;font-size:14px;color:#7a6000}
+body.dark .miss{background:#443a10;color:#fff3c2}
+.prev{max-height:260px;overflow:auto;border:1px solid var(--bd);border-radius:8px;margin:8px 0}
+.prev input{padding:4px;font-size:13px}
+.wgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:640px){.wgrid{grid-template-columns:1fr}}
+.wgt{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center}
+.wgt .big{font-size:24px;font-weight:700;white-space:pre-line}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:11px}
+.cal div{padding:3px 0;text-align:center;border-radius:6px}
+.cal .td{background:var(--ac);color:#fff;font-weight:700}.cal .hd{color:var(--mut);font-weight:600}
+.chatbox{height:280px;overflow:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px}
+.msg{margin:4px 0;padding:6px 8px;border-radius:8px;background:var(--bg);font-size:14px}
+.msg b{color:var(--ac)}.msg small{color:var(--mut)}
+.chk{display:flex;gap:6px;align-items:center;font-size:14px;margin:3px 0}
+.chk input{width:auto}
+#dlg::backdrop{background:rgba(0,0,0,.45)}
+.loginwrap{max-width:420px;margin:40px auto}
+.bigbtn{display:block;width:100%;margin:6px 0;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px;text-align:left;cursor:pointer}
+.bigbtn b{color:var(--ac)}
