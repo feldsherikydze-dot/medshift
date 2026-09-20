@@ -4,15 +4,21 @@ const S=()=>DB.settings;
 function save(){localStorage.setItem(LS,JSON.stringify(DB))}
 function uid(){return DB.seq++}
 function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-if(!DB){DB={seq:1,ver:VER,settings:{warnDays:10,city:'',accent:'#0b5394',dark:false},users:[],session:null,
-bagTypes:[{id:1,name:'Стандарт 117 (основной + таблетки)',std:true,items:(window.SEED||[]).map(s=>({group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}))}],
-bags:[],cars:[],ecg:[],uchet:[],reports:[],tasks:[],monthly:[],chat:[]};save()}
-let tab='home',loginFor=null,room='общая';
-function me(){return DB.users.find(u=>u.id===DB.session)||null}
-function isBoss(){const u=me();return!!u&&(u.role==='admin'||u.role==='lead')}
-function applyTheme(){const s=S();document.documentElement.style.setProperty('--ac',s.accent);document.body.classList.toggle('dark',!!s.dark)}
-function openDlg(html){dlgBody.innerHTML=html;dlg.showModal()}
-function closeDlg(){dlg.close()}
+if(!DB){
+DB={seq:1,ver:VER,settings:{warnDays:10,city:'',accent:'#0b5394',dark:false}};
+DB.users=[];
+DB.session=null;
+DB.bagTypes=[];
+DB.bags=[];
+DB.cars=[];
+DB.ecg=[];
+DB.uchet=[];
+DB.reports=[];
+DB.tasks=[];
+DB.monthly=[];
+DB.chat=[];
+save();
+}
 function todayStr(){return new Date().toISOString().slice(0,10)}
 function daysLeft(iso){const d=new Date(iso+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
 function badgeExp(iso){if(!iso)return'<span class="badge bWarn">нет срока</span>';const d=daysLeft(iso);
