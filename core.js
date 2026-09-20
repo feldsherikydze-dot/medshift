@@ -1,4 +1,3 @@
-/* core.js — ядро: вход, роли, главная, чат, настройки */
 const LS='medshift_v3',VER=3;
 let DB=JSON.parse(localStorage.getItem(LS)||'null');
 const S=()=>DB.settings;
@@ -9,7 +8,7 @@ if(!DB){DB={seq:1,ver:VER,settings:{warnDays:10,city:'',accent:'#0b5394',dark:fa
 bagTypes:[{id:1,name:'Стандарт 117 (основной + таблетки)',std:true,items:(window.SEED||[]).map(s=>({group:s[0],num:+s[1],name:s[2],spec:s[3],unit:s[4],qty:+s[5]}))}],
 bags:[],cars:[],ecg:[],uchet:[],reports:[],tasks:[],monthly:[],chat:[]};save()}
 let tab='home',loginFor=null,room='общая';
-function me(){return DB.(u=>u.id===DB.session)||null}
+function me(){return DB.users.find(u=>u.id===DB.session)||null}
 function isBoss(){const u=me();return!!u&&(u.role==='admin'||u.role==='lead')}
 function applyTheme(){const s=S();document.documentElement.style.setProperty('--ac',s.accent);document.body.classList.toggle('dark',!!s.dark)}
 function openDlg(html){dlgBody.innerHTML=html;dlg.showModal()}
@@ -46,7 +45,6 @@ function render(){if(!me()){main.innerHTML=loginView();alarm.innerHTML='';return
 main.innerHTML=tab==='home'?homeView():tab==='bags'?bagsView():tab==='cars'?carsView():tab==='uchet'?uchetView():tab==='chat'?chatView():setView();
 const a=alerts();alarm.innerHTML=a.length?`<span class="badge bExp">⚠ ${a.length}</span>`:'';
 if(tab==='home')startClock()}
-/* ===== ВХОД / РЕГИСТРАЦИЯ ===== */
 function loginView(){let h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p style="color:var(--mut)">Вход по PIN-коду сотрудника</p>';
 h+=DB.users.map(u=>`<button class="bigbtn" onclick="loginPick(${u.id})">👤 <b>${esc(u.name)}</b> · ${u.role==='admin'?'админ':u.role==='lead'?'руководитель':'сотрудник'}</button>`).join('');
 if(loginFor)h+=`<p><input id="pinIn" type="password" placeholder="PIN-код" onkeydown="if(event.key==='Enter')loginDo()"></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>`;
@@ -64,9 +62,8 @@ if(rPin.value!==rPin2.value)return alert('PIN не совпадает');
 const role=DB.users.length?'user':'admin';
 const u={id:uid(),name:n,pin:rPin.value,role,cars:[],bags:[],channel:'app'};DB.users.push(u);DB.session=u.id;save();closeDlg();go('home');
 if(role==='admin')alert('Вы администратор: доступно управление людьми и всеми справочниками')}
-/* ===== ГЛАВНАЯ ===== */
 let clockTimer=null;
-function startClock(){clearInterval(clockTimer);tick();tick();clockTimer=setInterval(tick,1000)}
+function startClock(){clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
 function tick(){const e=document.getElementById('clk');if(!e)return;const d=new Date();
 e.textContent=d.toLocaleTimeString('ru-RU')+'\n'+d.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}
 function calGrid(){const n=new Date(),y=n.getFullYear(),mo=n.getMonth(),first=(new Date(y,mo,1).getDay()+6)%7,days=new Date(y,mo+1,0).getDate();
@@ -87,7 +84,6 @@ loadWeather();
 h+='<div class="card"><b>🔔 Тревоги</b>'+(a.length?'<table>'+a.map(x=>`<tr><td><span class="badge ${x.l}">!</span> ${x.t}</td></tr>`).join('')+'</table>':'<p>✅ Всё в порядке</p>')+'</div>';
 h+='<div class="card"><b>📨 Отчёты</b>'+(reps.length?'<table>'+reps.map(r=>`<tr><td><span class="badge ${r.status==='green'?'bG':r.status==='yellow'?'bY':'bR'}">${r.status==='green'?'без замечаний':r.status==='yellow'?'с замечаниями':'красный'}</span> ${new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${esc(r.car)} · ${esc(r.user)}<br><small>сумка №${esc(r.bagNum||'—')}, ЭКГ №${esc(r.ecgNum||'—')}${r.remarks?' · '+esc(r.remarks):''}</small></td></tr>`).join('')+'</table>':'<p>Отчётов пока нет</p>')+'</div>';
 return h}
-/* ===== ЧАТ ===== */
 function chatView(){const rooms=['общая',...DB.cars.map(c=>c.name)];if(!rooms.includes(room))room='общая';
 const msgs=DB.chat.filter(m=>m.room===room).slice(-100);
 let h=`<select onchange="room=this.value;render()">${rooms.map(r=>`<option ${r===room?'selected':''}>${esc(r)}</option>`).join('')}</select>
@@ -96,7 +92,6 @@ let h=`<select onchange="room=this.value;render()">${rooms.map(r=>`<option ${r==
 setTimeout(()=>{const b=document.getElementById('cbox');if(b)b.scrollTop=b.scrollHeight},0);return h}
 function sendMsg(){const v=document.getElementById('cIn').value.trim();if(!v)return;
 DB.chat.push({id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room,text:v});save();render()}
-/* ===== НАСТРОЙКИ ===== */
 function setView(){const u=me();let h=`<div class="card"><h3>Мой профиль</h3>
 <label>ФИО</label><input value="${esc(u.name)}" onchange="me().name=this.value;save()">
 <label>Новый PIN (оставьте пустым — не менять)</label><input id="sPin" type="password" inputmode="numeric" onchange="if(this.value){me().pin=this.value;save();this.value=''}">
