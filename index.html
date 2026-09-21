@@ -60,8 +60,6 @@ label{font-size:13px;color:var(--mut)}
 <nav id="nav"></nav>
 <main id="main"></main>
 <dialog id="dlg" style="width:min(680px,95%)"><div id="dlgBody"></div></dialog>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
 window.SEED=[
 ['а',1,'Адреналин','р-р 1 мг/мл 1 мл','амп',10],
@@ -93,7 +91,7 @@ window.SEED=[
 ['б',4,'Метопролол','таб 50 мг','таб',10],
 ['б',5,'Нифедипин','таб 10 мг','таб',10],
 ['б',6,'Нитроглицерин аэрозоль','аэр 1% 10 мл','фл',1],
-['в',1,'Амбробене','р-р 15 мг/2 мл','амп',5],
+['в',1,'Амбробене','р-р 15 мг/мл 5 мл','амп',5],
 ['в',2,'Преднизолон','таб 5 мг','таб',10],
 ['в',3,'Сальбутамол','аэр 100 мкг/доза 200 доз','фл',1],
 ['в',4,'Эуфиллин','таб 150 мг','таб',20],
@@ -225,6 +223,7 @@ var FB_CONF={apiKey:'AIzaSyDhn3rsGWOf_jxng2Q8wqjqYeYlF9T59Kw',authDomain:'medshi
 var DEV=localStorage.getItem('medshift_dev');
 if(!DEV){DEV='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('medshift_dev',DEV)}
 var DEVSALT=(DEV.charCodeAt(1)||49)%9;
+var SYNCSTAT={pushOk:false,lastPush:0,lastPull:0,lastErr:''};
 function S(){return DB.settings}
 function save(){DB.rev=(DB.rev||0)+1;localStorage.setItem(LS,JSON.stringify(DB));syncPush()}
 function uid(){DB.seq=(DB.seq||0)+1;return Date.now()*1000+DEVSALT*100+(DB.seq%100)}
@@ -273,7 +272,7 @@ DB.sched.days=DB.sched.days.filter(function(p){return now-p.ts<2*864e5});
 DB.sched.months=DB.sched.months.filter(function(p){var q=p.month.split('-');
 var cut=new Date(+q[0],+q[1],3).getTime();return now<cut})}
 purgeSched();
-var tab='home',loginFor=null,curBag=null,curCar=null,curKit=null,repCar=null,room='общая',curTpl=false,curPot=false,schedSub='days',onlineN=null;
+var tab='home',loginFor=null,curBag=null,curCar=null,curKit=null,repCar=null,room='общая',curTpl=false,curPot=false,schedSub='days',onlineN=null,pushT=null;
 function me(){for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===DB.session)return DB.users[i];return null}
 function isBoss(){var u=me();return !!u&&(u.role==='admin'||u.role==='lead')}
 function openDlg(h){dlgBody.innerHTML=h;dlg.showModal()}
@@ -338,18 +337,22 @@ document.getElementById('alarm').innerHTML=a.length?'<span class="badge bExp">! 
 updHead();
 if(tab==='home'){startClock();loadWeather()}}
 function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';
+var _bio=localStorage.getItem('medshift_bio');
+if(_bio){var b=JSON.parse(_bio);var bu=DB.users.find(function(x){return x.id===b.userId});
+if(bu)h+='<button class="bigbtn" onclick="biometricLogin()" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>'+esc(bu.name)+'</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">'}
 DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.id+')">👤 <b>'+esc(u.name)+'</b></button>'});
-if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
+if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
 h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button><button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
 function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
-if(!u.pin){DB.session=id;save();go('home');return}
+if(!u.pin){DB.session=id;save();go(tab);return}
 loginFor=id;render()}
 function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
 var v=document.getElementById('pinIn').value;
 if(v!==u.pin)return toast('Неверный PIN');
 var rm=document.getElementById('remMe');
 localStorage.setItem('medshift_rem',rm&&rm.checked?'1':'0');
-DB.session=u.id;loginFor=null;save();updPresence();go('home');toast('Смена начата 👋')}
+if(rm&&rm.checked)localStorage.setItem('medshift_rem_ts',String(Date.now()));
+DB.session=u.id;loginFor=null;save();presBeat();go(tab);toast('Смена начата 👋')}
 function regView(){openDlg('<h3>Анкета сотрудника</h3><label>ФИО</label><input id="rName"><label>PIN (4 цифры)</label><input id="rPin" type="password" inputmode="numeric" maxlength="4"><label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric" maxlength="4"><p><button class="btn" onclick="regDo()">Создать</button></p>')}
 function regDo(){var n=document.getElementById('rName').value.trim();
 if(!n)return toast('Введите ФИО');
@@ -357,11 +360,10 @@ var p1=document.getElementById('rPin').value,p2=document.getElementById('rPin2')
 if(!/^[0-9]{4}$/.test(p1))return toast('PIN: ровно 4 цифры');
 if(p1!==p2)return toast('PIN не совпадает');
 var make=function(role){DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[],phone:'',bday:''});
-DB.session=DB.users[DB.users.length-1].id;localStorage.setItem('medshift_rem','1');save();closeDlg();updPresence();go('home');
+DB.session=DB.users[DB.users.length-1].id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();closeDlg();presBeat();go('home');
 toast(role==='admin'?'Вы администратор 👑':'Регистрация выполнена ✅. Права назначит руководитель')};
-if(FB){FB.ref('state').once('value').then(function(snap){var v=snap.val();
-var rc=(v&&v.data&&v.data.users)?v.data.users.length:0;
-make((rc===0&&DB.users.length===0)?'admin':'user')}).catch(function(){make(DB.users.length?'user':'admin')})}
+if(FB_CONF.databaseURL){restGet('state').then(function(v){var rc=(v&&v.data&&v.data.users)?v.data.users.length:0;
+make((rc===0&&DB.users.length===0)?'admin':'user')})}
 else make(DB.users.length?'user':'admin')}
 var clockTimer=null;
 function startClock(){if(clockTimer)clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
@@ -638,7 +640,8 @@ if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter')sendMsg()})},
 return h}
 function sendMsg(){var v=document.getElementById('cIn').value.trim();if(!v)return;
 var m={id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room:room,text:v};
-DB.chat.push(m);save();fbChat(m);botMaybe(v);render()}
+DB.chat.push(m);if(DB.chat.length>500)DB.chat=DB.chat.slice(-500);
+save();botMaybe(v);render()}
 function respRows(u,kind){var list=kind==='cars'?DB.cars:DB.bags;var arr=u[kind]||[];
 if(!arr.length)return '<p style="color:var(--mut)">не назначено</p>';
 var h='';
@@ -667,7 +670,11 @@ function setBday(){var d=document.getElementById('bdD').value,m=document.getElem
 me().bday=(y==='0'||m==='0'||d==='0')?'':(y+'-'+m+'-'+d);save();toast('Дата рождения сохранена')}
 h+='<label>Ответственные машины</label>'+respRows(u,'cars')+'<p><button class="btn sec mini" onclick="addResp(\'cars\')">+ добавить машину</button></p>';
 h+='<label>Ответственные сумки</label>'+respRows(u,'bags')+'<p><button class="btn sec mini" onclick="addResp(\'bags\')">+ добавить сумку</button></p>';
+if(window.PublicKeyCredential&&u.pin){var _bio=localStorage.getItem('medshift_bio');var _has=_bio&&JSON.parse(_bio).userId===u.id;
+h+='<label><input type="checkbox" style="width:auto"'+(_has?' checked':'')+' onchange="toggleBiometric(this.checked)"> 🔓 Вход по отпечатку пальца (вместо PIN)</label>';
+if(_has)h+='<p style="font-size:11px;color:var(--mut)">Биометрия привязана к этому устройству для: '+esc(u.name)+'</p>'}
 h+='</div>';
+h+='<div class="card"><h3>📡 Синхронизация</h3><p style="font-size:13px">Склад: '+(FB_CONF.databaseURL?'подключён':'не задан')+'<br>Онлайн сейчас: '+(onlineN==null?'—':onlineN)+'<br>Отправка: '+(SYNCSTAT.pushOk?'✅':'⚠')+' '+(SYNCSTAT.lastPush?new Date(SYNCSTAT.lastPush).toLocaleTimeString('ru-RU'):'—')+'<br>Приём: '+(SYNCSTAT.lastPull?new Date(SYNCSTAT.lastPull).toLocaleTimeString('ru-RU'):'—')+(SYNCSTAT.lastErr?'<br>Ошибка: '+esc(SYNCSTAT.lastErr):'')+'</p><p><button class="btn sec mini" onclick="syncTest()">🔍 Проверить связь</button></p></div>';
 h+='<div class="card"><h3>Правила и уведомления</h3><label>Предупреждать за дней</label><input type="number" value="'+S().warnDays+'" onchange="S().warnDays=+this.value||10;save()">';
 h+='<label>Город (погода)</label><input value="'+esc(S().city||'')+'" onchange="S().city=this.value;S().geo=null;save();render()">';
 h+='<label>Цвет темы</label><input type="color" value="'+esc(S().accent)+'" onchange="S().accent=this.value;save();applyTheme()">';
@@ -679,7 +686,34 @@ h+='<div class="card"><h3>Данные</h3><p><button class="btn sec" onclick="e
 h+='<p><button class="btn sec" onclick="qrDlg()">📲 QR-код для сотрудников</button></p>';
 h+='<p><button class="btn sec" onclick="logout()">🚪 Выйти</button> <button class="btn del" onclick="resetDB()">Сброс</button></p></div>';
 return h}
-function logout(){DB.session=null;save();go('home')}
+function toggleBiometric(on){var u=me();if(!u)return;
+if(!u.pin){toast('Сначала задайте PIN');render();return}
+if(on)enableBiometric();else disableBiometric()}
+async function enableBiometric(){try{
+var u=me();if(!u||!u.pin){toast('Нет PIN');return}
+var challenge=new Uint8Array(32);crypto.getRandomValues(challenge);
+var cred=await navigator.credentials.create({publicKey:{
+challenge:challenge,rp:{name:'МедСмена'},user:{id:new TextEncoder().encode(String(u.id)),name:u.name,displayName:u.name},
+pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+timeout:60000,attestation:'none'}});
+if(!cred){toast('Отменено');render();return}
+var id=btoa(String.fromCharCode.apply(null,Array.from(new Uint8Array(cred.rawId))));
+localStorage.setItem('medshift_bio',JSON.stringify({userId:u.id,credentialId:id}));
+toast('🔓 Биометрия включена');render()}catch(e){toast('Не вышло: '+(e.message||'устройство не поддерживает'));render()}}
+async function disableBiometric(){localStorage.removeItem('medshift_bio');toast('🔒 Биометрия выключена');render()}
+async function biometricLogin(){try{
+var _bio=localStorage.getItem('medshift_bio');if(!_bio){toast('Биометрия не настроена');return}
+var b=JSON.parse(_bio);var u=DB.users.find(function(x){return x.id===b.userId});
+if(!u){toast('Пользователь не найден');localStorage.removeItem('medshift_bio');render();return}
+var challenge=new Uint8Array(32);crypto.getRandomValues(challenge);
+var raw=Uint8Array.from(atob(b.credentialId),function(c){return c.charCodeAt(0)});
+var cred=await navigator.credentials.get({publicKey:{
+challenge:challenge,allowCredentials:[{id:raw,type:'public-key'}],
+userVerification:'required',timeout:60000}});
+if(!cred){toast('Отменено');return}
+DB.session=u.id;save();presBeat();go('home');toast('Вход выполнен ✅')}catch(e){toast('Не удалось — войдите по PIN')}}
+function logout(){DB.session=null;localStorage.setItem('medshift_rem','0');localStorage.removeItem('medshift_rem_ts');save();go('home')}
 function resetDB(){ask('Полный сброс базы? Все данные удалятся.',function(){localStorage.removeItem(LS);location.reload()})}
 function exportDB(){var a=document.createElement('a');
 a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
@@ -715,12 +749,12 @@ var BOT_JOKES=[
 ];
 function botJoke(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
 var m={id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j};
-DB.chat.push(m);save();fbChat(m);render();toast('🤖 Феликс шутит')}
+DB.chat.push(m);save();render();toast('🤖 Феликс шутит')}
 function botMaybe(text){var t=text.toLowerCase();
 if(t.indexOf('феликс')>=0||t.indexOf('!шутка')>=0||t.indexOf('/шутка')>=0){
 setTimeout(function(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
 var m={id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j};
-DB.chat.push(m);save();fbChat(m);
+DB.chat.push(m);save();
 if(tab==='chat')render();else toast('🤖 Феликс ответил в чате')},900+Math.random()*1500)}}
 var EQ=[['','Антисептик с курком'],['ОС-0072','Аппарат ИВЛ Medumat Standart'],['ОС-0011','Аппарат ингаляционного наркоза АИНпСП-01/15'],['','Баллон закись 10л'],['','Баллон кислородный 10л (2шт)'],['ОС-0049','Дефибриллятор-монитор ДКИ-Н-10'],['000854','Ёмкость для отходов класс А'],['00024','Ёмкость для отходов класс Б'],['ОБМ-0117','Ингалятор OMRON NE-U22'],['ОС-0100','Каталка FERNO 28-Z'],['000023','Контейнер для транспортировки отходов'],['ОБМ-0095','Контейнер теплоизоляционный'],['ОБМ-0096','Набор акушерский НИСП-06.01'],['ОБМ-0099','Набор травматологический НИТ-01сс'],['0425','Набор шин Крамера'],['0115,0120,0119,0122,0121','Набор шин транспортных складных (5 шт)'],['ОС-0021','Насос инфузионный Перфузор Компакт С'],['ОБМ-0201','Носилки ковшовые'],['ОБМ-0171','Носилки кресельные складные'],['','Носилки мягкие «Медтехника»'],['','Папка с действующей документацией'],['','Плед'],['ОБМ-0100','Реанимационная укладка+токсик'],['ОС-0001','Транспортный монитор MEC 1200'],['','Укладка Covid, комбинезоны'],['ОБМ-0097','Шины детские вакуумные ВШДм-2'],['ОБМ-0098','Шины взрослые вакуумные ВШВ-2'],['ОБМ-0114','Штатив разборный для вливаний ШР-01'],['ОБМ-0189','Электрокардиограф'],['ОС-0051','Электроотсасыватель ACCUVAC']];
 var TR=[['Бинт стерильный 5x10',2,'шт'],['Бинт стерильный 7x14',2,'шт'],['Бинт эластичный сетчато-трубчатый №1',1,'шт'],['Бинт эластичный сетчато-трубчатый №3',1,'шт'],['Бинт эластичный сетчато-трубчатый №4',1,'шт'],['Губка гемостатическая коллагеновая 50x50',1,'шт'],['Жгут кровоостанавливающий',1,'шт'],['Лейкопластырь 2x500',1,'шт'],['Лейкопластырь антимикробный 1,9x7,2',10,'шт'],['Пакет охлаждающий',5,'шт'],['Перчатки смотровые',3,'пар'],['Перчатки стерильные',4,'пар'],['Пластырь SFM-Strip 4x10 см',2,'шт'],['Повязка косыночная',1,'шт'],['Покрывало спасательное',1,'шт'],['Салфетки стерильные 16x14 №10',2,'уп'],['Салфетки стерильные 45x29 №5',2,'уп'],['Шина складная для ноги',1,'шт'],['Шина складная для руки',1,'шт'],['Шина-воротник транспортная',2,'шт']];
@@ -775,43 +809,47 @@ for(var i=0;i<boxes.length;i++){var b=boxes[i];if(!b.checked)continue;
 var id=+b.getAttribute('data-id');
 if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
 save();closeDlg();render();toast('Ответственность сохранена')}
-var FB=null,pushT=null;
-function fbChat(m){if(!FB)return;try{FB.ref('chatmsg/m'+m.id).set(m)}catch(e){}}
-function updPresence(){if(!FB)return;try{FB.ref('online/'+DEV).set({n:(me()||{}).name||'гость',t:Date.now()})}catch(e){}}
-function syncPush(){if(!FB)return;clearTimeout(pushT);pushT=setTimeout(function(){try{var d=JSON.parse(JSON.stringify(DB));delete d.session;FB.ref('state').set({rev:DB.rev||0,data:d})}catch(e){}},700)}
+function fbUrl(p){return FB_CONF.databaseURL.replace(/\/$/,'')+'/'+p+'.json'}
+function restPut(p,o){return fetch(fbUrl(p),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r}).catch(function(e){SYNCSTAT.lastErr=String(e.message||e);throw e})}
+function restGet(p){return fetch(fbUrl(p)).then(function(r){if(!r.ok){SYNCSTAT.lastErr='HTTP '+r.status;return null}return r.json()}).catch(function(e){SYNCSTAT.lastErr=String(e.message||e);return null})}
+function syncPush(){if(!FB_CONF.databaseURL)return;clearTimeout(pushT);pushT=setTimeout(function(){
+var d=JSON.parse(JSON.stringify(DB));delete d.session;
+restPut('state',{rev:DB.rev||0,data:d}).then(function(){return restPut('meta',{rev:DB.rev||0,ts:Date.now()})}).then(function(){SYNCSTAT.pushOk=true;SYNCSTAT.lastPush=Date.now();SYNCSTAT.lastErr='';updHead()}).catch(function(){SYNCSTAT.pushOk=false;updHead()})},800)}
 function mergeArr(local,rem){var ids={};local.forEach(function(x){ids[x.id]=1});
 rem.forEach(function(x){if(!ids[x.id])local.push(x)});
 local.sort(function(a,b){return (a.ts||0)-(b.ts||0)});return local}
 function mergeUsers(rem,loc){var ids={};rem.forEach(function(u){ids[u.id]=1});
 loc.forEach(function(u){if(!ids[u.id])rem.push(u)});return rem}
-function syncInit(){if(typeof firebase==='undefined')return;
-if(!FB_CONF.apiKey||!FB_CONF.databaseURL)return;
-try{firebase.initializeApp(FB_CONF);FB=firebase.database();
-var pr=FB.ref('online/'+DEV);
-pr.onDisconnect().remove();
-updPresence();
-setInterval(updPresence,60000);
-document.addEventListener('visibilitychange',function(){if(!document.hidden)updPresence()});
-FB.ref('online').on('value',function(s){onlineN=s.numChildren();updHead()});
-FB.ref('chatmsg').on('child_added',function(snap){var m=snap.val();if(!m||!m.id)return;
-var has=false;DB.chat.forEach(function(x){if(x.id===m.id)has=true});
-if(!has){DB.chat.push(m);DB.chat.sort(function(a,b){return a.ts-b.ts});localStorage.setItem(LS,JSON.stringify(DB));render()}});
-for(var i=Math.max(0,DB.chat.length-200);i<DB.chat.length;i++){fbChat(DB.chat[i])}
-FB.ref('state').on('value',function(snap){var v=snap.val();if(!v||!v.data)return;var rrev=v.rev||0;var lrev=DB.rev||0;
-if(rrev>lrev){var rem=v.data;
-rem.chat=mergeArr(rem.chat||[],DB.chat);
+function adoptState(rem,rrev){rem.chat=mergeArr(rem.chat||[],DB.chat);
 rem.reports=mergeArr(rem.reports||[],DB.reports);
 rem.tasks=mergeArr(rem.tasks||[],DB.tasks);
 rem.users=mergeUsers(rem.users||[],DB.users);
 rem.session=DB.session;
-DB=rem;DB.rev=rrev;localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}});
-}catch(e){FB=null}}
+DB=rem;DB.rev=rrev;localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}
+function syncPull(){if(!FB_CONF.databaseURL)return;restGet('meta').then(function(m){SYNCSTAT.lastPull=Date.now();
+if(m&&m.rev&&(m.rev>(DB.rev||0))){restGet('state').then(function(v){if(v&&v.data&&(v.rev||0)>(DB.rev||0))adoptState(v.data,v.rev||0)})}})}
+function presBeat(){if(!FB_CONF.databaseURL)return;
+restPut('online/'+DEV,{n:(me()||{}).name||'гость',t:Date.now()}).catch(function(){});
+restGet('online').then(function(o){if(!o){onlineN=null;updHead();return}var n=0,now=Date.now();
+for(var k in o){if(o[k]&&o[k].t&&now-o[k].t<70000)n++}
+onlineN=n;updHead()})}
+function syncTest(){if(!FB_CONF.databaseURL){toast('Склад не настроен');return}
+restPut('ping/'+DEV,{t:Date.now()}).then(function(){return restGet('ping/'+DEV)}).then(function(v){toast(v&&v.t?'📡 Связь со складом есть':'⚠ Склад не отвечает')}).catch(function(){toast('⚠ Ошибка: '+SYNCSTAT.lastErr)})}
+function syncInit(){if(!FB_CONF.databaseURL)return;
+presBeat();syncPull();
+setInterval(presBeat,20000);
+setInterval(syncPull,12000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){presBeat();syncPull()}});
+window.addEventListener('pagehide',function(){try{fetch(fbUrl('online/'+DEV),{method:'DELETE',keepalive:true})}catch(e){}})}
 var _st=localStorage.getItem('medshift_tab');
 if(_st&&['home','bags','cars','sched','chat','set'].indexOf(_st)>=0)tab=_st;
-if(DB.session&&localStorage.getItem('medshift_rem')!=='1'){loginFor=DB.session;DB.session=null;localStorage.setItem(LS,JSON.stringify(DB))}
+if(DB.session){var _rem=localStorage.getItem('medshift_rem');var _ts=+localStorage.getItem('medshift_rem_ts')||0;
+if(_rem!=='1'||Date.now()-_ts>864e5){loginFor=DB.session;DB.session=null;localStorage.setItem('medshift_rem','0');localStorage.setItem(LS,JSON.stringify(DB))}}
+setInterval(function(){if(DB.session&&localStorage.getItem('medshift_rem')==='1'){var ts=+localStorage.getItem('medshift_rem_ts')||0;
+if(Date.now()-ts>864e5){loginFor=DB.session;DB.session=null;localStorage.setItem('medshift_rem','0');render();toast('Сессия истекла (24 ч) — введите PIN')}}},60000);
 syncInit();
 applyTheme();
-go('home');
+go(tab);
 </script>
 </body>
 </html>
