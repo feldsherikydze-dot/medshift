@@ -222,9 +222,12 @@ window.SEED=[
 var LS='medshift_v3';
 var DB=JSON.parse(localStorage.getItem(LS)||'null');
 var FB_CONF={apiKey:'AIzaSyDhn3rsGWOf_jxng2Q8wqjqYeYlF9T59Kw',authDomain:'medshift-8daea.firebaseapp.com',databaseURL:'https://medshift-8daea-default-rtdb.europe-west1.firebasedatabase.app',projectId:'medshift-8daea',storageBucket:'medshift-8daea.firebasestorage.app',messagingSenderId:'328469733031',appId:'1:328469733031:web:396d4d57c530ecd6164582'};
+var DEV=localStorage.getItem('medshift_dev');
+if(!DEV){DEV='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('medshift_dev',DEV)}
+var DEVSALT=(DEV.charCodeAt(1)||49)%9;
 function S(){return DB.settings}
 function save(){DB.rev=(DB.rev||0)+1;localStorage.setItem(LS,JSON.stringify(DB));syncPush()}
-function uid(){return DB.seq++}
+function uid(){DB.seq=(DB.seq||0)+1;return Date.now()*1000+DEVSALT*100+(DB.seq%100)}
 function esc(s){s=(s==null?'':String(s));
 return s.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')}
 if(!DB){DB={seq:1,rev:0,settings:{warnDays:10,city:'',accent:'#0b5394',dark:'auto'},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[],chat:[],sched:{months:[],days:[]}};save()}
@@ -321,7 +324,7 @@ function renderNav(){var u=me();nav.innerHTML='';if(!u)return;
 var tabs=[['home','Главная'],['bags','Сумки'],['cars','Машины'],['sched','Смены'],['chat','Чат'],['set','Ещё']];
 tabs.forEach(function(t){var b=document.createElement('button');
 if(tab===t[0])b.className='on';b.textContent=t[1];b.onclick=function(){go(t[0])};nav.appendChild(b)})}
-function go(t){tab=t;if(t!=='bags'){curTpl=false;curPot=false}renderNav();render()}
+function go(t){tab=t;localStorage.setItem('medshift_tab',t);if(t!=='bags'){curTpl=false;curPot=false}renderNav();render()}
 function render(){var u=me();
 if(!u){main.innerHTML=loginView();document.getElementById('alarm').innerHTML='';updHead();return}
 if(tab==='home')main.innerHTML=homeView();
@@ -336,7 +339,7 @@ updHead();
 if(tab==='home'){startClock();loadWeather()}}
 function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';
 DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.id+')">👤 <b>'+esc(u.name)+'</b></button>'});
-if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
+if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
 h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button><button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
 function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
 if(!u.pin){DB.session=id;save();go('home');return}
@@ -344,6 +347,8 @@ loginFor=id;render()}
 function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
 var v=document.getElementById('pinIn').value;
 if(v!==u.pin)return toast('Неверный PIN');
+var rm=document.getElementById('remMe');
+localStorage.setItem('medshift_rem',rm&&rm.checked?'1':'0');
 DB.session=u.id;loginFor=null;save();updPresence();go('home');toast('Смена начата 👋')}
 function regView(){openDlg('<h3>Анкета сотрудника</h3><label>ФИО</label><input id="rName"><label>PIN (4 цифры)</label><input id="rPin" type="password" inputmode="numeric" maxlength="4"><label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric" maxlength="4"><p><button class="btn" onclick="regDo()">Создать</button></p>')}
 function regDo(){var n=document.getElementById('rName').value.trim();
@@ -351,10 +356,13 @@ if(!n)return toast('Введите ФИО');
 var p1=document.getElementById('rPin').value,p2=document.getElementById('rPin2').value;
 if(!/^[0-9]{4}$/.test(p1))return toast('PIN: ровно 4 цифры');
 if(p1!==p2)return toast('PIN не совпадает');
-var role=DB.users.length?'user':'admin';
-DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[],phone:'',bday:''});
-DB.session=DB.users[DB.users.length-1].id;save();closeDlg();updPresence();go('home');
-toast(role==='admin'?'Вы администратор 👑':'Регистрация выполнена ✅')}
+var make=function(role){DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[],phone:'',bday:''});
+DB.session=DB.users[DB.users.length-1].id;localStorage.setItem('medshift_rem','1');save();closeDlg();updPresence();go('home');
+toast(role==='admin'?'Вы администратор 👑':'Регистрация выполнена ✅. Права назначит руководитель')};
+if(FB){FB.ref('state').once('value').then(function(snap){var v=snap.val();
+var rc=(v&&v.data&&v.data.users)?v.data.users.length:0;
+make((rc===0&&DB.users.length===0)?'admin':'user')}).catch(function(){make(DB.users.length?'user':'admin')})}
+else make(DB.users.length?'user':'admin')}
 var clockTimer=null;
 function startClock(){if(clockTimer)clearInterval(clockTimer);tick();clockTimer=setInterval(tick,1000)}
 function tick(){var e=document.getElementById('clk');if(!e)return;var d=new Date();
@@ -769,8 +777,7 @@ if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
 save();closeDlg();render();toast('Ответственность сохранена')}
 var FB=null,pushT=null;
 function fbChat(m){if(!FB)return;try{FB.ref('chatmsg/m'+m.id).set(m)}catch(e){}}
-function updPresence(){if(!FB)return;var dev=localStorage.getItem('medshift_dev');if(!dev)return;
-try{FB.ref('online/'+dev).set({n:(me()||{}).name||'гость',t:Date.now()})}catch(e){}}
+function updPresence(){if(!FB)return;try{FB.ref('online/'+DEV).set({n:(me()||{}).name||'гость',t:Date.now()})}catch(e){}}
 function syncPush(){if(!FB)return;clearTimeout(pushT);pushT=setTimeout(function(){try{var d=JSON.parse(JSON.stringify(DB));delete d.session;FB.ref('state').set({rev:DB.rev||0,data:d})}catch(e){}},700)}
 function mergeArr(local,rem){var ids={};local.forEach(function(x){ids[x.id]=1});
 rem.forEach(function(x){if(!ids[x.id])local.push(x)});
@@ -780,11 +787,11 @@ loc.forEach(function(u){if(!ids[u.id])rem.push(u)});return rem}
 function syncInit(){if(typeof firebase==='undefined')return;
 if(!FB_CONF.apiKey||!FB_CONF.databaseURL)return;
 try{firebase.initializeApp(FB_CONF);FB=firebase.database();
-var dev=localStorage.getItem('medshift_dev');
-if(!dev){dev='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('medshift_dev',dev)}
-var pr=FB.ref('online/'+dev);
+var pr=FB.ref('online/'+DEV);
 pr.onDisconnect().remove();
 updPresence();
+setInterval(updPresence,60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)updPresence()});
 FB.ref('online').on('value',function(s){onlineN=s.numChildren();updHead()});
 FB.ref('chatmsg').on('child_added',function(snap){var m=snap.val();if(!m||!m.id)return;
 var has=false;DB.chat.forEach(function(x){if(x.id===m.id)has=true});
@@ -799,7 +806,9 @@ rem.users=mergeUsers(rem.users||[],DB.users);
 rem.session=DB.session;
 DB=rem;DB.rev=rrev;localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}});
 }catch(e){FB=null}}
-if(DB.session){loginFor=DB.session;DB.session=null;localStorage.setItem(LS,JSON.stringify(DB))}
+var _st=localStorage.getItem('medshift_tab');
+if(_st&&['home','bags','cars','sched','chat','set'].indexOf(_st)>=0)tab=_st;
+if(DB.session&&localStorage.getItem('medshift_rem')!=='1'){loginFor=DB.session;DB.session=null;localStorage.setItem(LS,JSON.stringify(DB))}
 syncInit();
 applyTheme();
 go('home');
