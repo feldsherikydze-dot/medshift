@@ -217,7 +217,7 @@ window.SEED=[
 ['ш',5,'Нитроглицерин','таб 0.5 мг','таб',40]];
 var LS='medshift_v3';
 var DB=JSON.parse(localStorage.getItem(LS)||'null');
-var FB_CONF={apiKey:'',authDomain:'',databaseURL:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
+var FB_CONF={apiKey:'AIzaSyDhn3rsGWOf_jxng2Q8wqjqYeYlF9T59Kw',authDomain:'medshift-8daea.firebaseapp.com',databaseURL:'https://medshift-8daea-default-rtdb.europe-west1.firebasedatabase.app',projectId:'medshift-8daea',storageBucket:'medshift-8daea.firebasestorage.app',messagingSenderId:'328469733031',appId:'1:328469733031:web:396d4d57c530ecd6164582'};
 function S(){return DB.settings}
 function save(){DB.rev=(DB.rev||0)+1;localStorage.setItem(LS,JSON.stringify(DB));syncPush()}
 function uid(){return DB.seq++}
