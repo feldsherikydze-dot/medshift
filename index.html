@@ -608,11 +608,11 @@ h+='</select><div class="chatbox" id="cbox">';
 var msgs=DB.chat.filter(function(m){return m.room===room}).slice(-100);
 if(msgs.length){msgs.forEach(function(m){h+='<div class="msg"><b>'+esc(m.author)+'</b> <small>'+new Date(m.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</small><br>'+esc(m.text)+'</div>'})}
 else h+='<p>Сообщений нет</p>';
-h+='</div><div class="row"><input id="cIn" placeholder="Сообщение…"><button class="btn" style="width:auto" onclick="sendMsg()">➤</button></div>';
+h+='</div><p style="font-size:12px;color:var(--mut)">Позовите Феликса по имени или напишите !шутка — он расскажет медицинскую шутку.</p><p><button class="btn sec mini" onclick="botJoke()">😄 Попросить шутку у Феликса</button></p><div class="row"><input id="cIn" placeholder="Сообщение…"><button class="btn" style="width:auto" onclick="sendMsg()">➤</button></div>';
 setTimeout(function(){var b=document.getElementById('cbox');if(b)b.scrollTop=b.scrollHeight},0);
 return h}
 function sendMsg(){var v=document.getElementById('cIn').value.trim();if(!v)return;
-DB.chat.push({id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room:room,text:v});save();render()}
+DB.chat.push({id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room:room,text:v});save();botMaybe(v);render()}
 function respRows(u,kind){var list=kind==='cars'?DB.cars:DB.bags;var arr=u[kind]||[];
 if(!arr.length)return '<p style="color:var(--mut)">не назначено</p>';
 var h='';
@@ -723,6 +723,30 @@ for(var i=0;i<boxes.length;i++){var b=boxes[i];if(!b.checked)continue;
 var id=+b.getAttribute('data-id');
 if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
 save();closeDlg();render();toast('Ответственность сохранена')}
+var BOT_JOKES=[
+'— Доктор, у меня проблемы с памятью. — «И давно это у вас?» — «И давно что?»',
+'— Доктор, меня все игнорируют. — «Следующий!»',
+'— Я буду жить? — «А смысл?»',
+'Скорая помощь: мы уже едем. Даже когда вы ещё только думаете, стоит ли вызывать.',
+'В нашей сумке есть всё, кроме запасных нервов. Они просрочились ещё в феврале.',
+'У фельдшера три состояния: в пути, на вызове и пью чай стоя.',
+'ЭКГ — это автобиография сердца. У нашего почерк ещё тот.',
+'Если смена прошла тихо — значит, вы ещё не открыли чат.',
+'Термосумка хранит растворы холодными, а нас — в боевом настроении.',
+'Любимая фраза дефибриллятора: «Ну ещё разок, с чувством».',
+'Срок годности — единственный дедлайн в медицине, который нельзя подвинуть.',
+'— Алло, это скорая? — «Да, слушаем.» — «А когда приедете?» — «Мы уже приехали. Открывайте, мы с чаем».',
+'Хорошая смена — это когда отчёт зелёный, а чай горячий.',
+'Чат — дело хорошее. Но сумку всё равно проверять руками.',
+'— На что жалуетесь? — «На жизнь.» — «Так, пишем: общее недомогание».'
+];
+function botJoke(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
+DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();render();toast('🤖 Феликс шутит')}
+function botMaybe(text){var t=text.toLowerCase();
+if(t.indexOf('феликс')>=0||t.indexOf('!шутка')>=0||t.indexOf('/шутка')>=0){
+setTimeout(function(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
+DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();
+if(tab==='chat')render();else toast('🤖 Феликс ответил в чате')},900+Math.random()*1500)}}
 applyTheme();
 go('home');
 </script>
