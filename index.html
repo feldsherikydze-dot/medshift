@@ -229,24 +229,20 @@ function save(){DB.rev=(DB.rev||0)+1;localStorage.setItem(LS,JSON.stringify(DB))
 function uid(){DB.seq=(DB.seq||0)+1;return Date.now()*1000+DEVSALT*100+(DB.seq%100)}
 function esc(s){s=(s==null?'':String(s));
 return s.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')}
-if(!DB){DB={seq:1,rev:0,settings:{warnDays:10,city:'',accent:'#0b5394',dark:'auto'},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[],chat:[],sched:{months:[],days:[]}};save()}
-if(!DB.chat)DB.chat=[];
-if(!DB.tasks)DB.tasks=[];
-if(!DB.reports)DB.reports=[];
-if(!DB.sched)DB.sched={months:[],days:[]};
-if(!DB.ecg||!DB.ecg.length)DB.ecg=['1','2','3','4','5','6','7','8','9','10'];
-if(!S().city)S().city='';
-if(!S().accent)S().accent='#0b5394';
-if(!S().dark)S().dark='auto';
+if(!DB){DB={seq:1,rev:0,settings:{warnDays:10,city:'',accent:'#0b5394',dark:'auto'},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[],chat:[],sched:{months:[],days:[]},tomb:[],bans:[]};save()}
 function normalizeDB(){if(!DB.settings)DB.settings={warnDays:10,city:'',accent:'#0b5394',dark:'auto'};
 if(!DB.users)DB.users=[];if(!DB.bags)DB.bags=[];if(!DB.cars)DB.cars=[];if(!DB.bagTypes)DB.bagTypes=[];
 if(!DB.chat)DB.chat=[];if(!DB.tasks)DB.tasks=[];if(!DB.reports)DB.reports=[];
 if(!DB.sched)DB.sched={months:[],days:[]};if(!DB.ecg)DB.ecg=[];
+if(!DB.tomb)DB.tomb=[];if(!DB.bans)DB.bans=[];
 DB.users.forEach(function(u){if(!u.cars)u.cars=[];if(!u.bags)u.bags=[]});
 DB.bags.forEach(function(b){if(!b.items)b.items=[]});
 DB.cars.forEach(function(c){if(!c.equip)c.equip=[];if(!c.kits)c.kits=[];
 c.kits.forEach(function(k){if(!k.items)k.items=[]})})}
 normalizeDB();
+function normName(s){return (s||'').toLowerCase().replace(/\s+/g,' ').trim()}
+function isDead(id){return (DB.tomb||[]).indexOf(id)>=0||(DB.bans||[]).some(function(b){return b.id===id})}
+function isBannedName(n){return (DB.bans||[]).some(function(b){return normName(b.name)===normName(n)})}
 function migrate(){if(DB.users.length)return;
 var raw=localStorage.getItem('medshift_v11')||localStorage.getItem('medshift_v6');
 if(!raw)return;
@@ -282,7 +278,7 @@ DB.sched.months=DB.sched.months.filter(function(p){var q=p.month.split('-');
 var cut=new Date(+q[0],+q[1],3).getTime();return now<cut})}
 purgeSched();
 var tab='home',loginFor=null,curBag=null,curCar=null,curKit=null,repCar=null,room='общая',curTpl=false,curPot=false,schedSub='days',onlineN=null,pushT=null;
-function me(){for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===DB.session)return DB.users[i];return null}
+function me(){for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===DB.session&&!isDead(DB.users[i].id))return DB.users[i];return null}
 function isBoss(){var u=me();return !!u&&(u.role==='admin'||u.role==='lead')}
 function openDlg(h){dlgBody.innerHTML=h;dlg.showModal()}
 function closeDlg(){dlg.close()}
@@ -349,12 +345,17 @@ if(tab==='home'){startClock();loadWeather()}}
 function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';
 var _bio=localStorage.getItem('medshift_bio');
 if(_bio){var b=JSON.parse(_bio);var bu=DB.users.find(function(x){return x.id===b.userId});
-if(bu)h+='<button class="bigbtn" onclick="biometricLogin()" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>'+esc(bu.name)+'</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">'}
-DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.id+')">👤 <b>'+esc(u.name)+'</b></button>'});
-if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
-h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button><button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
-function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
-if(!u.pin){DB.session=id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();go(tab);return}
+if(bu&&!isDead(bu.id))h+='<button class="bigbtn" onclick="biometricLogin()" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>'+esc(bu.name)+'</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">'}
+var myId=+localStorage.getItem('medshift_my')||0;
+var myu=DB.users.find(function(x){return x.id===myId});
+if(myu&&!isDead(myu.id)){h+='<button class="bigbtn" onclick="loginPick('+myu.id+')">👤 <b>'+esc(myu.name)+'</b></button>';
+if(loginFor===myu.id)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>'}
+else{h+='<button class="btn sec wide" onclick="loginFor=-2;render()">👤 У меня уже есть учётная запись</button>';
+if(loginFor===-2)h+='<p><label>ФИО</label><input id="lnName"><label>PIN</label><input id="lnPin" type="password" inputmode="numeric"></p><p><button class="btn wide" onclick="loginByName()">Войти</button></p>';
+h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button>'}
+h+='<button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
+function loginPick(id){if(isDead(id))return;var u=DB.users.find(function(x){return x.id===id});
+if(!u.pin){DB.session=id;localStorage.setItem('medshift_my',String(id));localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();go(tab);return}
 loginFor=id;render()}
 function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
 var v=document.getElementById('pinIn').value;
@@ -362,6 +363,16 @@ if(v!==u.pin)return toast('Неверный PIN');
 var rm=document.getElementById('remMe');
 localStorage.setItem('medshift_rem',rm&&rm.checked?'1':'0');
 if(rm&&rm.checked)localStorage.setItem('medshift_rem_ts',String(Date.now()));
+localStorage.setItem('medshift_my',String(u.id));
+DB.session=u.id;loginFor=null;save();presBeat();go(tab);toast('Смена начата 👋')}
+function loginByName(){var n=normName(document.getElementById('lnName').value);
+var p=document.getElementById('lnPin').value;
+if(isBannedName(n))return toast('🚫 Вход запрещён: обратитесь к руководителю');
+var u=DB.users.find(function(x){return normName(x.name)===n});
+if(!u)return toast('Сотрудник не найден');
+if(u.pin!==p)return toast('Неверный PIN');
+localStorage.setItem('medshift_my',String(u.id));
+localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));
 DB.session=u.id;loginFor=null;save();presBeat();go(tab);toast('Смена начата 👋')}
 function regView(){openDlg('<h3>Анкета сотрудника</h3><label>ФИО</label><input id="rName"><label>PIN (4 цифры)</label><input id="rPin" type="password" inputmode="numeric" maxlength="4"><label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric" maxlength="4"><p><button class="btn" onclick="regDo()">Создать</button></p>')}
 function regDo(){var n=document.getElementById('rName').value.trim();
@@ -369,8 +380,11 @@ if(!n)return toast('Введите ФИО');
 var p1=document.getElementById('rPin').value,p2=document.getElementById('rPin2').value;
 if(!/^[0-9]{4}$/.test(p1))return toast('PIN: ровно 4 цифры');
 if(p1!==p2)return toast('PIN не совпадает');
-var make=function(role){DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[],phone:'',bday:''});
-DB.session=DB.users[DB.users.length-1].id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();closeDlg();presBeat();go('home');
+var make=function(role){if(isBannedName(n)){toast('🚫 Регистрация запрещена: обратитесь к руководителю');return}
+DB.users.push({id:uid(),name:n,pin:p1,role:role,cars:[],bags:[],phone:'',bday:''});
+DB.session=DB.users[DB.users.length-1].id;localStorage.setItem('medshift_my',String(DB.session));
+localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));
+save();closeDlg();presBeat();go('home');
 toast(role==='admin'?'Вы администратор 👑':'Регистрация выполнена ✅. Права назначит руководитель')};
 if(FB_CONF.databaseURL){restGet('state').then(function(v){var rc=(v&&v.data&&v.data.users)?v.data.users.length:0;
 make((rc===0&&DB.users.length===0)?'admin':'user')})}
@@ -690,12 +704,19 @@ h+='<label>Город (погода)</label><input value="'+esc(S().city||'')+'"
 h+='<label>Цвет темы</label><input type="color" value="'+esc(S().accent)+'" onchange="S().accent=this.value;save();applyTheme()">';
 h+='<label>Режим оформления</label><select onchange="S().dark=this.value;save();applyTheme()"><option value="0"'+(S().dark==='0'?' selected':'')+'>Светлый</option><option value="1"'+(S().dark==='1'?' selected':'')+'>Тёмный</option><option value="auto"'+(S().dark==='auto'?' selected':'')+'>Авто (как телефон)</option></select></div>';
 if(isBoss()){h+='<div class="card"><h3>👑 Сотрудники</h3>';
-DB.users.forEach(function(x){h+='<p><b>'+esc(x.name)+'</b> · '+x.role+(x.phone?' · '+esc(x.phone):'')+' <button class="btn sec mini" onclick="openRespDlg('+x.id+')">ответственность</button>'+(x.id!==u.id?' <button class="btn del" onclick="delUser('+x.id+')">🗑</button>':'')+'</p>'});
-h+='<p><button class="btn sec mini" onclick="addUserDlg()">+ сотрудник</button></p></div>'}
+DB.users.forEach(function(x){h+='<p><b>'+esc(x.name)+'</b> · '+x.role+(x.phone?' · '+esc(x.phone):'')+' <button class="btn sec mini" onclick="openRespDlg('+x.id+')">ответственность</button>'+(x.id!==u.id?' <button class="btn sec mini" onclick="banUser('+x.id+')">🚫</button> <button class="btn del" onclick="delUser('+x.id+')">🗑</button>':'')+'</p>'});
+h+='<p><button class="btn sec mini" onclick="addUserDlg()">+ сотрудник</button></p>';
+if((DB.bans||[]).length){h+='<p><b>🚫 Забаненные:</b></p>';
+DB.bans.forEach(function(b){h+='<p>'+esc(b.name)+' <button class="btn sec mini" onclick="unbanUser('+b.id+')">✅ разбанить</button></p>'})}}
 h+='<div class="card"><h3>Данные</h3><p><button class="btn sec" onclick="exportDB()">⬇ Экспорт</button> <label class="btn sec" style="display:inline-block">⬆ Импорт<input type="file" hidden accept=".json" onchange="importDB(this)"></label></p>';
 h+='<p><button class="btn sec" onclick="qrDlg()">📲 QR-код для сотрудников</button></p>';
 h+='<p><button class="btn sec" onclick="logout()">🚪 Выйти</button> <button class="btn del" onclick="resetDB()">Сброс</button></p></div>';
 return h}
+function banUser(id){if(id===DB.session)return toast('Нельзя забанить самого себя');
+var u=DB.users.find(function(x){return x.id===id});if(!u)return;
+ask('Забанить '+u.name+'? Он не сможет входить и регистрироваться.',function(){DB.bans=DB.bans||[];DB.bans.push(u);DB.users=DB.users.filter(function(x){return x.id!==id});save();render();toast('🚫 Забанен')})}
+function unbanUser(id){DB.bans=DB.bans||[];var u=DB.bans.find(function(x){return x.id===id});if(!u)return;
+DB.bans=DB.bans.filter(function(x){return x.id!==id});DB.users.push(u);save();render();toast('✅ Разбанен: '+u.name)}
 function toggleBiometric(on){var u=me();if(!u)return;
 if(!u.pin){toast('Сначала задайте PIN');render();return}
 if(on)enableBiometric();else disableBiometric()}
@@ -715,14 +736,15 @@ async function disableBiometric(){localStorage.removeItem('medshift_bio');toast(
 async function biometricLogin(){try{
 var _bio=localStorage.getItem('medshift_bio');if(!_bio){toast('Биометрия не настроена');return}
 var b=JSON.parse(_bio);var u=DB.users.find(function(x){return x.id===b.userId});
-if(!u){toast('Пользователь не найден');localStorage.removeItem('medshift_bio');render();return}
+if(!u||isDead(u.id)){toast('Учётная запись недоступна');localStorage.removeItem('medshift_bio');render();return}
 var challenge=new Uint8Array(32);crypto.getRandomValues(challenge);
 var raw=Uint8Array.from(atob(b.credentialId),function(c){return c.charCodeAt(0)});
 var cred=await navigator.credentials.get({publicKey:{
 challenge:challenge,allowCredentials:[{id:raw,type:'public-key'}],
 userVerification:'required',timeout:60000}});
 if(!cred){toast('Отменено');return}
-DB.session=u.id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));
+DB.session=u.id;localStorage.setItem('medshift_my',String(u.id));
+localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));
 save();presBeat();go('home');toast('Вход выполнен ✅')}catch(e){toast('Не удалось — войдите по PIN')}}
 function logout(){DB.session=null;localStorage.setItem('medshift_rem','0');localStorage.removeItem('medshift_rem_ts');save();go('home')}
 function resetDB(){ask('Полный сброс базы? Все данные удалятся.',function(){localStorage.removeItem(LS);location.reload()})}
@@ -737,9 +759,11 @@ function addUserDo(){var n=document.getElementById('aName').value.trim();
 var p=document.getElementById('aPin').value;
 if(!n)return toast('Введите ФИО');
 if(!/^[0-9]{4}$/.test(p))return toast('PIN: 4 цифры');
+if(isBannedName(n))return toast('🚫 Это ФИО забанено');
 DB.users.push({id:uid(),name:n,pin:p,role:document.getElementById('aRole').value,cars:[],bags:[],phone:'',bday:''});
 save();closeDlg();render();toast('Сотрудник создан, передайте ему PIN лично')}
-function delUser(id){ask('Удалить сотрудника?',function(){DB.users=DB.users.filter(function(x){return x.id!==id});save();render();toast('Сотрудник удалён')})}
+function delUser(id){if(id===DB.session)return toast('Нельзя удалить самого себя');
+ask('Удалить сотрудника? Его учётка исчезнет со всех устройств, вход только через новую регистрацию.',function(){DB.tomb=DB.tomb||[];DB.tomb.push(id);DB.users=DB.users.filter(function(x){return x.id!==id});save();render();toast('Сотрудник удалён')})}
 function qrDlg(){openDlg('<h3>📲 Установка приложения</h3><img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=https%3A%2F%2Ffeldsherikydze-dot.github.io%2Fmedshift%2F" style="width:70%;display:block;margin:0 auto;border-radius:8px"><p style="text-align:center;font-size:12px;color:var(--mut)">feldsherikydze-dot.github.io/medshift</p><p style="font-size:13px">1. Наведите камеру телефона на код (с бумаги или с экрана).<br>2. Откройте появившуюся ссылку.<br>3. В браузере меню ⋮ → «Добавить на главный экран».<br>4. Запустите ярлык «МедСмена» и зарегистрируйтесь: ФИО + PIN из 4 цифр.<br>5. Сумки и машины назначит руководитель.</p><p><button class="btn sec" onclick="closeDlg()">Закрыть</button></p>')}
 var BOT_JOKES=[
 '— Доктор, у меня проблемы с памятью. — «И давно это у вас?» — «И давно что?»',
@@ -829,12 +853,17 @@ restPut('state',{rev:DB.rev||0,data:d}).then(function(){return restPut('meta',{r
 function mergeArr(local,rem){var ids={};local.forEach(function(x){ids[x.id]=1});
 rem.forEach(function(x){if(!ids[x.id])local.push(x)});
 local.sort(function(a,b){return (a.ts||0)-(b.ts||0)});return local}
-function mergeUsers(rem,loc){var ids={};rem.forEach(function(u){ids[u.id]=1});
-loc.forEach(function(u){if(!ids[u.id])rem.push(u)});return rem}
-function adoptState(rem,rrev){rem.chat=mergeArr(rem.chat||[],DB.chat);
+function mergeUsers(rem,loc){rem=rem.filter(function(u){return !isDead(u.id)});
+var ids={};rem.forEach(function(u){ids[u.id]=1});
+loc.forEach(function(u){if(!ids[u.id]&&!isDead(u.id))rem.push(u)});return rem}
+function adoptState(rem,rrev){var lt=(DB.tomb||[]).slice(),lb=(DB.bans||[]).slice();
+rem.chat=mergeArr(rem.chat||[],DB.chat);
 rem.reports=mergeArr(rem.reports||[],DB.reports);
 rem.tasks=mergeArr(rem.tasks||[],DB.tasks);
+rem.tomb=(rem.tomb||[]).concat(lt.filter(function(x){return (rem.tomb||[]).indexOf(x)<0}));
+rem.bans=mergeUsers(rem.bans||[],lb);
 rem.users=mergeUsers(rem.users||[],DB.users);
+rem.users=rem.users.filter(function(u){return rem.tomb.indexOf(u.id)<0&&!rem.bans.some(function(b){return b.id===u.id})});
 rem.session=DB.session;
 DB=rem;DB.rev=rrev;normalizeDB();localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}
 function syncPull(){if(!FB_CONF.databaseURL)return;restGet('meta').then(function(m){SYNCSTAT.lastPull=Date.now();
@@ -854,6 +883,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden){pre
 window.addEventListener('pagehide',function(){try{fetch(fbUrl('online/'+DEV),{method:'DELETE',keepalive:true})}catch(e){}})}
 var _st=localStorage.getItem('medshift_tab');
 if(_st&&['home','bags','cars','sched','chat','set'].indexOf(_st)>=0)tab=_st;
+if(DB.session&&isDead(DB.session)){DB.session=null;localStorage.setItem(LS,JSON.stringify(DB))}
 if(DB.session){var _rem=localStorage.getItem('medshift_rem');var _ts=+localStorage.getItem('medshift_rem_ts')||0;
 if(_rem!=='1'||Date.now()-_ts>864e5){loginFor=DB.session;DB.session=null;localStorage.setItem('medshift_rem','0');localStorage.setItem(LS,JSON.stringify(DB))}}
 setInterval(function(){if(DB.session&&localStorage.getItem('medshift_rem')==='1'){var ts=+localStorage.getItem('medshift_rem_ts')||0;
