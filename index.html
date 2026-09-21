@@ -238,6 +238,15 @@ if(!DB.ecg||!DB.ecg.length)DB.ecg=['1','2','3','4','5','6','7','8','9','10'];
 if(!S().city)S().city='';
 if(!S().accent)S().accent='#0b5394';
 if(!S().dark)S().dark='auto';
+function normalizeDB(){if(!DB.settings)DB.settings={warnDays:10,city:'',accent:'#0b5394',dark:'auto'};
+if(!DB.users)DB.users=[];if(!DB.bags)DB.bags=[];if(!DB.cars)DB.cars=[];if(!DB.bagTypes)DB.bagTypes=[];
+if(!DB.chat)DB.chat=[];if(!DB.tasks)DB.tasks=[];if(!DB.reports)DB.reports=[];
+if(!DB.sched)DB.sched={months:[],days:[]};if(!DB.ecg)DB.ecg=[];
+DB.users.forEach(function(u){if(!u.cars)u.cars=[];if(!u.bags)u.bags=[]});
+DB.bags.forEach(function(b){if(!b.items)b.items=[]});
+DB.cars.forEach(function(c){if(!c.equip)c.equip=[];if(!c.kits)c.kits=[];
+c.kits.forEach(function(k){if(!k.items)k.items=[]})})}
+normalizeDB();
 function migrate(){if(DB.users.length)return;
 var raw=localStorage.getItem('medshift_v11')||localStorage.getItem('medshift_v6');
 if(!raw)return;
@@ -289,7 +298,8 @@ var toastTimer=null;
 function toast(msg){var t=document.getElementById('toast');
 if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}
 t.innerHTML=msg;t.className='toast show';
-clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.className='toast'},2600)}
+clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.className='toast'},4000)}
+window.addEventListener('error',function(e){toast('⚠ Ошибка: '+e.message+' (стр. '+e.lineno+')')});
 function ask(msg,cb){openDlg('<h3>Подтверждение</h3><p>'+esc(msg)+'</p><p><button class="btn" id="askY">Да</button><button class="btn sec" id="askN">Отмена</button></p>');
 document.getElementById('askY').onclick=function(){closeDlg();cb()};
 document.getElementById('askN').onclick=function(){closeDlg()}}
@@ -309,12 +319,12 @@ return DB.bags.filter(function(b){return (u.bags||[]).indexOf(b.id)>=0})}
 function myCars(){var u=me();if(!u)return [];if(isBoss())return DB.cars;
 return DB.cars.filter(function(c){return (u.cars||[]).indexOf(c.id)>=0})}
 function soonList(){var r=[];
-myBags().forEach(function(b){b.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(b.name+': '+it.name)})});
-myCars().forEach(function(c){c.kits.forEach(function(k){k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(c.name+' / '+k.name+': '+it.name)})})});
+myBags().forEach(function(b){(b.items||[]).forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(b.name+': '+it.name)})});
+myCars().forEach(function(c){(c.kits||[]).forEach(function(k){(k.items||[]).forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)r.push(c.name+' / '+k.name+': '+it.name)})})});
 return r}
 function alerts(){var a=[];var so=soonList();
 if(so.length)a.push({t:'Истекает/просрочено: '+so.length+' поз.',l:'bSoon'});
-DB.cars.forEach(function(c){c.equip.forEach(function(e){if(e.status==='def')a.push({t:c.name+': дефект '+e.name,l:'bExp'})})});
+DB.cars.forEach(function(c){(c.equip||[]).forEach(function(e){if(e.status==='def')a.push({t:c.name+': дефект '+e.name,l:'bExp'})})});
 if(isBoss()){var p=0;DB.reports.forEach(function(r){if(!r.viewed)p++});if(p)a.push({t:'Непросмотренных отчётов: '+p,l:'bWarn'})}
 return a}
 function bdayToday(){var t=todayStr().slice(5);var r=[];
@@ -344,7 +354,7 @@ DB.users.forEach(function(u){h+='<button class="bigbtn" onclick="loginPick('+u.i
 if(loginFor)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:13px"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>';
 h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button><button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
 function loginPick(id){var u=DB.users.find(function(x){return x.id===id});
-if(!u.pin){DB.session=id;save();go(tab);return}
+if(!u.pin){DB.session=id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();go(tab);return}
 loginFor=id;render()}
 function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});
 var v=document.getElementById('pinIn').value;
@@ -391,8 +401,8 @@ for(var d=1;d<=days;d++)h+='<div class="'+(d===n.getDate()?'td':'')+'">'+d+'</di
 return h+'</div>'}
 function homeView(){var a=alerts();
 var tot=0,expN=0;
-DB.bags.forEach(function(b){b.items.forEach(function(it){tot++;if(it.expiry&&daysLeft(it.expiry)<0)expN++})});
-DB.cars.forEach(function(c){c.kits.forEach(function(k){k.items.forEach(function(it){tot++;if(it.expiry&&daysLeft(it.expiry)<0)expN++})})});
+DB.bags.forEach(function(b){(b.items||[]).forEach(function(it){tot++;if(it.expiry&&daysLeft(it.expiry)<0)expN++})});
+DB.cars.forEach(function(c){(c.kits||[]).forEach(function(k){(k.items||[]).forEach(function(it){tot++;if(it.expiry&&daysLeft(it.expiry)<0)expN++})})});
 var h='<div class="wgrid"><div class="card" id="clk"></div><div class="card" id="wgt">…</div><div class="card span2">'+calGrid()+'</div></div>';
 h+='<div class="card">📊 <b>Статистика подстанции</b> · позиций: '+tot+' · просрочено: '+expN+' · сумок: '+DB.bags.length+' · машин: '+DB.cars.length+' · сотрудников: '+DB.users.length+'</div>';
 var bd=bdayToday();
@@ -414,8 +424,8 @@ function bagsView(){if(curBag)return bagView();
 var h='<button class="btn" onclick="openBagDlg()">+ Сумка</button><button class="btn sec" onclick="newBag117()">📋 Из стандарта 117</button><button class="btn sec" onclick="curTpl=true;render()">📑 Шаблон 117</button><button class="btn sec" onclick="curPot=true;render()">⚕️ Сильнодействующие</button>';
 if(!DB.bags.length)h+='<p>Сумок пока нет</p>';
 DB.bags.forEach(function(b){var bad=0,pc=0;
-b.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++;if(it.potent)pc++});
-h+='<div class="card"><b>👜 '+esc(b.name)+'</b> · '+b.items.length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+(pc?' <span class="badge bWarn">⚕ '+pc+'</span>':'')+'<br><button class="btn sec mini" onclick="curBag='+b.id+';render()">Открыть</button> <button class="btn del" onclick="delBag('+b.id+')">🗑</button></div>'});
+(b.items||[]).forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++;if(it.potent)pc++});
+h+='<div class="card"><b>👜 '+esc(b.name)+'</b> · '+(b.items||[]).length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+(pc?' <span class="badge bWarn">⚕ '+pc+'</span>':'')+'<br><button class="btn sec mini" onclick="curBag='+b.id+';render()">Открыть</button> <button class="btn del" onclick="delBag('+b.id+')">🗑</button></div>'});
 return h}
 function newBag117(){var t=DB.bagTypes[0];
 if(!t)return toast('Шаблон 117 не найден');
@@ -453,7 +463,7 @@ h+='<button class="btn sec" onclick="fillBag('+b.id+',\'res\')">🚑 Реани�
 h+='<button class="btn sec" onclick="fillBag('+b.id+',\'thr\')">❄️ Термосумка</button>';
 h+='<button class="btn sec" onclick="openImportDlg('+b.id+')">📥 Импорт .txt</button>';
 h+='<table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
-b.items.forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+(it.potent?'⚕ ':'')+esc(it.name)+'<br><small>'+esc(it.spec||'')+'</small></td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExp('+curBag+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delItem('+curBag+','+i+')">🗑</button></td></tr>'});
+(b.items||[]).forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+(it.potent?'⚕ ':'')+esc(it.name)+'<br><small>'+esc(it.spec||'')+'</small></td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExp('+curBag+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delItem('+curBag+','+i+')">🗑</button></td></tr>'});
 h+='</table>';return h}
 function setExp(bid,i,v){var b=DB.bags.find(function(x){return x.id===bid});b.items[i].expiry=v;save();render()}
 function delItem(bid,i){ask('Удалить позицию?',function(){var b=DB.bags.find(function(x){return x.id===bid});b.items.splice(i,1);save();render();toast('Позиция удалена')})}
@@ -489,8 +499,8 @@ t.items.push({group:'',num:null,name:line,spec:'',unit:unit,qty:qty,potent:false
 save();closeDlg();render();toast('Добавлено в шаблон: '+n)}
 function potentView(){var h='<button class="btn sec" onclick="curPot=false;render()">← Сумки</button><h3>⚕️ Сильнодействующие препараты</h3>';
 var rows=[];
-DB.bags.forEach(function(b){b.items.forEach(function(it){if(it.potent)rows.push([b.name,it])})});
-DB.cars.forEach(function(c){c.kits.forEach(function(k){k.items.forEach(function(it){if(it.potent)rows.push([c.name+' / '+k.name,it])})})});
+DB.bags.forEach(function(b){(b.items||[]).forEach(function(it){if(it.potent)rows.push([b.name,it])})});
+DB.cars.forEach(function(c){(c.kits||[]).forEach(function(k){(k.items||[]).forEach(function(it){if(it.potent)rows.push([c.name+' / '+k.name,it])})})});
 if(!rows.length)h+='<p>Отмеченных сильнодействующих нет. Отметьте галочкой в карточке позиции.</p>';
 else{h+='<table><tr><th>Объект</th><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th></tr>';
 rows.forEach(function(r){h+='<tr class="'+rowCls(r[1].expiry)+'"><td>'+esc(r[0])+'</td><td>'+esc(r[1].name)+'</td><td>'+r[1].qty+' '+esc(r[1].unit)+'</td><td>'+(r[1].expiry||'—')+'</td><td>'+badgeExp(r[1].expiry)+'</td></tr>'});
@@ -536,8 +546,8 @@ if(tasks.length){h+='<div class="card"><b>📌 Задачи</b><table>';tasks.fo
 }
 if(!DB.cars.length)h+='<p>Машин пока нет</p>';
 DB.cars.forEach(function(c){var df=0;
-c.equip.forEach(function(e){if(e.status==='def')df++});
-h+='<div class="card"><b>🚑 '+esc(c.name)+'</b>'+(c.plates?' · '+esc(c.plates):'')+' · оборуд. '+c.equip.length+(df?' <span class="badge bExp">дефекты: '+df+'</span>':'')+' · укладок: '+c.kits.length+'<br><button class="btn sec mini" onclick="curCar='+c.id+';curKit=null;render()">Открыть</button>';
+(c.equip||[]).forEach(function(e){if(e.status==='def')df++});
+h+='<div class="card"><b>🚑 '+esc(c.name)+'</b>'+(c.plates?' · '+esc(c.plates):'')+' · оборуд. '+(c.equip||[]).length+(df?' <span class="badge bExp">дефекты: '+df+'</span>':'')+' · укладок: '+(c.kits||[]).length+'<br><button class="btn sec mini" onclick="curCar='+c.id+';curKit=null;render()">Открыть</button>';
 if(isBoss())h+=' <button class="btn sec mini" onclick="openCarDlg('+c.id+')">✏️</button>';
 h+='</div>'});
 return h}
@@ -551,11 +561,11 @@ h+='<button class="btn sec" onclick="fillKit('+c.id+',\'tra\')">🦴 Травм�
 h+='<button class="btn sec" onclick="fillKit('+c.id+',\'ak\')">🤰 Акушерская</button>';
 h+='<button class="btn sec" onclick="fillKit('+c.id+',\'thr\')">❄️ Термосумка</button>';
 h+='<div class="card"><b>Оборудование (ОВМ)</b><table><tr><th>Инв. №</th><th>Наименование</th><th>Статус</th><th>Особые отметки</th><th>Пометка</th></tr>';
-c.equip.forEach(function(e){h+='<tr class="'+(e.status==='def'?'exp':'')+'"><td>'+(e.ovm?esc(e.ovm):'<small>не указан</small>')+'</td><td>'+esc(e.name)+'</td><td>'+(isBoss()?'<select onchange="setEq('+c.id+','+e.id+',this.value)"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>нет</option></select>':(e.status==='ok'?'<span class="badge bOk">исправен</span>':'<span class="badge bExp">'+e.status+'</span>'))+'</td><td><input style="width:90px" value="'+esc(e.charge||'')+'" onchange="setCh('+c.id+','+e.id+',this.value)" placeholder="заряд, кислород…"></td><td><input value="'+esc(e.defect||'')+'" onchange="setDef('+c.id+','+e.id+',this.value)" placeholder="недочёт"></td></tr>'});
+(c.equip||[]).forEach(function(e){h+='<tr class="'+(e.status==='def'?'exp':'')+'"><td>'+(e.ovm?esc(e.ovm):'<small>не указан</small>')+'</td><td>'+esc(e.name)+'</td><td>'+(isBoss()?'<select onchange="setEq('+c.id+','+e.id+',this.value)"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>нет</option></select>':(e.status==='ok'?'<span class="badge bOk">исправен</span>':'<span class="badge bExp">'+e.status+'</span>'))+'</td><td><input style="width:90px" value="'+esc(e.charge||'')+'" onchange="setCh('+c.id+','+e.id+',this.value)" placeholder="заряд, кислород…"></td><td><input value="'+esc(e.defect||'')+'" onchange="setDef('+c.id+','+e.id+',this.value)" placeholder="недочёт"></td></tr>'});
 h+='</table></div><div class="card"><b>Укладки</b>';
-c.kits.forEach(function(k){var bad=0,pc=0;
-k.items.forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++;if(it.potent)pc++});
-h+='<p>🧰 <b>'+esc(k.name)+'</b> · '+k.items.length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+(pc?' <span class="badge bWarn">⚕ '+pc+'</span>':'')+' <button class="btn sec mini" onclick="curKit='+k.id+';render()">Открыть</button></p>'});
+(c.kits||[]).forEach(function(k){var bad=0,pc=0;
+(k.items||[]).forEach(function(it){if(it.expiry&&daysLeft(it.expiry)<=S().warnDays)bad++;if(it.potent)pc++});
+h+='<p>🧰 <b>'+esc(k.name)+'</b> · '+(k.items||[]).length+' поз.'+(bad?' <span class="badge bSoon">⚠ '+bad+'</span>':'')+(pc?' <span class="badge bWarn">⚕ '+pc+'</span>':'')+' <button class="btn sec mini" onclick="curKit='+k.id+';render()">Открыть</button></p>'});
 h+='</div><div class="card"><b>Отчёты по машине</b>';
 var reps=DB.reports.filter(function(r){return r.carId===c.id}).slice(-10).reverse();
 if(reps.length){h+='<table>';reps.forEach(function(r){h+='<tr><td><span class="badge '+(r.status==='green'?'bG':r.status==='yellow'?'bY':'bR')+'">'+r.status+'</span> '+new Date(r.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+esc(r.user)+(r.potentKit?' · ⚕ '+esc(r.potentKit):'')+(isBoss()&&!r.viewed?' <button class="btn sec mini" onclick="viewReport('+r.id+')">👁</button>':'')+'</td></tr>'});h+='</table>'}
@@ -566,7 +576,7 @@ if(!k){curKit=null;return carView(c)}
 var h='<button class="btn sec" onclick="curKit=null;render()">← Укладки</button><h4>🧰 '+esc(k.name)+'</h4>';
 h+='<button class="btn" onclick="openKitItem('+c.id+','+k.id+',-1)">+ Позиция</button>';
 h+='<table><tr><th>Наименование</th><th>Кол-во</th><th>Срок</th><th>Статус</th><th></th></tr>';
-k.items.forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+(it.potent?'⚕ ':'')+esc(it.name)+'</td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExpKit('+c.id+','+k.id+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delKitItem('+c.id+','+k.id+','+i+')">🗑</button></td></tr>'});
+(k.items||[]).forEach(function(it,i){h+='<tr class="'+rowCls(it.expiry)+'"><td>'+(it.potent?'⚕ ':'')+esc(it.name)+'</td><td>'+it.qty+' '+esc(it.unit)+'</td><td><input type="date" style="width:140px" value="'+(it.expiry||'')+'" onchange="setExpKit('+c.id+','+k.id+','+i+',this.value)"></td><td>'+badgeExp(it.expiry)+'</td><td><button class="btn del" onclick="delKitItem('+c.id+','+k.id+','+i+')">🗑</button></td></tr>'});
 h+='</table>';return h}
 function setEq(cid,eid,v){var c=DB.cars.find(function(x){return x.id===cid});
 var e=c.equip.find(function(x){return x.id===eid});e.status=v;save();render()}
@@ -592,13 +602,13 @@ h+='<div class="row"><div><label>№ бригады</label><input id="rpBrig" in
 DB.bags.forEach(function(b){h+='<option>'+esc(b.name)+'</option>'});
 h+='</select></div></div>';
 h+='<div class="row"><div><label>ЭКГ с собой №</label><input id="rpEcg" inputmode="numeric" placeholder="цифра"></div><div><label>Заряд ЭКГ</label><input id="rpEcgCh" placeholder="100%"></div></div>';
-var pk=c.kits.filter(function(k){return k.items.some(function(i){return i.potent})});
+var pk=(c.kits||[]).filter(function(k){return (k.items||[]).some(function(i){return i.potent})});
 h+='<label>Укладка сильнодействующих</label><select id="rpPot"><option value="">не брал</option>';
 pk.forEach(function(k){h+='<option>'+esc(k.name)+'</option>'});
 h+='</select>';
 if(!pk.length)h+='<p style="font-size:12px;color:var(--mut)">На этой машине нет укладок с отметкой ⚕ сильнодействующие.</p>';
 h+='<label>Оборудование машины (отметьте дефекты)</label><div class="prev"><table><tr><th>Наименование</th><th>Статус</th><th>Недочёт</th></tr>';
-c.equip.forEach(function(e){h+='<tr><td>'+esc(e.name)+'</td><td><select id="re_'+e.id+'"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>отсутствует</option></select></td><td><input id="rd_'+e.id+'" value="'+esc(e.defect||'')+'" placeholder="что не так"></td></tr>'});
+(c.equip||[]).forEach(function(e){h+='<tr><td>'+esc(e.name)+'</td><td><select id="re_'+e.id+'"><option value="ok"'+(e.status==='ok'?' selected':'')+'>исправен</option><option value="def"'+(e.status==='def'?' selected':'')+'>дефект</option><option value="miss"'+(e.status==='miss'?' selected':'')+'>отсутствует</option></select></td><td><input id="rd_'+e.id+'" value="'+esc(e.defect||'')+'" placeholder="что не так"></td></tr>'});
 h+='</table></div>';
 h+='<label>Примечания</label><textarea id="rpRem"></textarea>';
 h+='<p><button class="btn wide" onclick="submitRep(\'ok\')">✅ Проверил, без замечаний</button>';
@@ -607,7 +617,7 @@ openDlg(h)}
 function submitRep(mode){if(mode==='rem'&&!document.getElementById('rpRem').value.trim())return toast('Опишите замечания');
 var c=DB.cars.find(function(x){return x.id===repCar});var u=me();
 var exp=soonList();var defs=[];var equip=[];
-c.equip.forEach(function(e){var st=(document.getElementById('re_'+e.id)||{}).value||'ok';
+(c.equip||[]).forEach(function(e){var st=(document.getElementById('re_'+e.id)||{}).value||'ok';
 var df=(document.getElementById('rd_'+e.id)||{}).value||'';
 e.status=st;e.defect=df;
 if(st!=='ok')defs.push(e.name+(df?' ('+df+')':''));
@@ -712,14 +722,15 @@ var cred=await navigator.credentials.get({publicKey:{
 challenge:challenge,allowCredentials:[{id:raw,type:'public-key'}],
 userVerification:'required',timeout:60000}});
 if(!cred){toast('Отменено');return}
-DB.session=u.id;save();presBeat();go('home');toast('Вход выполнен ✅')}catch(e){toast('Не удалось — войдите по PIN')}}
+DB.session=u.id;localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));
+save();presBeat();go('home');toast('Вход выполнен ✅')}catch(e){toast('Не удалось — войдите по PIN')}}
 function logout(){DB.session=null;localStorage.setItem('medshift_rem','0');localStorage.removeItem('medshift_rem_ts');save();go('home')}
 function resetDB(){ask('Полный сброс базы? Все данные удалятся.',function(){localStorage.removeItem(LS);location.reload()})}
 function exportDB(){var a=document.createElement('a');
 a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
 a.download='medshift-'+todayStr()+'.json';a.click();toast('Файл резервной копии сохранён')}
 function importDB(inp){var f=inp.files[0];if(!f)return;var r=new FileReader();
-r.onload=function(){try{DB=JSON.parse(r.result);save();location.reload()}catch(e){toast('Ошибка файла импорта')}};
+r.onload=function(){try{DB=JSON.parse(r.result);normalizeDB();save();location.reload()}catch(e){toast('Ошибка файла импорта')}};
 r.readAsText(f)}
 function addUserDlg(){openDlg('<h3>Новый сотрудник</h3><label>ФИО</label><input id="aName"><label>PIN (4 цифры)</label><input id="aPin" inputmode="numeric" maxlength="4"><label>Роль</label><select id="aRole"><option value="user">сотрудник</option><option value="lead">руководитель</option><option value="admin">админ</option></select><p><button class="btn" onclick="addUserDo()">Создать</button></p>')}
 function addUserDo(){var n=document.getElementById('aName').value.trim();
@@ -825,7 +836,7 @@ rem.reports=mergeArr(rem.reports||[],DB.reports);
 rem.tasks=mergeArr(rem.tasks||[],DB.tasks);
 rem.users=mergeUsers(rem.users||[],DB.users);
 rem.session=DB.session;
-DB=rem;DB.rev=rrev;localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}
+DB=rem;DB.rev=rrev;normalizeDB();localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}
 function syncPull(){if(!FB_CONF.databaseURL)return;restGet('meta').then(function(m){SYNCSTAT.lastPull=Date.now();
 if(m&&m.rev&&(m.rev>(DB.rev||0))){restGet('state').then(function(v){if(v&&v.data&&(v.rev||0)>(DB.rev||0))adoptState(v.data,v.rev||0)})}})}
 function presBeat(){if(!FB_CONF.databaseURL)return;
