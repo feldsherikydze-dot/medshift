@@ -56,6 +56,8 @@ label{font-size:13px;color:var(--mut)}
 <nav id="nav"></nav>
 <main id="main"></main>
 <dialog id="dlg" style="width:min(680px,95%)"><div id="dlgBody"></div></dialog>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
 window.SEED=[
 ['а',1,'Адреналин','р-р 1 мг/мл 1 мл','амп',10],
@@ -215,12 +217,13 @@ window.SEED=[
 ['ш',5,'Нитроглицерин','таб 0.5 мг','таб',40]];
 var LS='medshift_v3';
 var DB=JSON.parse(localStorage.getItem(LS)||'null');
+var FB_CONF={apiKey:'',authDomain:'',databaseURL:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
 function S(){return DB.settings}
-function save(){localStorage.setItem(LS,JSON.stringify(DB))}
+function save(){DB.rev=(DB.rev||0)+1;localStorage.setItem(LS,JSON.stringify(DB));syncPush()}
 function uid(){return DB.seq++}
 function esc(s){s=(s==null?'':String(s));
 return s.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')}
-if(!DB){DB={seq:1,settings:{warnDays:10,city:'',accent:'#0b5394',dark:'auto'},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[],chat:[],sched:{months:[],days:[]}};save()}
+if(!DB){DB={seq:1,rev:0,settings:{warnDays:10,city:'',accent:'#0b5394',dark:'auto'},users:[],session:null,bagTypes:[],bags:[],cars:[],ecg:[],reports:[],tasks:[],chat:[],sched:{months:[],days:[]}};save()}
 if(!DB.chat)DB.chat=[];
 if(!DB.tasks)DB.tasks=[];
 if(!DB.reports)DB.reports=[];
@@ -604,12 +607,17 @@ function chatView(){var rooms=['общая'];DB.cars.forEach(function(c){rooms.p
 if(rooms.indexOf(room)<0)room='общая';
 var h='<select onchange="room=this.value;render()">';
 rooms.forEach(function(r){h+='<option'+(r===room?' selected':'')+'>'+esc(r)+'</option>'});
-h+='</select><div class="chatbox" id="cbox">';
+h+='</select>';
+h+='<div class="row" style="margin:8px 0"><input id="cIn" placeholder="Сообщение…"><button class="btn" style="flex:0 0 auto;padding:8px 16px" onclick="sendMsg()">➤</button></div>';
+h+='<div class="chatbox" id="cbox">';
 var msgs=DB.chat.filter(function(m){return m.room===room}).slice(-100);
 if(msgs.length){msgs.forEach(function(m){h+='<div class="msg"><b>'+esc(m.author)+'</b> <small>'+new Date(m.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</small><br>'+esc(m.text)+'</div>'})}
 else h+='<p>Сообщений нет</p>';
-h+='</div><p style="font-size:12px;color:var(--mut)">Позовите Феликса по имени или напишите !шутка — он расскажет медицинскую шутку.</p><p><button class="btn sec mini" onclick="botJoke()">😄 Попросить шутку у Феликса</button></p><div class="row"><input id="cIn" placeholder="Сообщение…"><button class="btn" style="width:auto" onclick="sendMsg()">➤</button></div>';
-setTimeout(function(){var b=document.getElementById('cbox');if(b)b.scrollTop=b.scrollHeight},0);
+h+='</div>';
+h+='<p style="font-size:12px;color:var(--mut)">Позовите Феликса по имени или напишите !шутка — он расскажет медицинскую шутку.</p><p><button class="btn sec mini" onclick="botJoke()">😄 Попросить шутку у Феликса</button></p>';
+setTimeout(function(){var b=document.getElementById('cbox');if(b)b.scrollTop=b.scrollHeight;
+var e=document.getElementById('cIn');
+if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter')sendMsg()})},0);
 return h}
 function sendMsg(){var v=document.getElementById('cIn').value.trim();if(!v)return;
 DB.chat.push({id:uid(),ts:Date.now(),author:(me()||{}).name||'аноним',room:room,text:v});save();botMaybe(v);render()}
@@ -670,6 +678,30 @@ DB.users.push({id:uid(),name:n,pin:p,role:document.getElementById('aRole').value
 save();closeDlg();render();toast('Сотрудник создан, передайте ему PIN лично')}
 function delUser(id){ask('Удалить сотрудника?',function(){DB.users=DB.users.filter(function(x){return x.id!==id});save();render();toast('Сотрудник удалён')})}
 function qrDlg(){openDlg('<h3>📲 Установка приложения</h3><img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=https%3A%2F%2Ffeldsherikydze-dot.github.io%2Fmedshift%2F" style="width:70%;display:block;margin:0 auto;border-radius:8px"><p style="text-align:center;font-size:12px;color:var(--mut)">feldsherikydze-dot.github.io/medshift</p><p style="font-size:13px">1. Наведите камеру телефона на код (с бумаги или с экрана).<br>2. Откройте появившуюся ссылку.<br>3. В браузере меню ⋮ → «Добавить на главный экран».<br>4. Запустите ярлык «МедСмена» и зарегистрируйтесь: ФИО + PIN из 4 цифр.<br>5. Сумки и машины назначит руководитель.</p><p><button class="btn sec" onclick="closeDlg()">Закрыть</button></p>')}
+var BOT_JOKES=[
+'— Доктор, у меня проблемы с памятью. — «И давно это у вас?» — «И давно что?»',
+'— Доктор, меня все игнорируют. — «Следующий!»',
+'— Я буду жить? — «А смысл?»',
+'Скорая помощь: мы уже едем. Даже когда вы ещё только думаете, стоит ли вызывать.',
+'В нашей сумке есть всё, кроме запасных нервов. Они просрочились ещё в феврале.',
+'У фельдшера три состояния: в пути, на вызове и пью чай стоя.',
+'ЭКГ — это автобиография сердца. У нашего почерк ещё тот.',
+'Если смена прошла тихо — значит, вы ещё не открыли чат.',
+'Термосумка хранит растворы холодными, а нас — в боевом настроении.',
+'Любимая фраза дефибриллятора: «Ну ещё разок, с чувством».',
+'Срок годности — единственный дедлайн в медицине, который нельзя подвинуть.',
+'— Алло, это скорая? — «Да, слушаем.» — «А когда приедете?» — «Мы уже приехали. Открывайте, мы с чаем».',
+'Хорошая смена — это когда отчёт зелёный, а чай горячий.',
+'Чат — дело хорошее. Но сумку всё равно проверять руками.',
+'— На что жалуетесь? — «На жизнь.» — «Так, пишем: общее недомогание».'
+];
+function botJoke(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
+DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();render();toast('🤖 Феликс шутит')}
+function botMaybe(text){var t=text.toLowerCase();
+if(t.indexOf('феликс')>=0||t.indexOf('!шутка')>=0||t.indexOf('/шутка')>=0){
+setTimeout(function(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
+DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();
+if(tab==='chat')render();else toast('🤖 Феликс ответил в чате')},900+Math.random()*1500)}}
 var EQ=[['','Антисептик с курком'],['ОС-0072','Аппарат ИВЛ Medumat Standart'],['ОС-0011','Аппарат ингаляционного наркоза АИНпСП-01/15'],['','Баллон закись 10л'],['','Баллон кислородный 10л (2шт)'],['ОС-0049','Дефибриллятор-монитор ДКИ-Н-10'],['000854','Ёмкость для отходов класс А'],['00024','Ёмкость для отходов класс Б'],['ОБМ-0117','Ингалятор OMRON NE-U22'],['ОС-0100','Каталка FERNO 28-Z'],['000023','Контейнер для транспортировки отходов'],['ОБМ-0095','Контейнер теплоизоляционный'],['ОБМ-0096','Набор акушерский НИСП-06.01'],['ОБМ-0099','Набор травматологический НИТ-01сс'],['0425','Набор шин Крамера'],['0115,0120,0119,0122,0121','Набор шин транспортных складных (5 шт)'],['ОС-0021','Насос инфузионный Перфузор Компакт С'],['ОБМ-0201','Носилки ковшовые'],['ОБМ-0171','Носилки кресельные складные'],['','Носилки мягкие «Медтехника»'],['','Папка с действующей документацией'],['','Плед'],['ОБМ-0100','Реанимационная укладка+токсик'],['ОС-0001','Транспортный монитор MEC 1200'],['','Укладка Covid, комбинезоны'],['ОБМ-0097','Шины детские вакуумные ВШДм-2'],['ОБМ-0098','Шины взрослые вакуумные ВШВ-2'],['ОБМ-0114','Штатив разборный для вливаний ШР-01'],['ОБМ-0189','Электрокардиограф'],['ОС-0051','Электроотсасыватель ACCUVAC']];
 var TR=[['Бинт стерильный 5x10',2,'шт'],['Бинт стерильный 7x14',2,'шт'],['Бинт эластичный сетчато-трубчатый №1',1,'шт'],['Бинт эластичный сетчато-трубчатый №3',1,'шт'],['Бинт эластичный сетчато-трубчатый №4',1,'шт'],['Губка гемостатическая коллагеновая 50x50',1,'шт'],['Жгут кровоостанавливающий',1,'шт'],['Лейкопластырь 2x500',1,'шт'],['Лейкопластырь антимикробный 1,9x7,2',10,'шт'],['Пакет охлаждающий',5,'шт'],['Перчатки смотровые',3,'пар'],['Перчатки стерильные',4,'пар'],['Пластырь SFM-Strip 4x10 см',2,'шт'],['Повязка косыночная',1,'шт'],['Покрывало спасательное',1,'шт'],['Салфетки стерильные 16x14 №10',2,'уп'],['Салфетки стерильные 45x29 №5',2,'уп'],['Шина складная для ноги',1,'шт'],['Шина складная для руки',1,'шт'],['Шина-воротник транспортная',2,'шт']];
 var RE=[['Аспиратор механический',1,'шт'],['Воронка пластмассовая',1,'шт'],['Зажим кровоостанавливающий изогнутый N1',1,'шт'],['Зажим кровоостанавливающий прямой N1',1,'шт'],['Зонд желудочный',3,'шт'],['Игла хирургическая',2,'шт'],['Иглодержатель',1,'шт'],['Катетер аспирационный',2,'шт'],['Комплект дыхательный для ручной ИВЛ',1,'компл'],['Комплект трубок эндотрахеальных',1,'компл'],['Ларингоскоп (3 клинка)',1,'шт'],['Маска ларингеальная либо комбитьюб',1,'шт'],['Переходник гибкий для трубок',1,'шт'],['Роторасширитель',1,'шт'],['Скальпель стерильный одноразовый',1,'шт'],['Стилет №10',1,'шт'],['Стилет №6',1,'шт'],['Держатель Томаса',1,'шт'],['Фильтр дыхательной бактериовирусный',1,'шт'],['Чехол (саквояж) для набора',1,'шт'],['Шовный материал',1,'уп'],['Шприц 10 мл',2,'шт'],['Шприц Жане 150 мл',1,'шт'],['Языкодержатель',1,'шт']];
@@ -723,30 +755,15 @@ for(var i=0;i<boxes.length;i++){var b=boxes[i];if(!b.checked)continue;
 var id=+b.getAttribute('data-id');
 if(b.getAttribute('data-k')==='cars')u.cars.push(id);else u.bags.push(id)}
 save();closeDlg();render();toast('Ответственность сохранена')}
-var BOT_JOKES=[
-'— Доктор, у меня проблемы с памятью. — «И давно это у вас?» — «И давно что?»',
-'— Доктор, меня все игнорируют. — «Следующий!»',
-'— Я буду жить? — «А смысл?»',
-'Скорая помощь: мы уже едем. Даже когда вы ещё только думаете, стоит ли вызывать.',
-'В нашей сумке есть всё, кроме запасных нервов. Они просрочились ещё в феврале.',
-'У фельдшера три состояния: в пути, на вызове и пью чай стоя.',
-'ЭКГ — это автобиография сердца. У нашего почерк ещё тот.',
-'Если смена прошла тихо — значит, вы ещё не открыли чат.',
-'Термосумка хранит растворы холодными, а нас — в боевом настроении.',
-'Любимая фраза дефибриллятора: «Ну ещё разок, с чувством».',
-'Срок годности — единственный дедлайн в медицине, который нельзя подвинуть.',
-'— Алло, это скорая? — «Да, слушаем.» — «А когда приедете?» — «Мы уже приехали. Открывайте, мы с чаем».',
-'Хорошая смена — это когда отчёт зелёный, а чай горячий.',
-'Чат — дело хорошее. Но сумку всё равно проверять руками.',
-'— На что жалуетесь? — «На жизнь.» — «Так, пишем: общее недомогание».'
-];
-function botJoke(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
-DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();render();toast('🤖 Феликс шутит')}
-function botMaybe(text){var t=text.toLowerCase();
-if(t.indexOf('феликс')>=0||t.indexOf('!шутка')>=0||t.indexOf('/шутка')>=0){
-setTimeout(function(){var j=BOT_JOKES[Math.floor(Math.random()*BOT_JOKES.length)];
-DB.chat.push({id:uid(),ts:Date.now(),author:'🤖 Феликс',room:room,text:j});save();
-if(tab==='chat')render();else toast('🤖 Феликс ответил в чате')},900+Math.random()*1500)}}
+var FB=null,pushT=null;
+function syncPush(){if(!FB)return;clearTimeout(pushT);pushT=setTimeout(function(){try{FB.ref('state').set({rev:DB.rev||0,data:DB})}catch(e){}},700)}
+function syncInit(){if(typeof firebase==='undefined')return;
+if(!FB_CONF.apiKey||!FB_CONF.databaseURL)return;
+try{firebase.initializeApp(FB_CONF);FB=firebase.database();
+FB.ref('state').on('value',function(snap){var v=snap.val();if(!v||!v.data)return;var rrev=v.rev||0;var lrev=DB.rev||0;
+if(rrev>lrev){DB=v.data;DB.rev=rrev;localStorage.setItem(LS,JSON.stringify(DB));applyTheme();render();toast('🔄 Синхронизировано')}});
+}catch(e){FB=null}}
+syncInit();
 applyTheme();
 go('home');
 </script>
