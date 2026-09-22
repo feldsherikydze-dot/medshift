@@ -1790,3 +1790,188 @@ body.dark .seasonBday{color:#ff8ab0}
     if (window.render) render();
   }, 600);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 9: ключ 🗝️ при регистрации +
+   автопродление ключа после перезагрузки
+   ========================================= */
+(function () {
+  if (window.__fix9_applied) return;
+  window.__fix9_applied = true;
+
+  var LS_AUTH = 'medshift_fb_auth';
+  var API_KEY = (window.FB_CONF && FB_CONF.apiKey) || '';
+
+  function loadAuth() {
+    try { return JSON.parse(localStorage.getItem(LS_AUTH) || 'null'); } catch (e) { return null; }
+  }
+  function saveAuth(a) {
+    if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a));
+    else localStorage.removeItem(LS_AUTH);
+  }
+
+  var refreshT = null;
+  function schedule(a) {
+    clearTimeout(refreshT);
+    if (!a || !a.rt) return;
+    var delay = Math.max(30000, (a.exp - Date.now()) - 5 * 60000);
+    refreshT = setTimeout(function () { refresh(a.rt); }, delay);
+  }
+
+  function refresh(rt) {
+    if (!rt || !API_KEY) return;
+    fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(rt)
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.id_token) {
+        var a = loadAuth() || {};
+        a.rt = j.refresh_token || a.rt;
+        a.id = j.id_token;
+        a.exp = Date.now() + (+j.expires_in || 3600) * 1000;
+        saveAuth(a);
+        window.__fbToken = j.id_token;
+        schedule(a);
+      } else {
+        window.__fbToken = null;
+      }
+    }).catch(function () { window.__fbToken = null; });
+  }
+
+  function signIn9(email, pass, ok, err) {
+    fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pass, returnSecureToken: true })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.idToken) {
+        var a = {
+          email: email,
+          rt: j.refreshToken,
+          id: j.idToken,
+          exp: Date.now() + (+j.expiresIn || 3600) * 1000
+        };
+        saveAuth(a);
+        window.__fbToken = j.id_token;
+        schedule(a);
+        ok();
+      } else {
+        err((j && j.error && j.error.message) || 'UNKNOWN');
+      }
+    }).catch(function () { err('NETWORK'); });
+  }
+
+  function err9(m) {
+    if (!m) return 'неизвестная ошибка';
+    if (m.indexOf('INVALID_PASSWORD') >= 0 || m.indexOf('INVALID_LOGIN_CREDENTIALS') >= 0) return 'неверный пароль склада';
+    if (m.indexOf('USER_NOT_FOUND') >= 0) return 'такой email склада не создан';
+    if (m.indexOf('TOO_MANY_ATTEMPTS') >= 0) return 'слишком много попыток, подождите минуту';
+    if (m === 'NETWORK') return 'нет связи';
+    return m;
+  }
+
+  /* после перезагрузки страницы ключ восстанавливается сам */
+  setTimeout(function () {
+    var a = loadAuth();
+    if (a && a.rt && !window.__fbToken) refresh(a.rt);
+  }, 300);
+
+  /* на экране входа старое окно ключа не мешается */
+  setTimeout(function () {
+    var d = document.getElementById('dlg');
+    var b = document.getElementById('dlgBody');
+    if (!me() && d && d.open && b && /Ключ склада/.test(b.innerHTML || '')) closeDlg();
+  }, 900);
+
+  /* === регистрация с полем «Ключ 🗝️» === */
+  if (window.regView) {
+    window.regView = function () {
+      var pre = (loadAuth() || {}).email || '';
+      var hasTok = !!window.__fbToken;
+
+      var h = '<h3>Анкета сотрудника</h3>';
+      h += '<label>ФИО</label><input id="rName">';
+      h += '<label>PIN (4 цифры)</label><input id="rPin" type="password" inputmode="numeric" maxlength="4">';
+      h += '<label>Повторите PIN</label><input id="rPin2" type="password" inputmode="numeric" maxlength="4">';
+      h += '<label>Ключ 🗝️ (email склада)</label><input id="rgFbEmail" type="email" value="' + esc(pre) + '">';
+      h += '<label>Пароль склада</label><input id="rgFbPass" type="password" placeholder="••••••••">';
+      h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">';
+      h += hasTok
+        ? 'На этом устройстве ключ уже введён — поля можно оставить пустыми.'
+        : 'Ключ 🗝️ выдаёт руководитель — спросить у Ананович А.С.';
+      h += '</p>';
+      h += '<p><button class="btn" onclick="regDo()">Создать</button> <button class="btn sec" onclick="closeDlg()">Закрыть</button></p>';
+
+      openDlg(h);
+    };
+  }
+
+  if (window.regDo) {
+    window.regDo = function () {
+      var n = document.getElementById('rName').value.trim();
+      if (!n) return toast('Введите ФИО');
+
+      var p1 = document.getElementById('rPin').value;
+      var p2 = document.getElementById('rPin2').value;
+      if (!/^[0-9]{4}$/.test(p1)) return toast('PIN: ровно 4 цифры');
+      if (p1 !== p2) return toast('PIN не совпадает');
+
+      var finish = function () {
+        var make = function (role) {
+          if (isBannedName(n)) {
+            toast('🚫 Регистрация запрещена: обратитесь к руководителю');
+            return;
+          }
+          DB.users.push({ id: uid(), name: n, pin: p1, role: role, cars: [], bags: [], phone: '', bday: '' });
+          DB.session = DB.users[DB.users.length - 1].id;
+          localStorage.setItem('medshift_my', String(DB.session));
+          localStorage.setItem('medshift_rem', '1');
+          localStorage.setItem('medshift_rem_ts', String(Date.now()));
+          save();
+          closeDlg();
+          presBeat();
+          go('home');
+          toast(role === 'admin' ? 'Вы администратор 👑' : 'Регистрация выполнена ✅. Права назначит руководитель');
+        };
+
+        if (FB_CONF.databaseURL) {
+          restGet('state').then(function (v) {
+            var rc = (v && v.data && v.data.users) ? v.data.users.length : 0;
+            make((rc === 0 && DB.users.length === 0) ? 'admin' : 'user');
+          });
+        } else {
+          make(DB.users.length ? 'user' : 'admin');
+        }
+      };
+
+      /* ключ уже есть на устройстве — не мучаем человека */
+      if (window.__fbToken || !FB_CONF.databaseURL) { finish(); return; }
+
+      var e = (document.getElementById('rgFbEmail') || {}).value || '';
+      var pw = (document.getElementById('rgFbPass') || {}).value || '';
+      e = e.trim();
+
+      if (!e || !pw) {
+        return toast('Введите ключ 🗝️ — спросить у Ананович А.С.');
+      }
+
+      signIn9(e, pw, finish, function (m) {
+        toast('⚠ Ключ не принят: ' + err9(m));
+      });
+    };
+  }
+
+  /* подсказка про Ананович и в окне «Ключ склада» */
+  if (window.fbCredDlg) {
+    var _f8dlg = window.fbCredDlg;
+    window.fbCredDlg = function () {
+      _f8dlg();
+      var b = document.getElementById('dlgBody');
+      if (b) {
+        b.innerHTML = b.innerHTML.split('которые создал руководитель в консоли Firebase.').join('Ключ 🗝️ спросить у Ананович А.С.');
+      }
+    };
+  }
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
