@@ -2574,3 +2574,82 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
 
   setTimeout(function () { if (window.render) render(); }, 0);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 17: бренд ООО «КрасНЕО» +
+   жёлтая машинка скорой как на сайте
+   ========================================= */
+(function () {
+  if (window.__fix17_applied) return;
+  window.__fix17_applied = true;
+
+  var BRAND = 'КрасНЕО';
+  var BRAND_FULL = 'ООО «КрасНЕО» · первая частная скорая помощь';
+  var BRAND_FOOT = 'ООО «КрасНЕО» — первая частная скорая помощь · Красноярск, пр. Металлургов 8 · тел. 203-03-03';
+
+  var AMB = '<svg class="msLogo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="2" y="2" width="60" height="60" rx="16" fill="#0b5394"/>' +
+    '<rect x="3" y="30" width="3.5" height="2" rx="1" fill="rgba(255,255,255,.75)"/>' +
+    '<rect x="2" y="35" width="4.5" height="2" rx="1" fill="rgba(255,255,255,.55)"/>' +
+    '<rect x="8" y="22" width="40" height="20" rx="4" fill="#fdd835"/>' +
+    '<path d="M48 26h6l6 8v8H48z" fill="#fdd835"/>' +
+    '<path d="M50 28h4l4 5h-8z" fill="#b3e5fc"/>' +
+    '<rect x="8" y="36" width="52" height="3.5" fill="#e53935"/>' +
+    '<rect x="24" y="24" width="4" height="10" fill="#e53935"/>' +
+    '<rect x="21" y="27" width="10" height="4" fill="#e53935"/>' +
+    '<rect x="30" y="17" width="9" height="5" rx="2" fill="#42a5f5"/>' +
+    '<circle cx="34.5" cy="15" r="2.5" fill="#90caf9" opacity=".8"/>' +
+    '<circle cx="20" cy="44" r="5" fill="#263238"/>' +
+    '<circle cx="20" cy="44" r="2" fill="#cfd8dc"/>' +
+    '<circle cx="50" cy="44" r="5" fill="#263238"/>' +
+    '<circle cx="50" cy="44" r="2" fill="#cfd8dc"/>' +
+    '</svg>';
+
+  /* название во вкладке браузера и в шапке */
+  document.title = BRAND + ' · смена';
+  var hl = document.querySelector('header .hdr-left');
+  if (hl) hl.innerHTML = hl.innerHTML.replace('МедСмена', BRAND);
+
+  /* экран входа: жёлтая машинка + бренд */
+  if (window.loginView) {
+    var _lv17 = window.loginView;
+    window.loginView = function () {
+      var h = _lv17();
+      h = h.replace(/<svg class="msLogo"[\s\S]*?<\/svg>/, AMB);
+      h = h.replace('<h2>МедСмена</h2>',
+        '<h2>' + BRAND + '</h2>' +
+        '<p style="margin:2px 0 8px;font-size:calc(var(--fs) - 2px);color:var(--mut)">' +
+        BRAND_FULL + '<br>Красноярск · 203-03-03</p>');
+      return h;
+    };
+  }
+
+  /* в окне QR-инструкции тоже бренд */
+  if (window.qrDlg) {
+    var _qr17 = window.qrDlg;
+    window.qrDlg = function () {
+      _qr17();
+      var b = document.getElementById('dlgBody');
+      if (b) b.innerHTML = b.innerHTML.split('«МедСмена»').join('«' + BRAND + '»');
+    };
+  }
+
+  /* строка организации в печатном отчёте */
+  if (window.reportPrintHtml) {
+    var _rph17 = window.reportPrintHtml;
+    window.reportPrintHtml = function (r) {
+      return _rph17(r) +
+        '<div style="margin-top:14px;padding-top:8px;border-top:1px solid #ccc;font-size:12px;color:#555">' +
+        BRAND_FOOT + '</div>';
+    };
+  }
+
+  /* и в скачанном текстовом отчёте */
+  if (window.reportText) {
+    var _rt17 = window.reportText;
+    window.reportText = function (r) {
+      return _rt17(r) + '\n\n' + BRAND_FOOT;
+    };
+  }
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
