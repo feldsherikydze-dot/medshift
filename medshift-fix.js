@@ -2204,3 +2204,122 @@ body.dark .seasonBday{color:#ff8ab0}
   });
   setTimeout(schedSync, 3000);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 13: визуал-пакет —
+   карточки, шапка, кнопки, вход с логотипом
+   ========================================= */
+(function () {
+  if (window.__fix13_applied) return;
+  window.__fix13_applied = true;
+
+  var css13 = `
+.card{border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.05);transition:transform .06s}
+.card.clickable:active{transform:scale(.985)}
+body.dark .card{box-shadow:0 1px 2px rgba(0,0,0,.45),0 4px 14px rgba(0,0,0,.28)}
+
+header{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(0,0,0,.10)),var(--ac);box-shadow:0 2px 10px rgba(0,0,0,.20)}
+
+nav{box-shadow:0 1px 0 var(--bd)}
+nav button{position:relative}
+nav button.on{box-shadow:none;font-weight:700;color:var(--ac)}
+nav button.on::after{content:'';position:absolute;left:20%;right:20%;bottom:4px;height:3px;border-radius:3px;background:var(--ac)}
+
+.btn{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.16);transition:transform .06s}
+.btn:active{transform:scale(.96)}
+.btn.sec,.btn.del{box-shadow:none}
+
+.badge{border-radius:999px;padding:3px 8px;font-weight:600}
+
+.clockWeather{border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(0,0,0,.03)),var(--card);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+body.dark .clockWeather{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(0,0,0,.18)),var(--card)}
+.cwTime{letter-spacing:.5px}
+
+tbody tr:nth-child(even):not(.exp):not(.soon){background:rgba(127,179,255,.06)}
+body.dark tbody tr:nth-child(even):not(.exp):not(.soon){background:rgba(255,255,255,.035)}
+
+#dlg{border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.28)}
+#dlg h3{margin-top:2px}
+
+.toast{border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.35);background:rgba(28,28,30,.92);backdrop-filter:blur(6px)}
+body.dark .toast{background:rgba(238,238,240,.94);color:#14181d}
+
+main h3{margin:10px 2px 8px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ac);outline-offset:1px}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+.loginwrap .card{border-radius:18px;padding:18px 14px;box-shadow:0 10px 34px rgba(0,0,0,.14);text-align:center}
+body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
+.loginwrap h2{margin:4px 0 2px;font-size:calc(var(--fs) + 10px);letter-spacing:.5px}
+.loginwrap .bigbtn{text-align:left}
+.msLogo{width:64px;height:64px;display:block;margin:0 auto 6px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+`;
+
+  var st13 = document.createElement('style');
+  st13.textContent = css13;
+  document.head.appendChild(st13);
+
+  /* логотип на экране входа */
+  if (window.loginView) {
+    var _lv13 = window.loginView;
+    window.loginView = function () {
+      var h = _lv13();
+      return h.replace(
+        '<h2>МедСмена</h2>',
+        '<svg class="msLogo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="2" y="2" width="60" height="60" rx="16" fill="var(--ac)"/>' +
+        '<path d="M32 14v20M22 24h20" stroke="#fff" stroke-width="7" stroke-linecap="round"/>' +
+        '<path d="M12 46h9l4-7 6 12 5-9h16" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg><h2>МедСмена</h2>'
+      );
+    };
+  }
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 14: чат-пузыри и плавные диалоги
+   ========================================= */
+(function () {
+  if (window.__fix14_applied) return;
+  window.__fix14_applied = true;
+
+  var css14 = `
+.msg{margin-right:14%;border-radius:10px}
+.msg.mine{background:var(--ac);color:#fff;margin-right:0;margin-left:16%}
+.msg.mine b{color:#fff}
+.msg.mine small{color:rgba(255,255,255,.75)}
+.msg.sys{background:transparent;border:1px dashed var(--bd);color:var(--mut);text-align:center;margin-left:8%;margin-right:8%;font-size:calc(var(--fs) - 2px)}
+#dlg{animation:dlgIn .16s ease}
+@keyframes dlgIn{from{transform:scale(.97);opacity:.6}to{transform:scale(1);opacity:1}}
+`;
+  var st14 = document.createElement('style');
+  st14.textContent = css14;
+  document.head.appendChild(st14);
+
+  function decorateChat() {
+    if (window.tab !== 'chat') return;
+    var u = window.me ? me() : null;
+    if (!u) return;
+    var box = document.getElementById('cbox');
+    if (!box) return;
+    var msgs = box.querySelectorAll('.msg');
+    for (var i = 0; i < msgs.length; i++) {
+      var b = msgs[i].querySelector('b');
+      var author = b ? b.textContent : '';
+      if (author === u.name) msgs[i].classList.add('mine');
+      else if (author.indexOf('Система') >= 0 || author.indexOf('Феликс') >= 0) msgs[i].classList.add('sys');
+    }
+  }
+
+  if (window.render) {
+    var _r14 = window.render;
+    window.render = function () {
+      _r14();
+      decorateChat();
+    };
+  }
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
