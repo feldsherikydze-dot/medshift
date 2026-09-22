@@ -2079,3 +2079,128 @@ body.dark .seasonBday{color:#ff8ab0}
     };
   }
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 12: синхронизация фото журнала
+   смены и графика месяца между устройствами
+   ========================================= */
+(function () {
+  if (window.__fix12_applied) return;
+  window.__fix12_applied = true;
+
+  function restDelete(p) {
+    return fetch(fbUrl(p), { method: 'DELETE' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r;
+    }).catch(function () {});
+  }
+
+  function bumpSchedMeta() {
+    restPut('schedmeta', { ts: Date.now() }).then(function () {
+      window.__schedSeen = Date.now();
+    });
+  }
+
+  function alive(kind, p, now) {
+    if (!p || !p.ts) return false;
+    if (kind === 'days') return now - p.ts < 2 * 864e5;
+    var q = (p.month || '').split('-');
+    if (!q[0] || !q[1]) return false;
+    return now < new Date(+q[0], +q[1], 3).getTime();
+  }
+
+  /* добавление фото: сразу на склад */
+  if (window.addSchedPhoto) {
+    window.addSchedPhoto = function (inp, kind) {
+      var f = inp.files[0];
+      if (!f) return;
+      compressImage(f, function (img) {
+        try {
+          var p = { id: uid(), ts: Date.now(), month: todayStr().slice(0, 7), img: img };
+          DB.sched[kind].push(p);
+          save();
+          render();
+          toast('Фото добавлено');
+          if (window.__fbToken) {
+            restPut('sched/' + kind + '/' + p.id, p).then(function () { bumpSchedMeta(); });
+          }
+        } catch (e) {
+          toast('Память телефона переполнена — удалите старые фото');
+        }
+      });
+    };
+  }
+
+  /* удаление фото: и со склада тоже */
+  if (window.delPhoto) {
+    window.delPhoto = function (kind, id) {
+      DB.sched[kind] = DB.sched[kind].filter(function (x) { return x.id !== id; });
+      save();
+      closeDlg();
+      render();
+      toast('Фото удалено');
+      if (window.__fbToken) {
+        restDelete('sched/' + kind + '/' + id).then(function () { bumpSchedMeta(); });
+      }
+    };
+  }
+
+  /* сверка со складом: скачать чужие, залить свои, убрать протухшее */
+  function schedSync() {
+    if (!window.FB_CONF || !FB_CONF.databaseURL || !window.__fbToken) return;
+    restGet('schedmeta').then(function (m) {
+      var ts = (m && m.ts) || 0;
+      if (window.__schedSeenOnce && ts === window.__schedSeen) return;
+      window.__schedSeen = ts;
+      window.__schedSeenOnce = true;
+
+      restGet('sched').then(function (rem) {
+        rem = rem || {};
+        var now = Date.now();
+        var changedLocal = false, changedRemote = false;
+
+        ['days', 'months'].forEach(function (kind) {
+          var rlist = rem[kind] || {};
+          var llist = DB.sched[kind] || [];
+
+          /* чужие фото к нам (только ещё живые) */
+          Object.keys(rlist).forEach(function (id) {
+            var p = rlist[id];
+            if (!p || !p.img) return;
+            var has = llist.some(function (x) { return x.id === p.id; });
+            if (!has && alive(kind, p, now)) {
+              llist.push(p);
+              changedLocal = true;
+            }
+          });
+
+          /* наши фото на склад (если их там нет) */
+          llist.forEach(function (p) {
+            if (!rlist[p.id] && alive(kind, p, now)) {
+              restPut('sched/' + kind + '/' + p.id, p);
+              changedRemote = true;
+            }
+          });
+
+          /* протухшее со склада убираем */
+          Object.keys(rlist).forEach(function (id) {
+            if (rlist[id] && !alive(kind, rlist[id], now)) {
+              restDelete('sched/' + kind + '/' + id);
+              changedRemote = true;
+            }
+          });
+
+          DB.sched[kind] = llist;
+        });
+
+        if (changedLocal) { save(); render(); }
+        if (changedRemote) { bumpSchedMeta(); }
+      });
+    });
+  }
+
+  setInterval(schedSync, 20000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) schedSync();
+  });
+  setTimeout(schedSync, 3000);
+})();
