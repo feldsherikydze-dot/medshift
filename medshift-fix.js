@@ -2057,3 +2057,25 @@ body.dark .seasonBday{color:#ff8ab0}
     }
   }, 1200);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 11: после входа по PIN сразу
+   показать окно ключа склада, если его ещё нет
+   ========================================= */
+(function () {
+  if (window.__fix11_applied) return;
+  window.__fix11_applied = true;
+
+  if (window.announceLogin) {
+    var _al11 = window.announceLogin;
+    window.announceLogin = function (u) {
+      _al11(u);
+      setTimeout(function () {
+        if (window.FB_CONF && FB_CONF.databaseURL && !window.__fbToken) {
+          var a = null;
+          try { a = JSON.parse(localStorage.getItem('medshift_fb_auth') || 'null'); } catch (e) {}
+          if (!a && window.fbCredDlg) fbCredDlg();
+        }
+      }, 600);
+    };
+  }
+})();
