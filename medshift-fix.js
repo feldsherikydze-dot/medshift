@@ -96,7 +96,7 @@ body.dark .refAnalogs span{
 
   function fixText(s) {
     return String(s)
-      .split('НО/СЛ').join('НС/ЛС')
+      .split('НД/НС').join('НС/ЛС')
       .split('наркотических средств и психотропных веществ').join('НС/ЛС');
   }
 
