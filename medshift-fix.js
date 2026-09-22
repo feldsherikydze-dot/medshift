@@ -1975,3 +1975,85 @@ body.dark .seasonBday{color:#ff8ab0}
 
   setTimeout(function () { if (window.render) render(); }, 0);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 10: ключ склада восстанавливается
+   мгновенно и тихо при каждой перезагрузке
+   ========================================= */
+(function () {
+  if (window.__fix10_applied) return;
+  window.__fix10_applied = true;
+
+  var LS_AUTH = 'medshift_fb_auth';
+  var API_KEY = (window.FB_CONF && FB_CONF.apiKey) || '';
+
+  function loadA() {
+    try { return JSON.parse(localStorage.getItem(LS_AUTH) || 'null'); } catch (e) { return null; }
+  }
+  function saveA(a) {
+    if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a));
+  }
+
+  var refreshT = null;
+  function schedule(a) {
+    clearTimeout(refreshT);
+    if (!a || !a.rt) return;
+    var delay = Math.max(30000, (a.exp - Date.now()) - 5 * 60000);
+    refreshT = setTimeout(function () { doRefresh(a.rt); }, delay);
+  }
+
+  function afterToken() {
+    if (window.SYNCSTAT) SYNCSTAT.lastErr = '';
+    if (window.syncPush) syncPush();
+    setTimeout(function () { if (window.render) render(); }, 60);
+  }
+
+  function doRefresh(rt) {
+    if (!rt || !API_KEY) return;
+    fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(rt)
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.id_token) {
+        var a = loadA() || {};
+        a.rt = j.refresh_token || a.rt;
+        a.id = j.id_token;
+        a.exp = Date.now() + (+j.expires_in || 3600) * 1000;
+        saveA(a);
+        window.__fbToken = j.id_token;
+        schedule(a);
+        afterToken();
+      }
+    }).catch(function () {});
+  }
+
+  /* 1. Мгновенно: сохранённый ключ ещё жив — берём без сети */
+  var a0 = loadA();
+  if (a0 && a0.id && a0.exp && Date.now() < a0.exp - 60000) {
+    window.__fbToken = a0.id;
+    schedule(a0);
+    afterToken();
+  } else if (a0 && a0.rt) {
+    doRefresh(a0.rt);
+  }
+
+  /* 2. Ключ пришёл позже (медленная сеть) — обновляем экран */
+  var seen = !!window.__fbToken;
+  var watch = setInterval(function () {
+    if (window.__fbToken && !seen) {
+      seen = true;
+      afterToken();
+    }
+    if (seen) clearInterval(watch);
+  }, 400);
+  setTimeout(function () { clearInterval(watch); }, 20000);
+
+  /* 3. Окно «Ключ склада» не всплывает, если ключ уже на устройстве */
+  setTimeout(function () {
+    var d = document.getElementById('dlg');
+    var b = document.getElementById('dlgBody');
+    if (d && d.open && b && /Ключ склада/.test(b.innerHTML || '') && window.__fbToken) {
+      closeDlg();
+    }
+  }, 1200);
+})();
