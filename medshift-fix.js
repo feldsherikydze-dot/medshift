@@ -2323,3 +2323,254 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
 
   setTimeout(function () { if (window.render) render(); }, 0);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 15: атрибуты сезона вокруг
+   праздника + кучка внизу, катается от наклона
+   ========================================= */
+(function () {
+  if (window.__fix15_applied) return;
+  window.__fix15_applied = true;
+
+  var css15 = `
+.msLeaves{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:hidden}
+.msLeaf{position:absolute;left:0;top:0;will-change:transform;user-select:none;line-height:1;opacity:.95;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.seasonWrap{position:relative;display:inline-block}
+.seasonDeco{position:absolute;font-size:calc(var(--fs) + 2px);opacity:.9;animation:decoFloat 4s ease-in-out infinite;pointer-events:none}
+@keyframes decoFloat{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}
+`;
+  var st15 = document.createElement('style');
+  st15.textContent = css15;
+  document.head.appendChild(st15);
+
+  function seasonSet15() {
+    var m = new Date().getMonth();
+    if (m === 11 || m <= 1) return ['❄️', '⛄', '🌨', '❄️'];
+    if (m <= 4) return ['🌸', '', '', '🌿'];
+    if (m <= 7) return ['🌻', '', '️', ''];
+    return ['🍂', '🍁', '', ''];
+  }
+
+  /* === атрибуты вокруг сезона/праздника === */
+  if (window.seasonHtml) {
+    var _sh15 = window.seasonHtml;
+    window.seasonHtml = function () {
+      var h = _sh15();
+      var s = seasonSet15();
+      var d = '<div class="seasonWrap">';
+      d += '<span class="seasonDeco" style="left:-16px;top:-8px;animation-delay:0s">' + s[0] + '</span>';
+      d += '<span class="seasonDeco" style="right:-16px;top:-8px;animation-delay:.7s">' + s[1] + '</span>';
+      d += '<span class="seasonDeco" style="left:-20px;bottom:-6px;animation-delay:1.4s">' + s[2] + '</span>';
+      d += '<span class="seasonDeco" style="right:-20px;bottom:-6px;animation-delay:2.1s">' + s[3] + '</span>';
+      d += h + '</div>';
+      return d;
+    };
+  }
+
+  /* === кучка внизу с физикой === */
+  var leavesBox = null, parts = [], rafId = null;
+  var tilt = 0, hasTilt = false, lastTiltTs = 0;
+
+  function ensureBox() {
+    if (leavesBox) return leavesBox;
+    leavesBox = document.createElement('div');
+    leavesBox.className = 'msLeaves';
+    document.body.appendChild(leavesBox);
+    return leavesBox;
+  }
+
+  function stopLeaves() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    if (leavesBox) leavesBox.innerHTML = '';
+    parts = [];
+  }
+
+  function startLeaves() {
+    stopLeaves();
+    if (!window.me || !me()) return;
+    if (window.S && S().leaves === false) return;
+
+    var box = ensureBox();
+    var set = seasonSet15();
+    var n = window.innerWidth < 480 ? 12 : 18;
+
+    for (var i = 0; i < n; i++) {
+      var el = document.createElement('span');
+      el.className = 'msLeaf';
+      el.textContent = set[i % set.length];
+      var r = 10 + Math.random() * 8;
+      el.style.fontSize = (r * 1.6) + 'px';
+      box.appendChild(el);
+      parts.push({
+        el: el, r: r,
+        x: Math.random() * window.innerWidth,
+        y: -40 - Math.random() * window.innerHeight * 0.6,
+        vx: 0, vy: 0,
+        rot: Math.random() * 360
+      });
+    }
+    loop();
+  }
+
+  function loop() {
+    rafId = requestAnimationFrame(loop);
+    var W = window.innerWidth, H = window.innerHeight;
+    var floor = H - 6;
+    var t = Date.now() / 1000;
+    var breeze = Math.sin(t * 0.7) * 0.03;
+    var ax = (hasTilt ? tilt : 0) * 0.5 + breeze;
+    var i, j, p;
+
+    for (i = 0; i < parts.length; i++) {
+      p = parts[i];
+      p.vx += ax;
+      p.vy += 0.35;
+      p.vx *= 0.992;
+      p.vy *= 0.992;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vx * 2.2;
+      if (p.x < p.r) { p.x = p.r; p.vx *= -0.4; }
+      if (p.x > W - p.r) { p.x = W - p.r; p.vx *= -0.4; }
+      if (p.y > floor - p.r) {
+        p.y = floor - p.r;
+        p.vy *= -0.22;
+        p.vx *= 0.94;
+        if (Math.abs(p.vy) < 0.6) p.vy = 0;
+      }
+    }
+
+    for (i = 0; i < parts.length; i++) {
+      for (j = i + 1; j < parts.length; j++) {
+        var a = parts[i], b = parts[j];
+        var dx = b.x - a.x, dy = b.y - a.y;
+        var d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        var min = a.r + b.r;
+        if (d < min) {
+          var push = (min - d) / 2;
+          var nx = dx / d, ny = dy / d;
+          a.x -= nx * push; a.y -= ny * push;
+          b.x += nx * push; b.y += ny * push;
+          var dv = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+          if (dv > 0) {
+            a.vx -= dv * nx * 0.5; a.vy -= dv * ny * 0.5;
+            b.vx += dv * nx * 0.5; b.vy += dv * ny * 0.5;
+          }
+        }
+      }
+    }
+
+    for (i = 0; i < parts.length; i++) {
+      p = parts[i];
+      p.el.style.transform = 'translate(' + (p.x - p.r) + 'px,' + (p.y - p.r) + 'px) rotate(' + p.rot + 'deg)';
+    }
+  }
+
+  /* наклон телефона */
+  window.addEventListener('deviceorientation', function (e) {
+    if (e.gamma == null) return;
+    hasTilt = true;
+    lastTiltTs = Date.now();
+    tilt = Math.max(-1, Math.min(1, e.gamma / 30));
+  });
+
+  /* на ПК — мышка */
+  window.addEventListener('mousemove', function (e) {
+    if (hasTilt) return;
+    tilt = (e.clientX / window.innerWidth - 0.5) * 1.2;
+  });
+
+  /* iPhone спросит разрешение на датчики при первом тапе */
+  document.addEventListener('click', function () {
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(function () {}).catch(function () {});
+      }
+    } catch (e) {}
+  }, { once: true });
+
+  /* выключатель в настройках */
+  window.msToggleLeaves = function (on) {
+    S().leaves = !!on;
+    save();
+    if (on) startLeaves(); else stopLeaves();
+  };
+
+  if (window.setView) {
+    var _sv15 = window.setView;
+    window.setView = function () {
+      var h = _sv15();
+      return h.replace(
+        '<label>Режим оформления</label>',
+        '<label><input type="checkbox" style="width:auto"' + (S().leaves === false ? '' : ' checked') + ' onchange="msToggleLeaves(this.checked)"> 🍂 Кучка атрибутов сезона внизу (катается от наклона)</label>' +
+        '<label>Режим оформления</label>'
+      );
+    };
+  }
+
+  /* старт/стоп вместе с входом-выходом */
+  if (window.render) {
+    var _r15 = window.render;
+    window.render = function () {
+      _r15();
+      if (window.me && me()) {
+        if (!rafId) startLeaves();
+      } else {
+        stopLeaves();
+      }
+    };
+  }
+
+  window.addEventListener('resize', function () {
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].x > window.innerWidth - parts[i].r) parts[i].x = window.innerWidth - parts[i].r;
+    }
+  });
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 16: логотип-скорая на экране
+   входа и иконка во вкладке браузера
+   ========================================= */
+(function () {
+  if (window.__fix16_applied) return;
+  window.__fix16_applied = true;
+
+  var AMB = '<svg class="msLogo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="2" y="2" width="60" height="60" rx="16" fill="var(--ac)"/>' +
+    '<rect x="3" y="30" width="3.5" height="2" rx="1" fill="rgba(255,255,255,.75)"/>' +
+    '<rect x="2" y="35" width="4.5" height="2" rx="1" fill="rgba(255,255,255,.55)"/>' +
+    '<rect x="8" y="22" width="40" height="20" rx="4" fill="#fff"/>' +
+    '<path d="M48 26h6l6 8v8H48z" fill="#fff"/>' +
+    '<path d="M50 28h4l4 5h-8z" fill="#bfe3ff"/>' +
+    '<rect x="8" y="36" width="52" height="3.5" fill="#e53935"/>' +
+    '<rect x="24" y="24" width="4" height="10" fill="#e53935"/>' +
+    '<rect x="21" y="27" width="10" height="4" fill="#e53935"/>' +
+    '<rect x="30" y="17" width="9" height="5" rx="2" fill="#42a5f5"/>' +
+    '<circle cx="34.5" cy="15" r="2.5" fill="#90caf9" opacity=".8"/>' +
+    '<circle cx="20" cy="44" r="5" fill="#263238"/>' +
+    '<circle cx="20" cy="44" r="2" fill="#90a4ae"/>' +
+    '<circle cx="50" cy="44" r="5" fill="#263238"/>' +
+    '<circle cx="50" cy="44" r="2" fill="#90a4ae"/>' +
+    '</svg>';
+
+  /* подменяем логотип на экране входа */
+  if (window.loginView) {
+    var _lv16 = window.loginView;
+    window.loginView = function () {
+      var h = _lv16();
+      return h.replace(/<svg class="msLogo"[\s\S]*?<\/svg>/, AMB);
+    };
+  }
+
+  /* иконка во вкладке браузера */
+  var l = document.createElement('link');
+  l.rel = 'icon';
+  l.type = 'image/svg+xml';
+  l.href = 'icon.svg';
+  document.head.appendChild(l);
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
