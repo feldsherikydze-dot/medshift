@@ -2582,7 +2582,7 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   if (window.__fix17_applied) return;
   window.__fix17_applied = true;
 
-  var BRAND = 'ООО «КрасНЕО»';
+  var BRAND = 'КрасНЕО';
   var BRAND_FULL = 'ООО «КрасНЕО» · первая частная скорая помощь';
   var BRAND_FOOT = 'ООО «КрасНЕО» — первая частная скорая помощь · Красноярск, пр. Металлургов 8 · тел. 203-03-03';
 
@@ -2652,4 +2652,36 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   }
 
   setTimeout(function () { if (window.render) render(); }, 0);
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 18: ФИО в шапке не срезается,
+   при необходимости переносится на 2 строки
+   ========================================= */
+(function () {
+  if (window.__fix18_applied) return;
+  window.__fix18_applied = true;
+
+  var css18 = `
+header{align-items:flex-start}
+.hdr-left{flex:1 1 auto;min-width:0}
+.hdr-user{
+  max-width:52%!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  text-align:right;
+  line-height:1.2;
+  font-size:calc(var(--fs) - 2px)!important;
+  opacity:.95;
+}
+@media(max-width:480px){
+  .hdr-user{max-width:48%!important}
+}
+`;
+
+  var st18 = document.createElement('style');
+  st18.textContent = css18;
+  document.head.appendChild(st18);
+
+  setTimeout(function () { if (window.updHead) updHead(); }, 0);
 })();
