@@ -2582,7 +2582,7 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   if (window.__fix17_applied) return;
   window.__fix17_applied = true;
 
-  var BRAND = 'КрасНЕО';
+  var BRAND = 'ООО «КрасНЕО»';
   var BRAND_FULL = 'ООО «КрасНЕО» · первая частная скорая помощь';
   var BRAND_FOOT = 'ООО «КрасНЕО» — первая частная скорая помощь · Красноярск, пр. Металлургов 8 · тел. 203-03-03';
 
