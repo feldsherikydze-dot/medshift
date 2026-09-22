@@ -1641,3 +1641,152 @@ body.dark .seasonBday{color:#ff8ab0}
     if (window.render) render();
   }, 0);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 8: склад с ключом (Firebase Auth).
+   Синхронизация работает, посторонние снаружи.
+   ========================================= */
+(function () {
+  if (window.__fix8_applied) return;
+  window.__fix8_applied = true;
+
+  var LS_AUTH = 'medshift_fb_auth';
+  var API_KEY = (window.FB_CONF && FB_CONF.apiKey) || '';
+
+  function loadAuth() {
+    try { return JSON.parse(localStorage.getItem(LS_AUTH) || 'null'); } catch (e) { return null; }
+  }
+  function saveAuth(a) {
+    if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a));
+    else localStorage.removeItem(LS_AUTH);
+  }
+
+  function scheduleRefresh(a) {
+    if (!a || !a.exp) return;
+    var delay = Math.max(30000, (a.exp - Date.now()) - 5 * 60000);
+    setTimeout(function () { refreshToken(a.rt); }, delay);
+  }
+
+  function refreshToken(rt) {
+    if (!rt || !API_KEY) return;
+    fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(rt)
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.id_token) {
+        var a = loadAuth() || {};
+        a.rt = j.refresh_token || a.rt;
+        a.id = j.id_token;
+        a.exp = Date.now() + (+j.expires_in || 3600) * 1000;
+        saveAuth(a);
+        window.__fbToken = j.id_token;
+        scheduleRefresh(a);
+      } else {
+        window.__fbToken = null;
+      }
+    }).catch(function () { window.__fbToken = null; });
+  }
+
+  function signIn(email, pass, cbOk, cbErr) {
+    fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pass, returnSecureToken: true })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.idToken) {
+        var a = {
+          email: email,
+          rt: j.refreshToken,
+          id: j.idToken,
+          exp: Date.now() + (+j.expiresIn || 3600) * 1000
+        };
+        saveAuth(a);
+        window.__fbToken = j.idToken;
+        scheduleRefresh(a);
+        cbOk();
+      } else {
+        cbErr((j && j.error && j.error.message) || 'UNKNOWN');
+      }
+    }).catch(function () { cbErr('NETWORK'); });
+  }
+
+  function errText(m) {
+    if (!m) return 'Неизвестная ошибка';
+    if (m.indexOf('INVALID_PASSWORD') >= 0 || m.indexOf('INVALID_LOGIN_CREDENTIALS') >= 0) return 'Неверный email или пароль склада';
+    if (m.indexOf('USER_NOT_FOUND') >= 0) return 'Пользователь не создан в консоли Firebase';
+    if (m.indexOf('TOO_MANY_ATTEMPTS') >= 0) return 'Слишком много попыток — подождите минуту';
+    if (m === 'NETWORK') return 'Нет связи с сервером';
+    return m;
+  }
+
+  window.fbCredDlg = function () {
+    var a = loadAuth();
+    openDlg(
+      '<h3>🔑 Ключ склада</h3>' +
+      '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Один раз на устройство: email и пароль склада, которые создал руководитель в консоли Firebase.</p>' +
+      '<label>Email склада</label><input id="fbEmail" type="email" value="' + esc((a && a.email) || '') + '">' +
+      '<label>Пароль склада</label><input id="fbPass" type="password" placeholder="••••••••">' +
+      '<p><button class="btn" onclick="fbCredDo()">Подключить</button> ' +
+      '<button class="btn sec" onclick="closeDlg()">Позже</button></p>' +
+      (a ? '<p><button class="btn del" onclick="fbCredForget()">Забыть ключ на этом устройстве</button></p>' : '')
+    );
+  };
+
+  window.fbCredDo = function () {
+    var e = document.getElementById('fbEmail').value.trim();
+    var p = document.getElementById('fbPass').value;
+    if (!e || !p) return toast('Введите email и пароль');
+    signIn(e, p, function () {
+      closeDlg();
+      render();
+      toast('🔓 Склад подключён');
+      if (window.syncPush) syncPush();
+      if (window.presBeat) presBeat();
+    }, function (m) {
+      toast('⚠ ' + errText(m));
+    });
+  };
+
+  window.fbCredForget = function () {
+    saveAuth(null);
+    window.__fbToken = null;
+    closeDlg();
+    render();
+    toast('Ключ удалён с устройства');
+  };
+
+  /* каждый запрос к складу теперь идёт с ключом */
+  if (window.fbUrl) {
+    var _fbUrl8 = window.fbUrl;
+    window.fbUrl = function (p) {
+      var u = _fbUrl8(p);
+      if (window.__fbToken) u += (u.indexOf('?') >= 0 ? '&' : '?') + 'auth=' + encodeURIComponent(window.__fbToken);
+      return u;
+    };
+  }
+
+  /* кнопка и статус в разделе Ещё → Синхронизация */
+  if (window.setView) {
+    var _setView8 = window.setView;
+    window.setView = function () {
+      var h = _setView8();
+      h = h.replace(
+        '<button class="btn sec mini" onclick="syncTest()">🔍 Проверить связь</button>',
+        '<button class="btn sec mini" onclick="syncTest()">🔍 Проверить связь</button> <button class="btn sec mini" onclick="fbCredDlg()">🔑 Ключ склада</button>'
+      );
+      h = h.replace(
+        '<br>Отправка: ',
+        '<br>🔑 Ключ склада: ' + (window.__fbToken ? '✅ задан' : '⚠ НЕ задан') + '<br>Отправка: '
+      );
+      return h;
+    };
+  }
+
+  /* при первом запуске без ключа — предложить подключить */
+  setTimeout(function () {
+    if (window.FB_CONF && FB_CONF.databaseURL && !window.__fbToken && !loadAuth()) {
+      fbCredDlg();
+    }
+    if (window.render) render();
+  }, 600);
+})();
