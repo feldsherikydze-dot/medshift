@@ -1266,3 +1266,378 @@ body.dark .refAnalogs span{
 
   setTimeout(function () { if (window.render) render(); }, 0);
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 6: красивый блок сезона на главной:
+   сезон с душой, праздники и дни рождения
+   ========================================= */
+(function () {
+
+  var css6 = `
+.cwSeason{white-space:normal!important;max-width:52%!important;font-size:var(--fs)!important;overflow:visible!important}
+.seasonBox{line-height:1.25}
+.seasonIcons{font-size:calc(var(--fs) + 7px);letter-spacing:3px;animation:seasonFloat 3.2s ease-in-out infinite}
+.seasonName{font-weight:700;font-size:calc(var(--fs) + 2px);color:var(--tx);margin-top:2px}
+.seasonSoul{font-size:calc(var(--fs) - 3px);color:var(--mut);font-style:italic;margin-top:1px}
+.seasonHoliday{margin-top:3px;font-size:calc(var(--fs) - 1px);font-weight:700;color:var(--ac)}
+.seasonBday{margin-top:2px;font-size:calc(var(--fs) - 2px);font-weight:700;color:#d81b60}
+body.dark .seasonBday{color:#ff8ab0}
+@keyframes seasonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media(max-width:480px){.cwSeason{max-width:46%!important}.seasonIcons{font-size:calc(var(--fs) + 5px)}}
+`;
+
+  var st6 = document.createElement('style');
+  st6.textContent = css6;
+  document.head.appendChild(st6);
+
+  var SEASONS = [
+    { name: 'Зима',  icons: '❄️⛄❄️' },
+    { name: 'Весна', icons: '🌸🐦🌷' },
+    { name: 'Лето',  icons: '☀️🌻🍓' },
+    { name: 'Осень', icons: '🍂🍁🍂' }
+  ];
+
+  var MONTH_SOUL = [
+    'серебряный снег и тепло дома',
+    'метели дорисовывают зиму',
+    'капель и первые проталины',
+    'скворцы вернулись, лёд тронулся',
+    'черёмуха, тёплые вечера и салюты',
+    'начало долгих светлых сумерек',
+    'макушка лета, запах трав и гроз',
+    'тёплые ночи и звездопад',
+    'золото листьев и бабье лето',
+    'багрянец, листопад и зонты',
+    'последние листья и первый лёд',
+    'мандарины, гирлянды и ожидание чуда'
+  ];
+
+  var HOLS = {
+    '01-01': '🎄 Новый год',
+    '01-07': '⭐ Рождество',
+    '02-14': '💘 День влюблённых',
+    '02-23': '🎖 23 февраля',
+    '03-08': '💐 8 Марта',
+    '04-01': '🤡 День смеха',
+    '05-01': '🌷 Первомай',
+    '05-09': '🎉 День Победы',
+    '06-01': '🧸 День защиты детей',
+    '06-12': '🇷🇺 День России',
+    '09-01': '🎓 День знаний',
+    '11-04': '🤝 Народное единство',
+    '12-31': '🎆 Канун Нового года'
+  };
+
+  window.seasonHtml = function () {
+    var d = new Date();
+    var m = d.getMonth();
+    var si = (m === 11 || m <= 1) ? 0 : (m <= 4 ? 1 : (m <= 7 ? 2 : 3));
+    var s = SEASONS[si];
+
+    var key = ('0' + (m + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    var hol = HOLS[key];
+
+    /* третье воскресенье июня — День медицинского работника */
+    if (m === 5 && d.getDay() === 0 && d.getDate() >= 15 && d.getDate() <= 21) {
+      hol = '💚 День медицинского работника';
+    }
+
+    var bd = (window.bdayToday ? bdayToday() : []);
+
+    var h = '<div class="seasonBox">';
+    h += '<div class="seasonIcons">' + s.icons + '</div>';
+    h += '<div class="seasonName">' + s.name + '</div>';
+    h += '<div class="seasonSoul">' + MONTH_SOUL[m] + '</div>';
+    if (hol) h += '<div class="seasonHoliday">' + hol + '</div>';
+    if (bd.length) h += '<div class="seasonBday">🎉 День рождения: ' + bd.map(esc).join(', ') + '!</div>';
+    h += '</div>';
+    return h;
+  };
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 7:
+   - пилюлька между Чат и Ещё
+   - вкладка «Смены» с CSV импортом
+   - импорт текста в журнал смены и график месяца
+   ========================================= */
+(function () {
+  if (window.__fix7_applied) return;
+  window.__fix7_applied = true;
+
+  var css7 = `
+.schedCard{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px}
+.schedCard .scDate{font-weight:700;color:var(--ac);font-size:calc(var(--fs) + 1px)}
+.schedCard .scLine{font-size:calc(var(--fs) - 1px);margin-top:2px}
+.schedCard .scNote{color:var(--mut);font-style:italic;margin-top:4px;font-size:calc(var(--fs) - 2px)}
+.schedCard .scActions{margin-top:6px;display:flex;gap:6px}
+.schedTabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.schedTabs .btn{margin:0}
+.shiftEmpty{color:var(--mut);padding:8px;text-align:center;font-size:calc(var(--fs) - 1px)}
+`;
+  var st7 = document.createElement('style');
+  st7.textContent = css7;
+  document.head.appendChild(st7);
+
+  if (window.DB && !DB.shiftGrid) DB.shiftGrid = [];
+  if (window.DB && DB.sched) {
+    if (!Array.isArray(DB.sched.days)) DB.sched.days = [];
+    if (!Array.isArray(DB.sched.months)) DB.sched.months = [];
+  }
+
+  /* === 1. ПИЛЮЛЬКА МЕЖДУ ЧАТ И ЕЩЁ === */
+  if (window.renderNav) {
+    var _rn7 = window.renderNav;
+    window.renderNav = function () {
+      _rn7();
+      var navEl = document.getElementById('nav');
+      if (!navEl) return;
+      var btns = Array.prototype.slice.call(navEl.children);
+      var pill = null, eshe = null;
+      btns.forEach(function (b) {
+        var t = (b.textContent || '').trim();
+        if (t === '💊') pill = b;
+        if (t === 'Ещё') eshe = b;
+      });
+      if (pill && eshe && pill.nextElementSibling !== eshe) {
+        navEl.insertBefore(pill, eshe);
+      }
+    };
+  }
+
+  /* === 2. ВКЛАДКА «СМЕНЫ» (таблица) === */
+  window.shiftGridView = function () {
+    if (!DB.shiftGrid) DB.shiftGrid = [];
+
+    var h = '<div class="card">';
+    h += '<b>🗓 График смен</b>';
+    h += '<p style="margin-top:6px">';
+    h += '<button class="btn mini" onclick="openShiftDlg(-1)">+ Добавить смену</button> ';
+    h += '<label class="btn sec mini" style="display:inline-block">📥 Импорт CSV/Excel<input type="file" hidden accept=".csv,.txt,text/csv" onchange="importShiftGrid(this)"></label>';
+    h += ' <button class="btn del mini" onclick="clearShiftGrid()">🗑 Очистить</button>';
+    h += '</p>';
+    h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Формат CSV: Дата;Бригада;Машина;Сотрудники;Примечание</p>';
+
+    if (!DB.shiftGrid.length) {
+      h += '<p class="shiftEmpty">Смен пока нет</p></div>';
+      return h;
+    }
+
+    var sorted = DB.shiftGrid.slice().sort(function (a, b) {
+      return (a.date || '').localeCompare(b.date || '');
+    });
+
+    h += '<table>';
+    h += '<thead><tr><th>Дата</th><th>Бригада</th><th>Машина</th><th>Сотрудники</th><th>Прим.</th><th></th></tr></thead>';
+    h += '<tbody>';
+
+    sorted.forEach(function (s) {
+      var realIdx = DB.shiftGrid.indexOf(s);
+      h += '<tr>';
+      h += '<td>' + esc(s.date || '') + '</td>';
+      h += '<td>' + esc(s.brigade || '') + '</td>';
+      h += '<td>' + esc(s.car || '') + '</td>';
+      h += '<td>' + esc(s.staff || '') + '</td>';
+      h += '<td>' + esc(s.note || '') + '</td>';
+      h += '<td style="white-space:nowrap">';
+      h += '<button class="btn sec mini" onclick="openShiftDlg(' + realIdx + ')">✏️</button> ';
+      h += '<button class="btn del mini" onclick="delShiftRow(' + realIdx + ')">🗑</button>';
+      h += '</td></tr>';
+    });
+
+    h += '</tbody></table></div>';
+    return h;
+  };
+
+  window.openShiftDlg = function (idx) {
+    if (!DB.shiftGrid) DB.shiftGrid = [];
+    var s = idx < 0 ? {} : DB.shiftGrid[idx];
+    openDlg(
+      '<h3>Смена</h3>' +
+      '<label>Дата</label><input id="shDate" type="date" value="' + esc(s.date || '') + '">' +
+      '<label>Бригада</label><input id="shBrig" value="' + esc(s.brigade || '') + '">' +
+      '<label>Машина</label><input id="shCar" value="' + esc(s.car || '') + '">' +
+      '<label>Сотрудники</label><input id="shStaff" value="' + esc(s.staff || '') + '">' +
+      '<label>Примечание</label><input id="shNote" value="' + esc(s.note || '') + '">' +
+      '<p><button class="btn" onclick="saveShiftDlg(' + idx + ')">Сохранить</button> ' +
+      '<button class="btn sec" onclick="closeDlg()">Закрыть</button></p>'
+    );
+  };
+
+  window.saveShiftDlg = function (idx) {
+    if (!DB.shiftGrid) DB.shiftGrid = [];
+    var o = {
+      date: document.getElementById('shDate').value,
+      brigade: document.getElementById('shBrig').value.trim(),
+      car: document.getElementById('shCar').value.trim(),
+      staff: document.getElementById('shStaff').value.trim(),
+      note: document.getElementById('shNote').value.trim()
+    };
+    if (!o.date) return toast('Укажите дату смены');
+    if (idx < 0) DB.shiftGrid.push(o);
+    else DB.shiftGrid[idx] = o;
+    save(); closeDlg(); render();
+    toast('Смена сохранена');
+  };
+
+  window.delShiftRow = function (idx) {
+    ask('Удалить строку графика?', function () {
+      DB.shiftGrid.splice(idx, 1);
+      save(); render();
+      toast('Строка удалена');
+    });
+  };
+
+  window.clearShiftGrid = function () {
+    if (!DB.shiftGrid || !DB.shiftGrid.length) return toast('Уже пусто');
+    ask('Удалить все записи графика смен?', function () {
+      DB.shiftGrid = [];
+      save(); render();
+      toast('График очищен');
+    });
+  };
+
+  window.importShiftGrid = function (inp) {
+    var f = inp.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      if (!DB.shiftGrid) DB.shiftGrid = [];
+      var lines = String(r.result).split(/\r?\n/);
+      var added = 0;
+      lines.forEach(function (line, ix) {
+        line = line.trim();
+        if (!line) return;
+        var parts = line.split(/[;,\t]/).map(function (x) {
+          return x.trim().replace(/^"|"$/g, '');
+        });
+        if (ix === 0 && /дата|date/i.test(parts[0])) return;
+        DB.shiftGrid.push({
+          date: parts[0] || '',
+          brigade: parts[1] || '',
+          car: parts[2] || '',
+          staff: parts[3] || '',
+          note: parts[4] || ''
+        });
+        added++;
+      });
+      save(); render();
+      toast('Импортировано строк: ' + added);
+    };
+    r.readAsText(f);
+  };
+
+  /* === 3. ИМПОРТ ТЕКСТА В ЖУРНАЛ СМЕНЫ И ГРАФИК МЕСЯЦА === */
+  window.importSchedText = function (kind, inp) {
+    var f = inp.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      if (!DB.sched) DB.sched = { days: [], months: [] };
+      if (!Array.isArray(DB.sched[kind])) DB.sched[kind] = [];
+
+      var text = String(r.result).trim();
+      if (!text) return toast('Файл пустой');
+
+      var lines = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+      var month = todayStr().slice(0, 7);
+
+      lines.forEach(function (line) {
+        DB.sched[kind].push({
+          id: uid(),
+          ts: Date.now(),
+          month: month,
+          text: line
+        });
+      });
+
+      save(); render();
+      toast('Добавлено записей: ' + lines.length);
+    };
+    r.readAsText(f);
+  };
+
+  window.delSchedText = function (kind, id) {
+    ask('Удалить запись?', function () {
+      DB.sched[kind] = DB.sched[kind].filter(function (x) { return x.id !== id; });
+      save(); render();
+      toast('Запись удалена');
+    });
+  };
+
+  /* === 4. ПЕРЕХВАТЫВАЕМ schedView === */
+  if (window.schedView) {
+    window.schedView = function () {
+      purgeSched();
+
+      var h = '<div class="schedTabs">';
+      h += '<button class="btn ' + (schedSub === 'days' ? '' : 'sec') + '" onclick="schedSub=\'days\';render()">📷 Журнал смены</button>';
+      h += '<button class="btn ' + (schedSub === 'months' ? '' : 'sec') + '" onclick="schedSub=\'months\';render()">📅 График месяца</button>';
+      h += '<button class="btn ' + (schedSub === 'grid' ? '' : 'sec') + '" onclick="schedSub=\'grid\';render()">🗓 Смены</button>';
+      h += '</div>';
+
+      if (schedSub === 'grid') {
+        return h + shiftGridView();
+      }
+
+      /* --- Журнал смены (days) --- */
+      if (schedSub === 'days') {
+        h += '<p>';
+        h += '<label class="btn sec" style="display:inline-block">📷 Фото<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'days\')"></label> ';
+        h += '<label class="btn sec" style="display:inline-block">📥 Импорт текстом<input type="file" hidden accept=".txt,.csv,text/plain" onchange="importSchedText(\'days\',this)"></label>';
+        h += '</p>';
+        h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Записи хранятся 2 дня и удаляются автоматически.</p>';
+
+        var items = DB.sched.days.slice().reverse();
+        if (!items.length) {
+          h += '<p class="shiftEmpty">Записей пока нет</p>';
+        } else {
+          items.forEach(function (p) {
+            if (p.img) {
+              h += '<div class="schedCard"><img src="' + p.img + '" style="width:100%;max-width:200px;border-radius:8px;cursor:pointer" onclick="openPhoto(\'days\',' + p.id + ')">';
+              h += '<div class="scActions"><button class="btn del mini" onclick="delPhoto(\'days\',' + p.id + ')">🗑</button></div></div>';
+            } else if (p.text) {
+              h += '<div class="schedCard">';
+              h += '<div class="scDate">' + new Date(p.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
+              h += '<div class="scLine">' + esc(p.text) + '</div>';
+              h += '<div class="scActions"><button class="btn del mini" onclick="delSchedText(\'days\',' + p.id + ')">🗑</button></div>';
+              h += '</div>';
+            }
+          });
+        }
+        return h;
+      }
+
+      /* --- График месяца (months) --- */
+      h += '<p>';
+      h += '<label class="btn sec" style="display:inline-block">📷 Фото<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'months\')"></label> ';
+      h += '<label class="btn sec" style="display:inline-block">📥 Импорт текстом<input type="file" hidden accept=".txt,.csv,text/plain" onchange="importSchedText(\'months\',this)"></label>';
+      h += '</p>';
+      h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Записи удаляются автоматически на 3-й день следующего месяца.</p>';
+
+      var mItems = DB.sched.months.slice().reverse();
+      if (!mItems.length) {
+        h += '<p class="shiftEmpty">Записей пока нет</p>';
+      } else {
+        mItems.forEach(function (p) {
+          if (p.img) {
+            h += '<div class="schedCard"><img src="' + p.img + '" style="width:100%;max-width:200px;border-radius:8px;cursor:pointer" onclick="openPhoto(\'months\',' + p.id + ')">';
+            h += '<div class="scActions"><button class="btn del mini" onclick="delPhoto(\'months\',' + p.id + ')">🗑</button></div></div>';
+          } else if (p.text) {
+            h += '<div class="schedCard">';
+            h += '<div class="scDate">' + new Date(p.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div>';
+            h += '<div class="scLine">' + esc(p.text) + '</div>';
+            h += '<div class="scActions"><button class="btn del mini" onclick="delSchedText(\'months\',' + p.id + ')">🗑</button></div>';
+            h += '</div>';
+          }
+        });
+      }
+      return h;
+    };
+  }
+
+  setTimeout(function () {
+    if (window.renderNav) renderNav();
+    if (window.render) render();
+  }, 0);
+})();
