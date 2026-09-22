@@ -96,8 +96,8 @@ body.dark .refAnalogs span{
 
   function fixText(s) {
     return String(s)
-      .split('НД/НС').join('НО/СЛ')
-      .split('наркотических средств и психотропных веществ').join('НО/СЛ');
+      .split('НО/СЛ').join('НС/ЛС')
+      .split('наркотических средств и психотропных веществ').join('НС/ЛС');
   }
 
   if (window.DB && !DB.shiftGrid) {
