@@ -1223,3 +1223,46 @@ body.dark .refAnalogs span{
   }
 
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 3: список отчётов карточками,
+   кнопки не обрезаются на ПК
+   ========================================= */
+(function () {
+  window.reportsView = function () {
+    var h = '<h3>📨 Отчёты</h3>';
+    h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Просмотр доступен всем. Удалять и менять статус может только руководитель или админ.</p>';
+
+    var reps = (DB.reports || []).slice().reverse();
+
+    if (!reps.length) {
+      return h + '<p>Отчётов пока нет</p>';
+    }
+
+    reps.forEach(function (r) {
+      h += '<div class="card" style="display:flex;gap:8px;align-items:center">';
+
+      h += '<div style="flex:1 1 auto;min-width:0;cursor:pointer" onclick="viewReport(' + r.id + ')">';
+      h += reportBadge(r) + ' <b>' + esc(r.car || '') + '</b> · ' + esc(r.user || '');
+      h += '<br><small>' + new Date(r.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+      if (r.remarks) h += ' · ' + esc(r.remarks);
+      if (r.potentBag) h += ' · ⚕ ' + esc(r.potentBag);
+      if (r.resolved) h += ' · ✅ исправлен';
+
+      h += '</small></div>';
+
+      h += '<div style="flex:0 0 auto;white-space:nowrap">';
+      h += '<button class="btn sec mini" onclick="viewReport(' + r.id + ')">👁</button>';
+      if (isBoss()) {
+        h += ' <button class="btn del" onclick="delReport(' + r.id + ')">🗑</button>';
+      }
+      h += '</div>';
+
+      h += '</div>';
+    });
+
+    return h;
+  };
+
+  setTimeout(function () { if (window.render) render(); }, 0);
+})();
