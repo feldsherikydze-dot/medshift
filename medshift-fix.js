@@ -2760,28 +2760,8 @@ header{align-items:flex-start}
     return Promise.resolve();
   };
 
-  /* === 3. ЗАЩИТА ОТ ДУБЛИРОВАНИЯ ИКОНОК КЛЮЧА === */
-  var _originalRender = window.render;
-  if (_originalRender) {
-    window.render = function () {
-      var result = _originalRender.apply(this, arguments);
-      
-      // Убираем дублирующиеся иконки ключа после рендера
-      setTimeout(function () {
-        var containers = document.querySelectorAll('.user-card, .staff-item, [class*="user"]');
-        containers.forEach(function (container) {
-          var keys = container.querySelectorAll('🔑, .key-icon, [class*="key"]');
-          if (keys.length > 1) {
-            for (var i = 1; i < keys.length; i++) {
-              keys[i].remove();
-            }
-          }
-        });
-      }, 100);
-      
-      return result;
-    };
-  }
+  // Рендер-обёртка удалена: '🔑' — невалидный CSS-селектор, давал
+  // ошибку в консоли на каждом рендере. Функционально не нужна.
 
   console.log('[Fix26] ✅ Комплексный фикс активирован');
 })();
@@ -2818,13 +2798,12 @@ header{align-items:flex-start}
       var pin = document.getElementById('delPin').value;
       if (pin !== u.pin) return toast('❌ Неверный PIN');
       ask('Точно удалить аккаунт «' + esc(u.name) + '»? Это необратимо.', function () {
+        // 🔴 Метка «удалён» ОБЯЗАТЕЛЬНА: иначе mergeUsers при следующей
+        // синхронизации вернёт юзера со склада обратно на всех устройствах.
+        DB.tomb = DB.tomb || [];
+        if (DB.tomb.indexOf(u.id) < 0) DB.tomb.push(u.id);
         DB.users = DB.users.filter(function (x) { return x.id !== u.id; });
-        // ✅ ПРАВИЛЬНЫЙ ПУТЬ: state/date/users
-        if (window.restDelete) {
-          restDelete('state/date/users/' + u.id).catch(function (e) {
-            console.warn('[Fix26] Не удалось удалить с сервера:', e);
-          });
-        }
+        // Удаление распространится через tomb + save() → syncPut объединит и зальёт state.
         DB.session = null;
         localStorage.removeItem('medshift_my');
         localStorage.removeItem('medshift_rem');
@@ -2852,14 +2831,15 @@ header{align-items:flex-start}
       if (!u) return;
       var pin = document.getElementById('resetPin').value;
       if (pin !== u.pin) return toast('❌ Неверный PIN');
+      // 🔴 Ключ склада (medshift_fb_auth) СОХРАНЯЕМ — без него устройство
+      // после сброса не стянет данные обратно со склада.
+      localStorage.removeItem(window.LS || 'medshift_v3'); // локальный слепок БД
       localStorage.removeItem('medshift_my');
       localStorage.removeItem('medshift_rem');
       localStorage.removeItem('medshift_rem_ts');
-      localStorage.removeItem('medshift_fb_auth');
-      if (window.DB) {
-        DB.session = null; DB.users = []; DB.bags = [];
-        DB.cars = []; DB.reports = []; DB.chat = [];
-      }
+      localStorage.removeItem('medshift_tab');
+      try { localStorage.removeItem('medshift_bio'); } catch (e) {}
+      if (window.DB) { DB.session = null; }
       closeDlg();
       toast('♻️ Устройство сброшено. База на сервере сохранена.');
       setTimeout(function () { location.reload(); }, 800);
@@ -2920,4 +2900,38 @@ header{align-items:flex-start}
   setTimeout(function () { clearInterval(checkInterval); }, 10000);
 
   console.log('[Fix26-Final] ✅ Комплексный фикс активирован');
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 27: ЗАЩИТА ОТ СПАМА ОШИБОК ПОГОДЫ
+   ========================================= */
+(function () {
+  if (window.__fix27_applied) return;
+  window.__fix27_applied = true;
+
+  var _loadWeather = window.loadWeather;
+  if (_loadWeather) {
+    window.loadWeather = function () {
+      try {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 5000);
+
+        fetch('https://api.open-meteo.com/v1/forecast?latitude=56.03742&longitude=92.93136&current=temperature_2m,weather_code', { signal: controller.signal })
+          .then(function (r) { clearTimeout(timeoutId); return r.json(); })
+          .then(function (d) {
+            if (window.DB && d.current) {
+              DB.weather = d.current;
+              save();
+              if (window.render) render();
+            }
+          })
+          .catch(function () {
+            clearTimeout(timeoutId);
+            // Молча игнорируем ошибку — никакого спама в консоли
+          });
+      } catch (e) {
+        // Fallback для старых браузеров
+      }
+    };
+    console.log('[Fix27] ✅ Защита от спама ошибок погоды активирована');
+  }
 })();
