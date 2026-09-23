@@ -8,10 +8,16 @@
 <meta name="theme-color" content="#0b5394">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://geocoding-api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://medshift-8daea-default-rtdb.europe-west1.firebasedatabase.app">
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <style>
 :root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#ddd;--fs:14px;--vh:1vh;--kb:0px;--sab:env(safe-area-inset-bottom,0px)}
 body.dark{--bg:#12161c;--card:#1c232c;--tx:#e8e8e8;--mut:#9aa5b1;--bd:#2a3340}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:system-ui;margin:0;background:var(--bg);color:var(--tx);overflow-x:hidden;-webkit-text-size-adjust:100%;font-size:var(--fs)}
 header{background:var(--ac);color:#fff;padding:8px 12px;font-size:calc(var(--fs) + 2px);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .hdr-left{display:flex;align-items:center;gap:8px}
@@ -32,6 +38,7 @@ tr.exp{background:#ffe3e3}tr.soon{background:#ffedd9}
 tr.highlight{animation:hlPulse 1.5s ease-in-out 3}
 @keyframes hlPulse{0%,100%{background:transparent}50%{background:#fff3c2}}
 .btn{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:var(--fs);margin:3px 3px 3px 0;white-space:nowrap;max-width:100%}
+button{touch-action:manipulation}.btn:active{transform:scale(.96)}
 .btn.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
 .btn.del{background:transparent;color:#c62828;border:1px solid #c62828;padding:4px 8px;margin:0}
 .btn.mini{padding:4px 8px;margin:0;font-size:calc(var(--fs) - 2px)}
@@ -2463,7 +2470,7 @@ body.dark .seasonBday{color:#ff8ab0}
           exp: Date.now() + (+j.expiresIn || 3600) * 1000
         };
         saveAuth(a);
-        window.__fbToken = j.id_token;
+        window.__fbToken = j.idToken;
         schedule(a);
         ok();
       } else {
