@@ -3998,7 +3998,7 @@ med: {
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">';
     h += '<button class="btn sec mini" style="' + (cur === '' ? 'border-width:2px;' : '') + '" onclick="setBg34(\'\')">✕ Без фона</button>';
     for (var k in PRESETS) {
-      h += '<button class="btn mini" style="background:' + PRESETS[k].css + ';color:' + PRESETS[k].txt + ';' +
+      h += '<button class="btn mini" style="background:' + PRESETS[k].css.split('"').join('&quot;') + ';color:' + PRESETS[k].txt + ';' +
            (cur === k ? 'outline:2px solid var(--ac);' : '') + '" onclick="setBg34(\'' + k + '\')">' + PRESETS[k].name + '</button>';
     }
     h += '<label class="btn sec mini" style="display:inline-block;margin:3px 3px 3px 0">📷 Своя картинка<input type="file" hidden accept="image/*" onchange="setBgCustom34(this)"></label>';
