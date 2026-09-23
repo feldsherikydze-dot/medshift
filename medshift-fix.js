@@ -2686,6 +2686,106 @@ header{align-items:flex-start}
   setTimeout(function () { if (window.updHead) updHead(); }, 0);
 })();
 /* =========================================
+   ДОПОЛНЕНИЕ 26: КОМПЛЕКСНЫЙ ФИКС
+   - Исправление пути state/date/users
+   - Безопасный syncPush (фикс ошибки 2704)
+   - Защита от дублирования иконок ключа
+   ========================================= */
+(function () {
+  if (window.__fix26_applied) return;
+  window.__fix26_applied = true;
+
+  /* === 1. ПЕРЕХВАТ ПУТЕЙ (state/date/users) === */
+  var _restGet = window.restGet;
+  if (_restGet) {
+    window.restGet = function (path) {
+      if (path === 'state/users' || path === 'users') {
+        console.log('[Fix26] 🔄 GET → state/date/users');
+        return _restGet('state/date/users');
+      }
+      return _restGet(path);
+    };
+  }
+
+  var _restPut = window.restPut;
+  if (_restPut) {
+    window.restPut = function (path, data) {
+      if (path === 'state/users' || path === 'users') {
+        console.log('[Fix26] 🔄 PUT → state/date/users');
+        return _restPut('state/date/users', data);
+      }
+      return _restPut(path, data);
+    };
+  }
+
+  var _restDelete = window.restDelete;
+  if (_restDelete) {
+    window.restDelete = function (path) {
+      if (path && (path.startsWith('state/users/') || path.startsWith('users/'))) {
+        var uid = path.split('/').pop();
+        console.log('[Fix26] 🔄 DELETE → state/date/users/' + uid);
+        return _restDelete('state/date/users/' + uid);
+      }
+      return _restDelete(path);
+    };
+  }
+
+  /* === 2. БЕЗОПАСНЫЙ SYNCPUSH (ФИКС ОШИБКИ 2704) === */
+  var _originalSyncPush = window.syncPush;
+  window.syncPush = function () {
+    // Проверка токена
+    var token = window.__fbToken || localStorage.getItem('medshift_fb_auth');
+    if (!token) {
+      console.warn('[Fix26] ⚠ Токен отсутствует, пропускаем syncPush');
+      return Promise.resolve();
+    }
+
+    // Если оригинальная функция не вернула Promise — оборачиваем
+    if (_originalSyncPush) {
+      try {
+        var result = _originalSyncPush();
+        if (result && typeof result.then === 'function') {
+          return result.catch(function (e) {
+            console.error('[Fix26] ❌ syncPush ошибка:', e);
+            return Promise.resolve();
+          });
+        }
+      } catch (e) {
+        console.error('[Fix26] ❌ syncPush исключение:', e);
+      }
+    }
+
+    // Fallback: возвращаем пустой Promise чтобы не ломать .then()
+    console.warn('[Fix26] syncPush не найден или не возвращает Promise');
+    return Promise.resolve();
+  };
+
+  /* === 3. ЗАЩИТА ОТ ДУБЛИРОВАНИЯ ИКОНОК КЛЮЧА === */
+  var _originalRender = window.render;
+  if (_originalRender) {
+    window.render = function () {
+      var result = _originalRender.apply(this, arguments);
+      
+      // Убираем дублирующиеся иконки ключа после рендера
+      setTimeout(function () {
+        var containers = document.querySelectorAll('.user-card, .staff-item, [class*="user"]');
+        containers.forEach(function (container) {
+          var keys = container.querySelectorAll('🔑, .key-icon, [class*="key"]');
+          if (keys.length > 1) {
+            for (var i = 1; i < keys.length; i++) {
+              keys[i].remove();
+            }
+          }
+        });
+      }, 100);
+      
+      return result;
+    };
+  }
+
+  console.log('[Fix26] ✅ Комплексный фикс активирован');
+})();
+/* =========================================
    ДОПОЛНЕНИЕ 26 v2: КОМПЛЕКСНЫЙ ФИКС
    - Кнопки Удалить/Сброс (с PIN)
    - Безопасный syncPush (гарантированный перехват)
@@ -2799,4 +2899,140 @@ header{align-items:flex-start}
   setTimeout(function () { clearInterval(checkInterval); }, 10000);
 
   console.log('[Fix26] ✅ Комплексный фикс v2 активирован');
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 26 FINAL: КОМПЛЕКСНЫЙ ФИКС
+   - Кнопки Удалить/Сброс (с PIN, правильный путь)
+   - Безопасный syncPush (гарантированный перехват)
+   - Путь state/date/users
+   ========================================= */
+(function () {
+  if (window.__fix26_final_applied) return;
+  window.__fix26_final_applied = true;
+
+  /* === 1. ФУНКЦИИ УПРАВЛЕНИЯ АККАУНТОМ === */
+  function registerAccountButtons() {
+    window.deleteMyAccountDlg = function () {
+      var u = window.me ? me() : null;
+      if (!u) return toast('Вы не вошли в систему');
+      openDlg(
+        '<h3>🗑 Удалить мой аккаунт</h3>' +
+        '<p style="color:var(--mut);font-size:calc(var(--fs) - 2px)">' +
+        'Аккаунт «<b>' + esc(u.name) + '</b>» будет удалён навсегда.<br>' +
+        'Ваши отчёты останутся в истории, но доступ будет закрыт.</p>' +
+        '<label>Введите PIN для подтверждения</label>' +
+        '<input id="delPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autofocus>' +
+        '<p style="margin-top:10px"><button class="btn del" onclick="doDeleteMyAccount()">Удалить навсегда</button> ' +
+        '<button class="btn sec" onclick="closeDlg()">Отмена</button></p>'
+      );
+    };
+
+    window.doDeleteMyAccount = function () {
+      var u = window.me ? me() : null;
+      if (!u) return;
+      var pin = document.getElementById('delPin').value;
+      if (pin !== u.pin) return toast('❌ Неверный PIN');
+      ask('Точно удалить аккаунт «' + esc(u.name) + '»? Это необратимо.', function () {
+        DB.users = DB.users.filter(function (x) { return x.id !== u.id; });
+        // ✅ ПРАВИЛЬНЫЙ ПУТЬ: state/date/users
+        if (window.restDelete) {
+          restDelete('state/date/users/' + u.id).catch(function (e) {
+            console.warn('[Fix26] Не удалось удалить с сервера:', e);
+          });
+        }
+        DB.session = null;
+        localStorage.removeItem('medshift_my');
+        localStorage.removeItem('medshift_rem');
+        save(); closeDlg(); go('login'); toast('🗑 Аккаунт удалён');
+      });
+    };
+
+    window.safeResetDlg = function () {
+      var u = window.me ? me() : null;
+      if (!u) return toast('Сначала войдите в систему');
+      openDlg(
+        '<h3>♻️ Сброс устройства</h3>' +
+        '<p style="color:var(--mut);font-size:calc(var(--fs) - 2px)">' +
+        'Очистит кэш и настройки <b>только на этом устройстве</b>.<br>' +
+        'База на сервере (сотрудники, отчёты) <b>НЕ удалится</b>.</p>' +
+        '<label>Введите PIN для подтверждения</label>' +
+        '<input id="resetPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autofocus>' +
+        '<p style="margin-top:10px"><button class="btn del" onclick="doSafeReset()">Сбросить</button> ' +
+        '<button class="btn sec" onclick="closeDlg()">Отмена</button></p>'
+      );
+    };
+
+    window.doSafeReset = function () {
+      var u = window.me ? me() : null;
+      if (!u) return;
+      var pin = document.getElementById('resetPin').value;
+      if (pin !== u.pin) return toast('❌ Неверный PIN');
+      localStorage.removeItem('medshift_my');
+      localStorage.removeItem('medshift_rem');
+      localStorage.removeItem('medshift_rem_ts');
+      localStorage.removeItem('medshift_fb_auth');
+      if (window.DB) {
+        DB.session = null; DB.users = []; DB.bags = [];
+        DB.cars = []; DB.reports = []; DB.chat = [];
+      }
+      closeDlg();
+      toast('♻️ Устройство сброшено. База на сервере сохранена.');
+      setTimeout(function () { location.reload(); }, 800);
+    };
+
+    console.log('[Fix26-Final] ✅ Кнопки управления аккаунтом зарегистрированы');
+  }
+
+  // Регистрируем сразу + повторно через 1 сек (защита от перезаписи)
+  registerAccountButtons();
+  setTimeout(registerAccountButtons, 1000);
+
+  /* === 2. ПЕРЕХВАТ ПУТЕЙ (state/date/users) === */
+  var _restGet = window.restGet;
+  if (_restGet) {
+    window.restGet = function (path) {
+      if (path === 'state/users' || path === 'users') return _restGet('state/date/users');
+      return _restGet(path);
+    };
+  }
+  var _restPut = window.restPut;
+  if (_restPut) {
+    window.restPut = function (path, data) {
+      if (path === 'state/users' || path === 'users') return _restPut('state/date/users', data);
+      return _restPut(path, data);
+    };
+  }
+  var _restDelete = window.restDelete;
+  if (_restDelete) {
+    window.restDelete = function (path) {
+      if (path && (path.startsWith('state/users/') || path.startsWith('users/'))) {
+        return _restDelete('state/date/users/' + path.split('/').pop());
+      }
+      return _restDelete(path);
+    };
+  }
+
+  /* === 3. БЕЗОПАСНЫЙ SYNCPUSH (ГАРАНТИРОВАННЫЙ ПЕРЕХВАТ) === */
+  var checkInterval = setInterval(function () {
+    if (window.syncPush && !window.__syncPushWrapped) {
+      window.__syncPushWrapped = true;
+      var _originalSyncPush = window.syncPush;
+      window.syncPush = function () {
+        var token = window.__fbToken || localStorage.getItem('medshift_fb_auth');
+        if (!token) { console.warn('[Fix26] ⚠ Нет токена'); return Promise.resolve(); }
+        try {
+          var result = _originalSyncPush();
+          if (result && typeof result.then === 'function') {
+            return result.catch(function (e) { console.error('[Fix26] ❌ syncPush:', e); return Promise.resolve(); });
+          }
+        } catch (e) { console.error('[Fix26] ❌ syncPush exception:', e); }
+        return Promise.resolve();
+      };
+      console.log('[Fix26-Final] ✅ syncPush безопасно обёрнут');
+      clearInterval(checkInterval);
+    }
+  }, 500);
+  setTimeout(function () { clearInterval(checkInterval); }, 10000);
+
+  console.log('[Fix26-Final] ✅ Комплексный фикс активирован');
 })();
