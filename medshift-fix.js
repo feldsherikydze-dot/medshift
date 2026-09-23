@@ -2717,30 +2717,42 @@ header{align-items:flex-start}
 /* =========================================
    ДОПОЛНЕНИЕ 22: БЕЗОПАСНЫЙ СБРОС +
    УДАЛЕНИЕ АККАУНТА (ЗАЩИТА БАЗЫ FIREBASE)
+   Вертикальные кнопки, PIN для обоих действий
    ========================================= */
 (function () {
   if (window.__fix22_applied) return;
   window.__fix22_applied = true;
 
-  /* === 1. БЕЗОПАСНЫЙ СБРОС (не трогает Firebase) === */
+  /* === 1. БЕЗОПАСНЫЙ СБРОС (с PIN, не трогает Firebase) === */
   window.safeResetDlg = function () {
+    var u = window.me ? me() : null;
+    if (!u) return toast('Сначала войдите в систему');
+
     openDlg(
-      '<h3>♻️ Сброс приложения</h3>' +
+      '<h3>♻️ Сброс устройства</h3>' +
       '<p style="color:var(--mut);font-size:calc(var(--fs) - 2px)">' +
-      'Это действие очистит кэш и настройки <b>только на этом устройстве</b>.<br>' +
-      'База данных на сервере (сотрудники, отчёты, сумки) <b>НЕ будет удалена</b>.</p>' +
-      '<p><button class="btn del" onclick="doSafeReset()">Сбросить устройство</button> ' +
+      'Очистит кэш и настройки <b>только на этом устройстве</b>.<br>' +
+      'База на сервере (сотрудники, отчёты) <b>НЕ удалится</b>.</p>' +
+      '<label>Введите PIN для подтверждения</label>' +
+      '<input id="resetPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autofocus>' +
+      '<p style="margin-top:10px"><button class="btn del" onclick="doSafeReset()">Сбросить</button> ' +
       '<button class="btn sec" onclick="closeDlg()">Отмена</button></p>'
     );
   };
 
   window.doSafeReset = function () {
+    var u = window.me ? me() : null;
+    if (!u) return;
+
+    var pin = document.getElementById('resetPin').value;
+    if (pin !== u.pin) return toast('❌ Неверный PIN');
+
     // Очищаем ТОЛЬКО локальные данные
     localStorage.removeItem('medshift_my');
     localStorage.removeItem('medshift_rem');
     localStorage.removeItem('medshift_rem_ts');
-    localStorage.removeItem('medshift_fb_auth'); // ключ склада тоже сбрасываем
-    
+    localStorage.removeItem('medshift_fb_auth');
+
     // Очищаем оперативную память приложения
     if (window.DB) {
       DB.session = null;
@@ -2750,12 +2762,10 @@ header{align-items:flex-start}
       DB.reports = [];
       DB.chat = [];
     }
-    
+
     closeDlg();
     toast('♻️ Устройство сброшено. База на сервере сохранена.');
-    
-    // Перезагружаем страницу для чистого входа
-    setTimeout(function() { location.reload(); }, 800);
+    setTimeout(function () { location.reload(); }, 800);
   };
 
   /* === 2. УДАЛЕНИЕ СВОЕГО АККАУНТА (с PIN) === */
@@ -2778,26 +2788,26 @@ header{align-items:flex-start}
   window.doDeleteMyAccount = function () {
     var u = window.me ? me() : null;
     if (!u) return;
-    
+
     var pin = document.getElementById('delPin').value;
     if (pin !== u.pin) return toast('❌ Неверный PIN');
 
-    ask('Точно удалить аккаунт «' + esc(u.name) + '»? Это необратимо.', function() {
+    ask('Точно удалить аккаунт «' + esc(u.name) + '»? Это необратимо.', function () {
       // 1. Удаляем из локальной базы
-      DB.users = DB.users.filter(function(x) { return x.id !== u.id; });
-      
+      DB.users = DB.users.filter(function (x) { return x.id !== u.id; });
+
       // 2. Удаляем со склада (если есть токен)
       if (window.__fbToken && window.restDelete) {
-        restDelete('state/users/' + u.id).catch(function(e) {
+        restDelete('state/users/' + u.id).catch(function (e) {
           console.warn('Не удалось удалить с сервера:', e);
         });
       }
-      
+
       // 3. Очищаем сессию
       DB.session = null;
       localStorage.removeItem('medshift_my');
       localStorage.removeItem('medshift_rem');
-      
+
       save();
       closeDlg();
       go('login');
