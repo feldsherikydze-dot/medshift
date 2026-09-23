@@ -3900,6 +3900,126 @@ header{align-items:flex-start}
   document.head.appendChild(st);
   console.log('[Fix33] ✅ Шапка шаблонов выровнена + зебра');
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 34: ФОН ПРИЛОЖЕНИЯ
+   3 готовых варианта + своя картинка.
+   Фон — личная настройка устройства
+   (не синхронизируется, не раздувает склад).
+   ========================================= */
+(function () {
+  if (window.__fix34_applied) return;
+  window.__fix34_applied = true;
+
+  var LS_BG = 'medshift_bg_custom';
+  var PRESETS = {
+    dawn: {
+      name: 'Рассвет', txt: '#fff',
+      css: 'linear-gradient(165deg,#0b5394 0%,#3f8fd0 35%,#bcdcf5 70%,#eef7ff 100%)'
+    },
+    night: {
+      name: 'Ночная смена', txt: '#fff',
+      css: 'radial-gradient(2px 2px at 20% 30%,#fff 50%,transparent 51%),' +
+           'radial-gradient(1.5px 1.5px at 70% 18%,#dfe9ff 50%,transparent 51%),' +
+           'radial-gradient(1.5px 1.5px at 42% 68%,#fff 50%,transparent 51%),' +
+           'radial-gradient(2px 2px at 85% 55%,#cfd8ff 50%,transparent 51%),' +
+           'radial-gradient(1.5px 1.5px at 10% 80%,#fff 50%,transparent 51%),' +
+           'linear-gradient(180deg,#0a1030 0%,#141b3f 55%,#1c2340 100%)'
+    },
+    med: {
+      name: 'Диагональ СМП', txt: '#123',
+      css: 'repeating-linear-gradient(135deg,rgba(11,83,148,.10) 0 26px,rgba(255,255,255,0) 26px 52px,rgba(229,57,53,.08) 52px 78px,rgba(255,255,255,0) 78px 104px),' +
+           'linear-gradient(180deg,#f4f6f8,#e8eef4)'
+    }
+  };
+
+  /* слой фона */
+  var st = document.createElement('style');
+  st.textContent =
+    '#msBg{position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;' +
+    'background-size:cover;background-position:center}' +
+    'body.dark #msBg{filter:brightness(.55) saturate(.85)}';
+  document.head.appendChild(st);
+  var layer = document.createElement('div');
+  layer.id = 'msBg';
+  document.body.appendChild(layer);
+
+  function applyBg34() {
+    var s = S(); var t = s.bg || ''; var bi = 'none';
+    if (t === 'custom') {
+      var img = localStorage.getItem(LS_BG);
+      if (img) bi = 'linear-gradient(rgba(244,246,248,.28),rgba(244,246,248,.42)), url("' + img + '")';
+      else t = '';
+    } else if (PRESETS[t]) bi = PRESETS[t].css;
+    layer.style.backgroundImage = bi;
+  }
+  window.applyBg34 = applyBg34;
+
+  window.setBg34 = function (key) {
+    S().bg = key; save(); applyBg34(); render();
+    toast(key === '' ? 'Фон убран' : '🖼 Фон: ' + (PRESETS[key] ? PRESETS[key].name : 'свой'));
+  };
+
+  function compressBg(f, cb) {
+    var r = new FileReader();
+    r.onload = function () {
+      var im = new Image();
+      im.onload = function () {
+        var max = 1000, w = im.width, h = im.height;
+        if (w > max || h > max) { var k = Math.min(max / w, max / h); w = Math.round(w * k); h = Math.round(h * k); }
+        var cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        cb(cv.toDataURL('image/jpeg', 0.6));
+      };
+      im.onerror = function () { cb(null); };
+      im.src = r.result;
+    };
+    r.readAsDataURL(f);
+  }
+
+  window.setBgCustom34 = function (inp) {
+    var f = inp.files && inp.files[0];
+    inp.value = '';
+    if (!f) return;
+    compressBg(f, function (data) {
+      if (!data) return toast('Не удалось прочитать картинку');
+      if (data.length > 900000) return toast('Картинка слишком тяжёлая — возьми поменьше');
+      localStorage.setItem(LS_BG, data);
+      S().bg = 'custom'; save(); applyBg34(); render();
+      toast('📷 Свой фон установлен');
+    });
+  };
+
+  /* карточка выбора фона в «Ещё» */
+  function bgCard() {
+    var s = S(); var cur = s.bg || '';
+    var h = '<div class="card"><h3>🖼 Фон приложения</h3>';
+    h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Настройка личная для этого устройства: выбери готовый фон или загрузи свою картинку.</p>';
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">';
+    h += '<button class="btn sec mini" style="' + (cur === '' ? 'border-width:2px;' : '') + '" onclick="setBg34(\'\')">✕ Без фона</button>';
+    for (var k in PRESETS) {
+      h += '<button class="btn mini" style="background:' + PRESETS[k].css + ';color:' + PRESETS[k].txt + ';' +
+           (cur === k ? 'outline:2px solid var(--ac);' : '') + '" onclick="setBg34(\'' + k + '\')">' + PRESETS[k].name + '</button>';
+    }
+    h += '<label class="btn sec mini" style="display:inline-block;margin:3px 3px 3px 0">📷 Своя картинка<input type="file" hidden accept="image/*" onchange="setBgCustom34(this)"></label>';
+    if (cur === 'custom' && localStorage.getItem(LS_BG)) {
+      h += '<img src="' + localStorage.getItem(LS_BG) + '" style="width:40px;height:28px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)">';
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  if (window.setView) {
+    var _sv34 = window.setView;
+    window.setView = function () {
+      var h = _sv34();
+      return h.replace('<div class="card"><h3>Данные</h3>', bgCard() + '<div class="card"><h3>Данные</h3>');
+    };
+  }
+
+  applyBg34();
+  console.log('[Fix34] ✅ Фоны: 3 готовых + своя картинка');
+})();
 </script>
 </body>
 </html>
