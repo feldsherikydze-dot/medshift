@@ -2942,148 +2942,154 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   setTimeout(function () { if (window.render) render(); }, 0);
 })();
 /* =========================================
-ДОПОЛНЕНИЕ 15 (v3): медленный кружащийся листопад/снег
-без кучи внизу; подсыпает сверху постоянно
+ДОПОЛНЕНИЕ 15 (v4): атрибуты сезона
+- гармоничный декор: одинаковый лист с обеих сторон надписи
+- скорость падения по времени (телефон = комп)
+- непрерывное медленное падение, наклон сдувает
 ========================================= */
 (function () {
-  if (window.__fix15v3) return;
-  window.__fix15v3 = true;
-  var st = document.createElement('style');
-  st.textContent =
-    '.msLeaves{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:hidden}' +
-    '.msLeaf{position:absolute;left:0;top:0;will-change:transform,opacity;user-select:none;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}' +
-    '.seasonWrap{position:relative;display:inline-block}' +
-    '.seasonDeco{position:absolute;font-size:calc(var(--fs) + 2px);opacity:.85;animation:decoFloat 4s ease-in-out infinite;pointer-events:none}' +
-    '@keyframes decoFloat{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}';
-  document.head.appendChild(st);
+  if (window.__fix15v4_applied) return;
+  window.__fix15v4_applied = true;
+  var css15 = `
+.msLeaves{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:hidden}
+.msLeaf{position:absolute;left:0;top:0;will-change:transform;user-select:none;line-height:1;opacity:.95;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.sdSide{display:inline-block;margin:0 10px;font-size:calc(var(--fs) + 3px);animation:decoFloat 4s ease-in-out infinite;pointer-events:none}
+.sdSide.r{animation-delay:2s}
+@keyframes decoFloat{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}
+`;
+  var st15 = document.createElement('style');
+  st15.textContent = css15;
+  document.head.appendChild(st15);
 
-  function seasonSet15() {
-    var m = new Date().getMonth();
-    if (m === 11 || m <= 1) return ['❄️', '🌨️', '❄️', '⛄'];
-    if (m <= 4) return ['🌸', '🌿', '', ''];
-    if (m <= 7) return ['🌻', '🌼', '', ''];
-    return ['', '🍁', '🍃', '🌿'];
-  }
+  var SEASONS = [
+    { name: 'Зима', icons: '❄️⛄❄️', side: '❄️', fall: ['❄️', '🌨', '❄️', '⛄'] },
+    { name: 'Весна', icons: '🌸🐦🌷', side: '🌷', fall: ['🌸', '', '', '🍃'] },
+    { name: 'Лето', icons: '☀️🍓', side: '🌻', fall: ['🌻', '', '', '🌼'] },
+    { name: 'Осень', icons: '🍂🍁🍂', side: '🍁', fall: ['🍂', '🍁', '🍃', ''] }
+  ];
+  var MONTH_SOUL = [
+    'серебряный снег и тепло дома',
+    'метели дорисовывают зиму',
+    'капель и первые проталины',
+    'скворцы вернулись, лёд тронулся',
+    'черёмуха, тёплые вечера и салюты',
+    'начало долгих светлых сумерек',
+    'макушка лета, запах трав и гроз',
+    'тёплые ночи и звездопад',
+    'золото листьев и бабье лето',
+    'багрянец, листопад и зонты',
+    'последние листья и первый лёд',
+    'мандарины, гирлянды и ожидание чуда'
+  ];
+  var HOLS = {
+    '01-01': '🎄 Новый год', '01-07': '⭐ Рождество', '02-14': '💘 День влюблённых',
+    '02-23': '🎖 23 февраля', '03-08': '💐 8 Марта', '04-01': '🤡 День смеха',
+    '05-01': '🌷 Первомай', '05-09': '🎉 День Победы', '06-01': '🧸 День защиты детей',
+    '06-12': '🇷 День России', '09-01': '🎓 День знаний', '11-04': '🤝 Народное единство',
+    '12-31': '🎆 Канун Нового года'
+  };
+  function seasonIdx(m) { return (m === 11 || m <= 1) ? 0 : (m <= 4 ? 1 : (m <= 7 ? 2 : 3)); }
+  function fallSet() { return SEASONS[seasonIdx(new Date().getMonth())].fall; }
 
-  /* атрибуты вокруг блока сезона (без желудя!) */
-  if (window.seasonHtml) {
-    var _sh = window.seasonHtml;
-    window.seasonHtml = function () {
-      var h = _sh();
-      var s = seasonSet15();
-      var d = '<div class="seasonWrap">';
-      d += '<span class="seasonDeco" style="left:-16px;top:-8px;animation-delay:0s">' + s[0] + '</span>';
-      d += '<span class="seasonDeco" style="right:-16px;top:-8px;animation-delay:.7s">' + s[1] + '</span>';
-      d += '<span class="seasonDeco" style="left:-20px;bottom:-6px;animation-delay:1.4s">' + s[2] + '</span>';
-      d += '<span class="seasonDeco" style="right:-20px;bottom:-6px;animation-delay:2.1s">' + s[3] + '</span>';
-      return d + h + '</div>';
-    };
-  }
+  /* гармоничный блок: один и тот же лист симметрично вокруг надписи */
+  window.seasonHtml = function () {
+    var d = new Date(); var m = d.getMonth();
+    var s = SEASONS[seasonIdx(m)];
+    var key = ('0' + (m + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    var hol = HOLS[key];
+    if (m === 5 && d.getDay() === 0 && d.getDate() >= 15 && d.getDate() <= 21) hol = '💚 День медицинского работника';
+    var bd = (window.bdayToday ? bdayToday() : []);
+    var h = '<div class="seasonBox">';
+    h += '<div class="seasonIcons">' + s.icons + '</div>';
+    h += '<div class="seasonName"><span class="sdSide">' + s.side + '</span>' + s.name + '<span class="sdSide r">' + s.side + '</span></div>';
+    h += '<div class="seasonSoul">' + MONTH_SOUL[m] + '</div>';
+    if (hol) h += '<div class="seasonHoliday">' + hol + '</div>';
+    if (bd.length) h += '<div class="seasonBday">🎉 День рождения: ' + bd.map(esc).join(', ') + '!</div>';
+    h += '</div>';
+    return h;
+  };
 
-  var box = null, parts = [], raf = null, tilt = 0, hasTilt = false;
-  function ensure() {
-    if (!box) { box = document.createElement('div'); box.className = 'msLeaves'; document.body.appendChild(box); }
-    return box;
-  }
-  function maxN() { return window.innerWidth < 480 ? 12 : 18; }
-
-  function make(seed) {
-    var s = seasonSet15();
+  /* === падение: скорость по времени, а не по кадрам === */
+  var leavesBox = null, parts = [], rafId = null, lastTs = 0;
+  var tilt = 0, hasTilt = false;
+  function ensureBox() { if (!leavesBox) { leavesBox = document.createElement('div'); leavesBox.className = 'msLeaves'; document.body.appendChild(leavesBox); } return leavesBox; }
+  function stopLeaves() { if (rafId) cancelAnimationFrame(rafId); rafId = null; lastTs = 0; if (leavesBox) leavesBox.innerHTML = ''; parts = []; }
+  function newPart(stagger) {
+    var set = fallSet();
     var el = document.createElement('span');
     el.className = 'msLeaf';
-    var r = 9 + Math.random() * 9;
-    el.style.fontSize = (r * 1.7) + 'px';
-    el.textContent = s[Math.floor(Math.random() * s.length)];
-    ensure().appendChild(el);
-    var H = window.innerHeight;
+    el.textContent = set[Math.floor(Math.random() * set.length)];
+    var r = 10 + Math.random() * 8;
+    el.style.fontSize = (r * 1.6) + 'px';
+    ensureBox().appendChild(el);
     return {
-      el: el,
+      el: el, r: r,
       x: Math.random() * window.innerWidth,
-      y: seed ? Math.random() * H : -30 - Math.random() * 40,
-      vy: 0.25 + Math.random() * 0.35,   /* медленное падение */
+      y: stagger ? Math.random() * window.innerHeight : -40 - Math.random() * 80,
+      vy: 0.25 + Math.random() * 0.35,
       phase: Math.random() * 6.28,
-      vr: Math.random() * 1.2 - 0.6,     /* медленное кружение */
+      vr: Math.random() * 1.2 - 0.6,
       rot: Math.random() * 360
     };
   }
-  function respawn(p) {
-    var s = seasonSet15();
-    p.el.textContent = s[Math.floor(Math.random() * s.length)];
-    p.x = Math.random() * window.innerWidth;
-    p.y = -30 - Math.random() * 40;
-    p.vy = 0.15 + Math.random() * 0.25;
-    p.phase = Math.random() * 6.28;
-    p.vr = Math.random() * 1.2 - 0.6;
-  }
-  function stop() { if (raf) cancelAnimationFrame(raf); raf = null; if (box) box.innerHTML = ''; parts = []; }
-  function start() {
-    stop();
-    if (!window.me || !me()) return;
-    if (window.S && S().leaves === false) return;
-    ensure();
-    for (var i = 0; i < maxN(); i++) parts.push(make(true));
-    loop();
-  }
-  function loop() {
-    raf = requestAnimationFrame(loop);
+  function loop(ts) {
+    rafId = requestAnimationFrame(loop);
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min(50, ts - lastTs); lastTs = ts;
+    var f = dt / 16.667; /* на 60 Гц = 1, на 144 Гц ≈ 0.42 → скорость одинаковая */
     var W = window.innerWidth, H = window.innerHeight;
-    var t = Date.now() / 1000;
-    var wind = (hasTilt ? tilt * 0.8 : 0) + Math.sin(t * 0.5) * 0.15;
+    var wind = (hasTilt ? tilt * 0.8 : 0) + Math.sin(ts / 1000 * 0.5) * 0.15;
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i];
-      p.y += p.vy;
-      p.x += Math.sin(p.y * 0.02 + p.phase) * 0.45 + wind;  /* покачивание/кружение */
-      p.rot += p.vr;
+      p.y += p.vy * f;
+      p.x += (Math.sin(p.y * 0.02 + p.phase) * 0.45 + wind) * f;
+      p.rot += p.vr * f;
       if (p.x < -30) p.x = W + 20;
       if (p.x > W + 30) p.x = -20;
-      if (p.y > H - 4) { respawn(p); continue; }             /* ушёл вниз — снова сверху */
-      var o = 1;
-      if (p.y < 10) o = Math.max(0, (p.y + 30) / 40);        /* проявление сверху */
-      else if (p.y > H - 60) o = Math.max(0, (H - p.y) / 60);/* растворение у низа */
-      p.el.style.opacity = o.toFixed(2);
-      p.el.style.transform = 'translate(' + (p.x - 10) + 'px,' + (p.y - 10) + 'px) rotate(' + p.rot + 'deg)';
+      if (p.y > H + 30) {
+        p.y = -40 - Math.random() * 80;
+        p.x = Math.random() * W;
+        p.vy = 0.25 + Math.random() * 0.35;
+        var set = fallSet();
+        p.el.textContent = set[Math.floor(Math.random() * set.length)];
+      }
+      p.el.style.transform = 'translate(' + (p.x - p.r) + 'px,' + (p.y - p.r) + 'px) rotate(' + p.rot + 'deg)';
     }
   }
-
-  window.addEventListener('deviceorientation', function (e) {
-    if (e.gamma == null) return;
-    hasTilt = true;
-    tilt = Math.max(-1, Math.min(1, e.gamma / 30));
-  });
-  window.addEventListener('mousemove', function (e) {
-    if (hasTilt) return;
-    tilt = (e.clientX / window.innerWidth - 0.5) * 1.2;
-  });
+  function startLeaves() {
+    stopLeaves();
+    if (!window.me || !me()) return;
+    if (window.S && S().leaves === false) return;
+    var n = window.innerWidth < 480 ? 12 : 18;
+    for (var i = 0; i < n; i++) parts.push(newPart(true));
+    rafId = requestAnimationFrame(loop);
+  }
+  window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; hasTilt = true; tilt = Math.max(-1, Math.min(1, e.gamma / 30)); });
+  window.addEventListener('mousemove', function (e) { if (hasTilt) return; tilt = (e.clientX / window.innerWidth - 0.5) * 1.2; });
   document.addEventListener('click', function () {
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission().then(function () {}).catch(function () {});
       }
     } catch (e) {}
   }, { once: true });
-
-  window.msToggleLeaves = function (on) {
-    S().leaves = !!on; save();
-    if (on) start(); else stop();
-  };
+  window.msToggleLeaves = function (on) { S().leaves = !!on; save(); if (on) startLeaves(); else stopLeaves(); };
   if (window.setView) {
-    var _sv = window.setView;
+    var _sv15 = window.setView;
     window.setView = function () {
-      var h = _sv();
+      var h = _sv15();
       return h.replace(
         '<label>Режим оформления</label>',
-        '<label><input type="checkbox" style="width:auto"' + (S().leaves === false ? '' : ' checked') + ' onchange="msToggleLeaves(this.checked)"> 🍂 Сезонные атрибуты (медленный листопад)</label>' +
+        '<label><input type="checkbox" style="width:auto"' + (S().leaves === false ? '' : ' checked') + ' onchange="msToggleLeaves(this.checked)"> 🍂 Сезонные атрибуты (листопад, снег)</label>' +
         '<label>Режим оформления</label>'
       );
     };
   }
   if (window.render) {
-    var _r = window.render;
+    var _r15 = window.render;
     window.render = function () {
-      _r();
-      if (window.me && me() && !(window.S && S().leaves === false)) { if (!raf) start(); }
-      else if (!window.me || !me()) { stop(); }
+      _r15();
+      if (window.me && me()) { if (!rafId) startLeaves(); } else { stopLeaves(); }
     };
   }
   setTimeout(function () { if (window.render) render(); }, 0);
