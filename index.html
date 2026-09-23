@@ -3734,6 +3734,157 @@ header{align-items:flex-start}
 
   console.log('[Fix30] ✅ Удаление шаблонов + вход с чужого браузера');
 })();
+<script>
+/* =========================================
+   ДОПОЛНЕНИЕ 32:
+   A) Колонки в шаблонах не пляшут
+   B) Везде пишем «НС/ПВ/СД препараты»
+   C) Анти-дубли: сумки/машины/шаблоны не сдваиваются
+   ========================================= */
+(function () {
+  if (window.__fix32_applied) return;
+  window.__fix32_applied = true;
+
+  /* === A. КОЛОНКИ ШАБЛОНОВ: РАВНО И СТАБИЛЬНО === */
+  var st = document.createElement('style');
+  st.textContent =
+    '.tplBody table{table-layout:fixed;width:100%}' +
+    '.tplBody thead th:nth-child(3),.tplBody tbody td:nth-child(3){width:20%;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}' +
+    '.tplBody thead th:nth-child(4),.tplBody tbody td:nth-child(4){width:12%;text-align:center}' +
+    '.tplBody tbody td:nth-child(3) input{text-align:right}' +
+    '.tplHeader .tplCount{font-variant-numeric:tabular-nums}';
+  document.head.appendChild(st);
+
+  /* === B. ПЕРЕИМЕНОВАНИЕ: НС/ПВ/СД ПРЕПАРАТЫ === */
+  function t32(s) {
+    return String(s)
+      .split('Сильнодействующие').join('НС/ПВ/СД препараты')
+      .split('сильнодействующих').join('НС/ПВ/СД препаратов')
+      .split('НС/ЛС').join('НС/ПВ/СД');
+  }
+  window.t32 = t32;
+
+  function sweep32(root) {
+    if (!root) return;
+    var els = root.querySelectorAll('button,h3,h4,p,small,span,b,label,option');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+        var nt = t32(el.childNodes[0].nodeValue);
+        if (nt !== el.childNodes[0].nodeValue) el.childNodes[0].nodeValue = nt;
+      }
+    }
+  }
+
+  /* миграция базы: переименовать существующие шаблоны и комплекты */
+  if (!DB._ns32) {
+    DB._ns32 = 1;
+    var ch = false;
+    (DB.kitTemplates || []).forEach(function (k) {
+      if (/Сильнодействующие|НС\/ЛС/.test(k.name || '')) {
+        k.name = (k.name || '').replace('Сильнодействующие', 'НС/ПВ/СД препараты').replace('НС/ЛС', 'НС/ПВ/СД');
+        ch = true;
+      }
+    });
+    (DB.potents || []).forEach(function (k) {
+      if (/Сильнодействующие|НС\/ЛС/.test(k.name || '')) {
+        k.name = (k.name || '').replace('Сильнодействующие', 'НС/ПВ/СД препараты').replace('НС/ЛС', 'НС/ПВ/СД');
+        ch = true;
+      }
+    });
+    if (ch) save();
+  }
+
+  /* подмена текста во всех видах и диалогах */
+  if (window.openDlg) {
+    var _od32 = window.openDlg;
+    window.openDlg = function (h) {
+      if (typeof h === 'string') h = t32(h);
+      _od32(h);
+      sweep32(document.getElementById('dlgBody'));
+    };
+  }
+  if (window.toast) {
+    var _to32 = window.toast;
+    window.toast = function (m) { _to32(t32(m)); };
+  }
+  ['bagsView', 'potentView', 'tplView', 'homeView'].forEach(function (fn) {
+    if (window[fn]) {
+      var _f = window[fn];
+      window[fn] = function () { return t32(_f.apply(this, arguments)); };
+    }
+  });
+  if (window.render) {
+    var _r32 = window.render;
+    window.render = function () {
+      _r32.apply(this, arguments);
+      sweep32(document.getElementById('main'));
+    };
+  }
+
+  /* поиск шаблона НС/ПВ/СД по новому имени */
+  window.createPotentBag = function () {
+    if (window.openTplId) return createPotentBagFromTpl(openTplId);
+    var kt = (DB.kitTemplates || []).find(function (k) {
+      return k.name.indexOf('НС/ПВ/СД') >= 0 || k.name.indexOf('Сильнодействующие') >= 0 || k.name.indexOf('НС/ЛС') >= 0;
+    });
+    if (!kt) {
+      curPot = false; curTpl = true; render();
+      return toast('Откройте шаблон и нажмите «Создать комплект НС/ПВ/СД из этого шаблона»');
+    }
+    createPotentBagFromTpl('kit_' + (DB.kitTemplates || []).indexOf(kt));
+  };
+
+  /* === C. АНТИ-ДУБЛИ: СХЛОПЫВАНИЕ ОДИНАКОВЫХ ИМЁН === */
+  function dedupe32() {
+    var remap = {};
+    ['bags', 'cars', 'kitTemplates'].forEach(function (coll) {
+      var by = {}; var out = [];
+      (DB[coll] || []).forEach(function (o) {
+        var key = normName(o.name || '');
+        if (!by[key]) { by[key] = o; out.push(o); return; }
+        var keep = by[key];
+        if (o.id < keep.id) {
+          remap[keep.id] = o.id;
+          by[key] = o;
+          out[out.indexOf(keep)] = o;
+        } else {
+          remap[o.id] = keep.id;
+        }
+      });
+      DB[coll] = out;
+    });
+    if (Object.keys(remap).length) {
+      (DB.users || []).forEach(function (u) {
+        ['cars', 'bags'].forEach(function (k) {
+          if (u[k]) u[k] = u[k].map(function (id) { return remap[id] || id; })
+            .filter(function (v, i, a) { return a.indexOf(v) === i; });
+        });
+      });
+      (DB.reports || []).forEach(function (r) { if (r.carId && remap[r.carId]) r.carId = remap[r.carId]; });
+    }
+    return Object.keys(remap).length;
+  }
+
+  /* чистим: при старте, перед отправкой на склад, после приёма */
+  setTimeout(function () { if (dedupe32()) save(); }, 0);
+  if (window.syncPut) {
+    var _sp32 = window.syncPut;
+    window.syncPut = function (a) {
+      try { if (dedupe32()) save(); } catch (e) {}
+      return _sp32(a);
+    };
+  }
+  if (window.adoptState) {
+    var _ad32 = window.adoptState;
+    window.adoptState = function (rem, rrev) {
+      _ad32(rem, rrev);
+      if (dedupe32()) save();
+    };
+  }
+
+  console.log('[Fix32] ✅ Колонки шаблонов + НС/ПВ/СД + анти-дубли');
+})();
 </script>
 </body>
 </html>
