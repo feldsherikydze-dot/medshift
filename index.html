@@ -3586,5 +3586,154 @@ header{align-items:flex-start}
   console.log('[Fix27] ✅ Погода: без циклов, с таймаутом и кулдауном');
 })();
 </script>
+<script>
+/* =========================================
+   ДОПОЛНЕНИЕ 30:
+   1) 🗑 Удаление шаблонов (кнопка на каждом)
+   2) 🔐 Вход с чужого браузера (тянем базу со склада)
+   3) 🍎 Страховка safe-area для PWA на iPhone
+   ========================================= */
+(function () {
+  if (window.__fix30_applied) return;
+  window.__fix30_applied = true;
+
+  /* === 0. CSS: верхний safe-area (standalone iPhone) === */
+  var st30 = document.createElement('style');
+  st30.textContent = '@supports(padding-top:env(safe-area-inset-top)){header{padding-top:calc(8px + env(safe-area-inset-top))}}';
+  document.head.appendChild(st30);
+
+  /* === 1. УДАЛЕНИЕ ШАБЛОНОВ === */
+  window.delTplDlg = function (ki) {
+    if (!isBoss()) return toast('Удалять шаблоны может руководитель или админ');
+    var kt = (DB.kitTemplates || [])[ki];
+    if (!kt) return;
+    ask('Удалить шаблон «' + kt.name + '» со всеми позициями (' + (kt.items || []).length + ')?', function () {
+      DB.tplTomb = DB.tplTomb || [];
+      if (DB.tplTomb.indexOf(kt.id) < 0) DB.tplTomb.push(kt.id);
+      DB.kitTemplates.splice(ki, 1);
+      openTplId = null; editTpl = null; tplSearch = '';
+      save(); render(); toast('🗑 Шаблон удалён');
+    });
+  };
+
+  function injectTplDeleteButtons() {
+    if (!window.curTpl) return;
+    (DB.kitTemplates || []).forEach(function (kt, ki) {
+      var body = document.getElementById('tpl_kit_' + ki);
+      if (!body) return;
+      var hdr = body.previousElementSibling;
+      if (!hdr || !hdr.classList.contains('tplHeader')) return;
+      if (hdr.querySelector('.tplDel')) return;
+      var b = document.createElement('button');
+      b.className = 'btn del mini tplDel';
+      b.textContent = '🗑';
+      b.style.marginLeft = '6px';
+      b.onclick = function (ev) { ev.stopPropagation(); delTplDlg(ki); };
+      hdr.appendChild(b);
+    });
+  }
+
+  /* «Могилка» шаблонов: без неё mergeArr при синхронизации
+     вернёт удалённый шаблон с сервера обратно (воскреснет). */
+  function tplTombMerge(rem) {
+    var lt = (DB.tplTomb || []).slice();
+    rem.tplTomb = (rem.tplTomb || []).concat(lt.filter(function (x) { return (rem.tplTomb || []).indexOf(x) < 0; }));
+    rem.kitTemplates = (rem.kitTemplates || []).filter(function (k) { return rem.tplTomb.indexOf(k.id) < 0; });
+  }
+  if (window.adoptState) {
+    var _ad30 = window.adoptState;
+    window.adoptState = function (rem, rrev) {
+      tplTombMerge(rem);
+      _ad30(rem, rrev);
+      DB.kitTemplates = (DB.kitTemplates || []).filter(function (k) { return (DB.tplTomb || []).indexOf(k.id) < 0; });
+    };
+  }
+
+  /* === 2. ВХОД С ЧУЖОГО БРАУЗЕРА === */
+  function signIn30(email, pass, ok, err) {
+    fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FB_CONF.apiKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pass, returnSecureToken: true })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.idToken) {
+        localStorage.setItem('medshift_fb_auth', JSON.stringify({
+          email: email, rt: j.refreshToken, id: j.idToken,
+          exp: Date.now() + (+j.expiresIn || 3600) * 1000
+        }));
+        window.__fbToken = j.idToken;
+        ok();
+      } else err((j && j.error && j.error.message) || 'UNKNOWN');
+    }).catch(function () { err('NETWORK'); });
+  }
+
+  function finishLogin(u, p) {
+    if (u.pin !== p) return toast('Неверный PIN');
+    localStorage.setItem('medshift_my', String(u.id));
+    localStorage.setItem('medshift_rem', '1');
+    localStorage.setItem('medshift_rem_ts', String(Date.now()));
+    DB.session = u.id; loginFor = null;
+    save(); announceLogin(u); presBeat(); go(tab);
+    toast('Смена начата 👋');
+  }
+
+  window.loginByKey = function () {
+    var e = ((document.getElementById('lbEmail') || {}).value || '').trim();
+    var pw = (document.getElementById('lbPass') || {}).value || '';
+    var pend = window.__loginPending || {};
+    if (!e || !pw) return toast('Введите email и пароль склада');
+    signIn30(e, pw, function () {
+      closeDlg();
+      toast('🔍 Ищем учётку на складе…');
+      restGet('state').then(function (v) {
+        if (v && v.data) adoptState(v.data, v.rev || 0);
+        var u = DB.users.find(function (x) { return normName(x.name) === pend.n; });
+        if (!u) return toast('Сотрудник не найден на складе');
+        finishLogin(u, pend.p);
+      });
+    }, function (m) { toast('⚠ Ключ не принят: ' + m); });
+  };
+
+  window.loginByName = function () {
+    var n = normName((document.getElementById('lnName') || {}).value || '');
+    var p = (document.getElementById('lnPin') || {}).value || '';
+    if (!n) return toast('Введите ФИО');
+    if (isBannedName(n)) return toast('🚫 Вход запрещён: обратитесь к руководителю');
+    var u = DB.users.find(function (x) { return normName(x.name) === n; });
+    if (u) return finishLogin(u, p);
+    if (!FB_CONF.databaseURL) return toast('Сотрудник не найден');
+    if (window.__fbToken) {
+      toast('🔍 Ищем учётку на складе…');
+      restGet('state').then(function (v) {
+        if (v && v.data) adoptState(v.data, v.rev || 0);
+        var u2 = DB.users.find(function (x) { return normName(x.name) === n; });
+        if (!u2) return toast('Сотрудник не найден');
+        finishLogin(u2, p);
+      });
+      return;
+    }
+    window.__loginPending = { n: n, p: p };
+    openDlg(
+      '<h3>🔑 Ключ склада</h3>' +
+      '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">На этом устройстве ещё нет базы. Введите ключ 🗝️ (email и пароль склада — спросить у Ананович А.С.) — вход продолжится автоматически.</p>' +
+      '<label>Email склада</label><input id="lbEmail" type="email">' +
+      '<label>Пароль склада</label><input id="lbPass" type="password">' +
+      '<p><button class="btn" onclick="loginByKey()">Продолжить</button> ' +
+      '<button class="btn sec" onclick="closeDlg()">Отмена</button></p>'
+    );
+  };
+
+  /* === 3. ИНЖЕКЦИЯ КНОПОК ПОСЛЕ КАЖДОГО РЕНДЕРА === */
+  if (window.render) {
+    var _r30 = window.render;
+    window.render = function () {
+      _r30.apply(this, arguments);
+      injectTplDeleteButtons();
+    };
+  }
+
+  console.log('[Fix30] ✅ Удаление шаблонов + вход с чужого браузера');
+})();
+</script>
 </body>
 </html>
