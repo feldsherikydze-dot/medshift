@@ -3882,6 +3882,24 @@ header{align-items:flex-start}
 
   console.log('[Fix32] ✅ Колонки шаблонов + НС/ПВ/СД + анти-дубли');
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 33: ШАПКА ШАБЛОНА В ОДНУ СТРОКУ
+   (счётчик колонкой + 🗑 справа) + ЗЕБРА
+   ========================================= */
+(function () {
+  if (window.__fix33_applied) return;
+  window.__fix33_applied = true;
+  var st = document.createElement('style');
+  st.textContent =
+    '.tplHeader{flex-wrap:nowrap;gap:6px}' +
+    '.tplHeader b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '.tplHeader .tplCount{flex:0 0 auto;min-width:64px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}' +
+    '.tplHeader .tplDel{flex:0 0 auto;margin-left:6px}' +
+    '.tplBody tbody tr:nth-child(even){background:rgba(127,179,255,.12)}' +
+    'body.dark .tplBody tbody tr:nth-child(even){background:rgba(255,255,255,.06)}';
+  document.head.appendChild(st);
+  console.log('[Fix33] ✅ Шапка шаблонов выровнена + зебра');
+})();
 </script>
 </body>
 </html>
