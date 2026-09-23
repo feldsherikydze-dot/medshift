@@ -1,11 +1,10 @@
-var CACHE = 'medshift-cache-v2';
+var CACHE = 'medshift-cache-v3';
 
 var ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg',
-  './medshift-fix.js'
+  './icon.svg'
 ];
 
 self.addEventListener('install', function (event) {
