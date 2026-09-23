@@ -1,10 +1,13 @@
-var CACHE = 'medshift-cache-v3';
+var CACHE = 'medshift-cache-v5';
 
 var ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './icon-180.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', function (event) {
@@ -33,6 +36,9 @@ self.addEventListener('activate', function (event) {
   self.clients.claim();
 });
 
+// Стратегия «кэш-сначала» (stale-while-revalidate):
+// страница открывается мгновенно из кэша, свежая версия подтягивается в фоне.
+// При отсутствии сети работает кэш. Данные всё равно всегда берутся из Firebase по сети.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
 
@@ -47,26 +53,21 @@ self.addEventListener('fetch', function (event) {
   }
 
   event.respondWith(
-    fetch(req).then(function (res) {
-      if (res && res.status === 200) {
-        var copy = res.clone();
-        caches.open(CACHE).then(function (cache) {
-          cache.put(req, copy);
-        });
-      }
-      return res;
-    }).catch(function () {
-      return caches.match(req).then(function (cached) {
-        if (cached) {
-          return cached;
+    caches.match(req).then(function (cached) {
+      var network = fetch(req).then(function (res) {
+        if (res && res.status === 200) {
+          var copy = res.clone();
+          caches.open(CACHE).then(function (cache) {
+            cache.put(req, copy);
+          });
         }
-
-        if (req.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-
+        return res;
+      }).catch(function () {
+        if (cached) return cached;
+        if (req.mode === 'navigate') return caches.match('./index.html');
         return new Response('Нет сети', { status: 503 });
       });
+      return cached || network;
     })
   );
 });
