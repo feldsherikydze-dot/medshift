@@ -2582,7 +2582,7 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   if (window.__fix17_applied) return;
   window.__fix17_applied = true;
 
-  var BRAND = 'ООО «КрасНЕО»';
+  var BRAND = 'КрасНЕО';
   var BRAND_FULL = 'ООО «КрасНЕО» · первая частная скорая помощь';
   var BRAND_FOOT = 'ООО «КрасНЕО» — первая частная скорая помощь · Красноярск, пр. Металлургов 8 · тел. 203-03-03';
 
@@ -2684,4 +2684,33 @@ header{align-items:flex-start}
   document.head.appendChild(st18);
 
   setTimeout(function () { if (window.updHead) updHead(); }, 0);
+})();
+/* =========================================
+   ДОПОЛНЕНИЕ 20: принудительная синхронизация
+   после регистрации + диагностика ошибок
+   ========================================= */
+(function () {
+  if (window.__fix20_applied) return;
+  window.__fix20_applied = true;
+
+  if (window.regDo) {
+    var _regDo20 = window.regDo;
+    window.regDo = function () {
+      _regDo20();
+      // После успешной регистрации принудительно пушим через 1 сек
+      setTimeout(function () {
+        if (window.syncPush) {
+          console.log('[Fix20] Принудительный syncPush после регистрации...');
+          syncPush().then(function () {
+            console.log('[Fix20] ✅ Данные успешно залиты на склад');
+          }).catch(function (e) {
+            console.error('[Fix20] ❌ Ошибка заливки:', e);
+            toast('⚠ Регистрация прошла, но данные не улетели на склад. Проверьте интернет.');
+          });
+        } else {
+          console.warn('[Fix20] syncPush не найден!');
+        }
+      }, 1000);
+    };
+  }
 })();
