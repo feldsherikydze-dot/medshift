@@ -4020,6 +4020,138 @@ header{align-items:flex-start}
   applyBg34();
   console.log('[Fix34] ✅ Фоны: 3 готовых + своя картинка');
 })();
+/* =========================================
+   ДОПОЛНЕНИЕ 35: УДАЛЕНИЕ ФОТО НАВСЕГДА
+   Могилка schedTomb + перехват заливки/скачивания.
+   ========================================= */
+(function () {
+  if (window.__fix35_applied) return;
+  window.__fix35_applied = true;
+
+  var CUT = 40 * 864e5; /* могилка живёт 40 дней */
+
+  function tomb() { DB.schedTomb = DB.schedTomb || {}; return DB.schedTomb; }
+  function pruneTomb() {
+    var t = tomb(), now = Date.now();
+    Object.keys(t).forEach(function (id) { if (now - (+t[id] || 0) > CUT) delete t[id]; });
+  }
+  function purgeLocal() {
+    if (!window.DB || !DB.sched) return false;
+    var t = tomb(), ch = false;
+    ['days', 'months'].forEach(function (k) {
+      var arr = DB.sched[k] || [];
+      var f = arr.filter(function (p) { return !t[p.id]; });
+      if (f.length !== arr.length) { DB.sched[k] = f; ch = true; }
+    });
+    return ch;
+  }
+  function mergeTomb(tb) {
+    tb = tb || {};
+    var t = tomb();
+    Object.keys(tb).forEach(function (id) {
+      var ts = (tb[id] && tb[id].ts) ? +tb[id].ts : +tb[id];
+      if (ts && (!t[id] || ts > t[id])) t[id] = ts;
+    });
+    pruneTomb();
+  }
+  function del35(p) { return fetch(fbUrl(p), { method: 'DELETE' }).catch(function () {}); }
+
+  /* скачивание: удалённые фото никому не отдаются */
+  var _rg35 = window.restGet;
+  window.restGet = function (p) {
+    if (p === 'sched') {
+      return _rg35('schedtomb').then(function (tb) {
+        mergeTomb(tb);
+        purgeLocal();
+        return _rg35('sched').then(function (rem) {
+          rem = rem || {};
+          var t = tomb();
+          ['days', 'months'].forEach(function (k) {
+            var obj = rem[k] || {};
+            Object.keys(obj).forEach(function (id) { if (t[id]) delete obj[id]; });
+            rem[k] = obj;
+          });
+          return rem;
+        });
+      });
+    }
+    return _rg35(p);
+  };
+
+  /* заливка: удалённые фото не возвращаются на сервер */
+  var _rp35 = window.restPut;
+  window.restPut = function (p, o) {
+    var m = /^sched\/(days|months)\/(.+)$/.exec(p || '');
+    if (m && tomb()[m[2]]) return Promise.resolve(null);
+    return _rp35(p, o);
+  };
+
+  /* save/render всегда с чисткой */
+  var _sv35 = window.save;
+  window.save = function () { purgeLocal(); return _sv35.apply(this, arguments); };
+  var _rd35 = window.render;
+  window.render = function () { purgeLocal(); return _rd35.apply(this, arguments); };
+
+  /* синхронизация баз: объединяем могилки */
+  if (window.adoptState) {
+    var _ad35 = window.adoptState;
+    window.adoptState = function (rem, rrev) {
+      var lt = DB.schedTomb || {};
+      rem.schedTomb = rem.schedTomb || {};
+      Object.keys(lt).forEach(function (id) {
+        if (!rem.schedTomb[id] || (+lt[id] || 0) > (+rem.schedTomb[id] || 0)) rem.schedTomb[id] = lt[id];
+      });
+      _ad35(rem, rrev);
+      purgeLocal();
+    };
+  }
+
+  /* удаление: ставим метку локально и на сервере */
+  if (window.delPhoto) {
+    var _dp35 = window.delPhoto;
+    window.delPhoto = function (kind, id) {
+      tomb()[id] = Date.now();
+      pruneTomb();
+      _dp35(kind, id);
+      if (window.__fbToken) {
+        _rp35('schedtomb/' + id, { ts: Date.now() }).then(function () {
+          return _rp35('schedmeta', { ts: Date.now() });
+        });
+      }
+    };
+  }
+
+  /* уборка: доудаляем с сервера забытые удалённые фото и досылаем могилки */
+  function serverCleanup() {
+    if (!window.FB_CONF || !FB_CONF.databaseURL || !window.__fbToken) return;
+    _rg35('schedtomb').then(function (tb) {
+      tb = tb || {};
+      var missing = Object.keys(tomb()).filter(function (id) { return !tb[id]; });
+      mergeTomb(tb);
+      if (purgeLocal()) { _sv35(); _rd35(); }
+      var p = missing.length
+        ? Promise.all(missing.map(function (id) { return _rp35('schedtomb/' + id, { ts: tomb()[id] }); }))
+            .then(function () { return _rp35('schedmeta', { ts: Date.now() }); })
+        : Promise.resolve();
+      return p.then(function () { return _rg35('sched'); }).then(function (rem) {
+        rem = rem || {};
+        var t = tomb(), dels = [];
+        ['days', 'months'].forEach(function (k) {
+          Object.keys(rem[k] || {}).forEach(function (id) { if (t[id]) dels.push('sched/' + k + '/' + id); });
+        });
+        if (!dels.length) return;
+        return Promise.all(dels.map(del35)).then(function () {
+          return _rp35('schedmeta', { ts: Date.now() });
+        });
+      });
+    }).catch(function () {});
+  }
+  setTimeout(serverCleanup, 4000);
+  setInterval(serverCleanup, 25000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) serverCleanup(); });
+
+  console.log('[Fix35] ✅ Удаление фото навсегда (могилка schedTomb)');
+})();
 </script>
 </body>
 </html>
