@@ -4097,6 +4097,58 @@ css: 'linear-gradient(180deg,#233a63 0%,#5d4a7e 26%,#9c6288 48%,#d98274 70%,#f2b
 
   console.log('[Fix35] ✅ Удаление фото навсегда (могилка schedTomb)');
 })();
+/* =========================================
+ДОПОЛНЕНИЕ 36: Справочник — живой поиск
+без потери фокуса (обновляется только список)
+========================================= */
+(function () {
+  if (window.__fix36_applied) return;
+  window.__fix36_applied = true;
+
+  window.renderRefResults = function () {
+    var box = document.getElementById('refResults');
+    if (!box) return;
+    var q = (refSearch || '').trim().toLowerCase();
+    var filtered = DRUG_DB;
+    if (q.length >= 1) {
+      filtered = DRUG_DB.filter(function (d) {
+        return d.n.toLowerCase().indexOf(q) >= 0 ||
+          (d.s || '').toLowerCase().indexOf(q) >= 0 ||
+          (d.g || '').toLowerCase().indexOf(q) >= 0 ||
+          (d.a || []).some(function (a) { return a.toLowerCase().indexOf(q) >= 0; });
+      });
+    }
+    var h = '';
+    if (!filtered.length) {
+      h = '<div class="refCard"><h4>💊 Справочник РЛС</h4><p style="font-size:calc(var(--fs) - 1px);color:var(--mut)">Ничего не найдено на «' + esc(refSearch) + '». В базе ' + DRUG_DB.length + ' препаратов.</p></div>';
+    } else {
+      if (q) h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Найдено: ' + filtered.length + ' из ' + DRUG_DB.length + '</p>';
+      var shown = filtered.slice(0, 60);
+      shown.forEach(function (d) {
+        var gi = DRUG_DB.indexOf(d);
+        h += '<div class="refCard" onclick="refDrugDlg(' + gi + ')"><h4>' + (d.g && d.g.indexOf('⚕') >= 0 ? '⚕ ' : '') + esc(d.n) + '</h4>';
+        h += '<div class="refRow"><span class="refLabel">Дозировка:</span><span class="refVal">' + esc(d.s) + '</span></div>';
+        h += '<div class="refRow"><span class="refLabel">Форма:</span><span class="refVal">' + esc(d.u) + '</span></div>';
+        if (d.g) h += '<div class="refRow"><span class="refLabel">Группа:</span><span class="refVal">' + esc(d.g) + '</span></div>';
+        if (d.a && d.a.length) h += '<div class="refAnalogs"><span class="refLabel">Аналоги:</span> ' + d.a.map(function (a) { return '<span>' + esc(a) + '</span>'; }).join('') + '</div>';
+        h += '<p style="margin:6px 0 0;color:var(--ac)">👁 Подробнее…</p></div>';
+      });
+      if (filtered.length > shown.length) h += '<p style="color:var(--mut);font-size:calc(var(--fs) - 2px);text-align:center">…и ещё ' + (filtered.length - shown.length) + '. Уточните запрос.</p>';
+    }
+    box.innerHTML = h;
+  };
+
+  window.refView = function () {
+    var h = '<h3>💊 Справочник лекарственных средств</h3>';
+    h += '<div class="refSearch"><input type="text" id="refInput" placeholder="🔍 Поиск препарата (название, группа, аналог)…" value="' + esc(refSearch) + '" oninput="refSearch=this.value;renderRefResults()" autofocus>';
+    h += '<button class="searchClear" onclick="refSearch=\'\';var i=document.getElementById(\'refInput\');if(i)i.value=\'\';renderRefResults()">✕</button></div>';
+    h += '<div id="refResults"></div>';
+    setTimeout(window.renderRefResults, 0);
+    return h;
+  };
+
+  console.log('[Fix36] ✅ Справочник: живой поиск без потери фокуса');
+})();
 </script>
 </body>
 </html>
