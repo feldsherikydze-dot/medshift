@@ -605,6 +605,6 @@ if(DB.session){var _rem=localStorage.getItem('medshift_rem');var _ts=+localStora
 setInterval(function(){if(DB.session&&localStorage.getItem('medshift_rem')==='1'){var ts=+localStorage.getItem('medshift_rem_ts')||0;if(Date.now()-ts>864e5){loginFor=DB.session;DB.session=null;localStorage.setItem('medshift_rem','0');render();toast('Сессия истекла (24 ч) — введите PIN')}}},60000);
 syncInit();applyTheme();go(tab);
 </script>
-<script src="medshift-fix.js?v=101"></script>
+<script src="medshift-fix.js?v=102"></script>
 </body>
 </html>
