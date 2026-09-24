@@ -1,4 +1,4 @@
-var CACHE = 'medshift-cache-v201';
+var CACHE = 'medshift-cache-v202';
 
 var ASSETS = [
   './',
