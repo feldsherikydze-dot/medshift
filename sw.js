@@ -1,31 +1,25 @@
-var CACHE = 'medshift-cache-v51';
+var CACHE = 'medshift-cache-v52';
 
 var ASSETS = [
   './',
   './index.html',
-  './drugs.js',
   './manifest.webmanifest',
   './icon.svg',
   './icon-180.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './drugs.js'
 ];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
       return cache.addAll(ASSETS).catch(function (err) {
-        console.error('[SW] addAll error:', err);
-        return Promise.all(
-          ASSETS.map(function (asset) {
-            return cache.add(asset).catch(function (e) {
-              console.warn('[SW] Failed to cache:', asset, e);
-            });
-          })
-        );
+        console.error('[SW] Cache addAll failed:', err);
+        return cache.add('./');
       });
     }).then(function () {
-      return self.skipWaiting();
+      self.skipWaiting();
     })
   );
 });
@@ -40,12 +34,14 @@ self.addEventListener('activate', function (event) {
           }
         })
       );
-    }).then(function () {
-      return self.clients.claim();
     })
   );
+  self.clients.claim();
 });
 
+// Стратегия «кэш-сначала» (stale-while-revalidate):
+// страница открывается мгновенно из кэша, свежая версия подтягивается в фоне.
+// При отсутствии сети работает кэш. Данные всё равно всегда берутся из Firebase по сети.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
 
@@ -72,11 +68,9 @@ self.addEventListener('fetch', function (event) {
       }).catch(function () {
         if (cached) return cached;
         if (req.mode === 'navigate') {
-          return caches.match('./index.html').then(function (fallback) {
-            return fallback || new Response(
-              '<!doctype html><meta charset="utf-8"><p>Нет соединения.</p>',
-              { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-            );
+          return caches.match('./index.html').then(function (idx) {
+            if (idx) return idx;
+            return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Нет соединения</h2><p>Приложение недоступно офлайн.</p></body></html>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
           });
         }
         return new Response('Нет сети', { status: 503 });
