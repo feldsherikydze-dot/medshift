@@ -3560,6 +3560,28 @@ DB.cars = (DB.cars||[]).filter(function(c){return (DB.carTomb||[]).indexOf(c.id)
 };
 console.log('[Fix38] ✅ Могилки машин — удалённые машины не воскресают');
 })();
+  <script>
+/* ДОПОЛНЕНИЕ 39: строки сотрудников — ФИО не столбиком, кнопки не за экраном */
+(function(){
+if(window.fix39_applied)return;window.fix39_applied=true;
+var st=document.createElement('style');
+st.textContent=
+'.empRow{flex-wrap:wrap;row-gap:4px}'+
+'.empRow>b{flex:1 1 140px!important;min-width:140px!important;word-break:normal!important;line-height:1.25}'+
+'.empRow>span[style*="nowrap"]{white-space:normal!important}'+
+'.empRow>.btn{flex:0 0 auto}';
+document.head.appendChild(st);
+if(window.setView){
+var _sv39=window.setView;
+window.setView=function(){
+var h=_sv39.apply(this,arguments);
+return h.split('<p style="display:flex;align-items:center;gap:6px">')
+        .join('<p class="empRow" style="display:flex;align-items:center;gap:6px">');
+};
+}
+setTimeout(function(){if(window.render)render();},0);
+console.log('[Fix39] ✅ Строки сотрудников исправлены');
+})();
 </script>
 </body>
 </html>
