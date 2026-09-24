@@ -1,8 +1,9 @@
-var CACHE = 'medshift-cache-v48';
+var CACHE = 'medshift-cache-v49';
 
 var ASSETS = [
   './',
   './index.html',
+  './drugs.js',
   './manifest.webmanifest',
   './icon.svg',
   './icon-180.png',
@@ -13,12 +14,20 @@ var ASSETS = [
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      return cache.addAll(ASSETS).catch(function () {
-        return cache.add('./');
+      return cache.addAll(ASSETS).catch(function (err) {
+        console.error('[SW] addAll error:', err);
+        return Promise.all(
+          ASSETS.map(function (asset) {
+            return cache.add(asset).catch(function (e) {
+              console.warn('[SW] Failed to cache:', asset, e);
+            });
+          })
+        );
       });
+    }).then(function () {
+      return self.skipWaiting();
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', function (event) {
@@ -31,14 +40,12 @@ self.addEventListener('activate', function (event) {
           }
         })
       );
+    }).then(function () {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Стратегия «кэш-сначала» (stale-while-revalidate):
-// страница открывается мгновенно из кэша, свежая версия подтягивается в фоне.
-// При отсутствии сети работает кэш. Данные всё равно всегда берутся из Firebase по сети.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
 
@@ -64,7 +71,14 @@ self.addEventListener('fetch', function (event) {
         return res;
       }).catch(function () {
         if (cached) return cached;
-        if (req.mode === 'navigate') return caches.match('./index.html');
+        if (req.mode === 'navigate') {
+          return caches.match('./index.html').then(function (fallback) {
+            return fallback || new Response(
+              '<!doctype html><meta charset="utf-8"><p>Нет соединения.</p>',
+              { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+            );
+          });
+        }
         return new Response('Нет сети', { status: 503 });
       });
       return cached || network;
