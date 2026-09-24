@@ -4,8 +4,7 @@ var ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg',
-  './medshift-fix.js'
+  './icon.svg'
 ];
 
 self.addEventListener('install', function (event) {
