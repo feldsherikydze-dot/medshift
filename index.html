@@ -2953,9 +2953,13 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
   var css15 = `
 .msLeaves{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:hidden}
 .msLeaf{position:absolute;left:0;top:0;will-change:transform;user-select:none;line-height:1;opacity:.95;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
-.sdSide{display:inline-block;margin:0 10px;font-size:calc(var(--fs) + 3px);animation:decoFloat 4s ease-in-out infinite;pointer-events:none}
+.sdSide{display:inline-block;margin:0 16px;font-size:calc(var(--fs) + 3px);animation:decoFloat 4s ease-in-out infinite;pointer-events:none}
 .sdSide.r{animation-delay:2s}
 @keyframes decoFloat{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}
+.seasonName{position:relative}
+.sdTop{position:absolute;top:-22px;font-size:calc(var(--fs) - 2px);animation:decoFloat 4.5s ease-in-out infinite;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.sdTop.tL{left:10%}
+.sdTop.tR{right:10%;animation-delay:2.25s}
 `;
   var st15 = document.createElement('style');
   st15.textContent = css15;
@@ -3001,7 +3005,11 @@ body.dark .loginwrap .card{box-shadow:0 10px 34px rgba(0,0,0,.5)}
     var bd = (window.bdayToday ? bdayToday() : []);
     var h = '<div class="seasonBox">';
     h += '<div class="seasonIcons">' + s.icons + '</div>';
-    h += '<div class="seasonName"><span class="sdSide">' + s.side + '</span>' + s.name + '<span class="sdSide r">' + s.side + '</span></div>';
+    /* листики: одинаковый символ с обеих сторон надписи + два маленьких сверху по краям */
+    h += '<div class="seasonName"><span class="sdTop tL">' + s.side + '</span>' +
+         '<span class="sdSide">' + s.side + '</span>' + s.name +
+         '<span class="sdSide r">' + s.side + '</span>' +
+         '<span class="sdTop tR">' + s.side + '</span></div>';
     h += '<div class="seasonSoul">' + MONTH_SOUL[m] + '</div>';
     if (hol) h += '<div class="seasonHoliday">' + hol + '</div>';
     if (bd.length) h += '<div class="seasonBday">🎉 День рождения: ' + bd.map(esc).join(', ') + '!</div>';
