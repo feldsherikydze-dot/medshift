@@ -1,4 +1,4 @@
-var CACHE = 'medshift-cache-v56';
+var CACHE = 'medshift-cache-v57';
 
 var ASSETS = [
   './',
@@ -7,21 +7,18 @@ var ASSETS = [
   './icon.svg',
   './icon-180.png',
   './icon-192.png',
-  './icon-512.png',
-  './drugs.js'
+  './icon-512.png'
 ];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      return cache.addAll(ASSETS).catch(function (err) {
-        console.error('[SW] Cache addAll failed:', err);
+      return cache.addAll(ASSETS).catch(function () {
         return cache.add('./');
       });
-    }).then(function () {
-      self.skipWaiting();
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', function (event) {
@@ -67,12 +64,7 @@ self.addEventListener('fetch', function (event) {
         return res;
       }).catch(function () {
         if (cached) return cached;
-        if (req.mode === 'navigate') {
-          return caches.match('./index.html').then(function (idx) {
-            if (idx) return idx;
-            return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Нет соединения</h2><p>Приложение недоступно офлайн.</p></body></html>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-          });
-        }
+        if (req.mode === 'navigate') return caches.match('./index.html');
         return new Response('Нет сети', { status: 503 });
       });
       return cached || network;
