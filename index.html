@@ -4157,6 +4157,38 @@ css: 'linear-gradient(180deg,#233a63 0%,#5d4a7e 26%,#9c6288 48%,#d98274 70%,#f2b
 
   console.log('[Fix36] ✅ Справочник: живой поиск без потери фокуса');
 })();
+/* =========================================
+Могилки сумок и комплектов — чтобы удалённые не воскресали
+========================================= */
+(function(){
+  if(window.__fix37) return;
+  window.__fix37 = true;
+  DB.bagTomb = DB.bagTomb || [];
+  DB.potTomb = DB.potTomb || [];
+
+  var _db = window.delBag;
+  window.delBag = function(id){
+    if(DB.bagTomb.indexOf(id)<0) DB.bagTomb.push(id);
+    save(); _db(id);
+  };
+
+  var _dp = window.delPotKit;
+  window.delPotKit = function(id){
+    if(DB.potTomb.indexOf(id)<0) DB.potTomb.push(id);
+    save(); _dp(id);
+  };
+
+  var _ad = window.adoptState;
+  window.adoptState = function(rem,rrev){
+    rem.bagTomb = (rem.bagTomb||[]).concat(DB.bagTomb.filter(function(x){return (rem.bagTomb||[]).indexOf(x)<0}));
+    rem.potTomb = (rem.potTomb||[]).concat(DB.potTomb.filter(function(x){return (rem.potTomb||[]).indexOf(x)<0}));
+    rem.bags = (rem.bags||[]).filter(function(b){return rem.bagTomb.indexOf(b.id)<0});
+    rem.potents = (rem.potents||[]).filter(function(p){return rem.potTomb.indexOf(p.id)<0});
+    _ad(rem,rrev);
+    DB.bags = (DB.bags||[]).filter(function(b){return (DB.bagTomb||[]).indexOf(b.id)<0});
+    DB.potents = (DB.potents||[]).filter(function(p){return (DB.potTomb||[]).indexOf(p.id)<0});
+  };
+})();
 </script>
 </body>
 </html>
