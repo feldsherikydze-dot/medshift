@@ -1,10 +1,10 @@
-var CACHE = 'medshift-cache-v50';
+var CACHE = 'medshift-cache-v51';
 
 var ASSETS = [
   './',
   './index.html',
-  './manifest.webmanifest',
   './drugs.js',
+  './manifest.webmanifest',
   './icon.svg',
   './icon-180.png',
   './icon-192.png',
@@ -15,11 +15,17 @@ self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
       return cache.addAll(ASSETS).catch(function (err) {
-        console.error('[SW] Ошибка кэширования ASSETS:', err);
-        return cache.add('./');
+        console.error('[SW] addAll error:', err);
+        return Promise.all(
+          ASSETS.map(function (asset) {
+            return cache.add(asset).catch(function (e) {
+              console.warn('[SW] Failed to cache:', asset, e);
+            });
+          })
+        );
       });
     }).then(function () {
-      self.skipWaiting();
+      return self.skipWaiting();
     })
   );
 });
@@ -30,19 +36,16 @@ self.addEventListener('activate', function (event) {
       return Promise.all(
         keys.map(function (key) {
           if (key !== CACHE) {
-            console.log('[SW] Удаляю старый кэш:', key);
             return caches.delete(key);
           }
         })
       );
+    }).then(function () {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Стратегия «кэш-сначала» (stale-while-revalidate):
-// страница открывается мгновенно из кэша, свежая версия подтягивается в фоне.
-// При отсутствии сети работает кэш. Данные всё равно всегда берутся из Firebase по сети.
 self.addEventListener('fetch', function (event) {
   var req = event.request;
 
@@ -62,9 +65,7 @@ self.addEventListener('fetch', function (event) {
         if (res && res.status === 200) {
           var copy = res.clone();
           caches.open(CACHE).then(function (cache) {
-            cache.put(req, copy).catch(function (err) {
-              console.error('[SW] Ошибка записи в кэш:', req.url, err);
-            });
+            cache.put(req, copy);
           });
         }
         return res;
@@ -73,10 +74,7 @@ self.addEventListener('fetch', function (event) {
         if (req.mode === 'navigate') {
           return caches.match('./index.html').then(function (fallback) {
             return fallback || new Response(
-              '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Офлайн</title></head>' +
-              '<body style="font-family:sans-serif;text-align:center;padding:2rem">' +
-              '<h2>Нет подключения к сети</h2><p>Приложение недоступно офлайн в данной версии кэша.</p>' +
-              '</body></html>',
+              '<!doctype html><meta charset="utf-8"><p>Нет соединения.</p>',
               { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
             );
           });
