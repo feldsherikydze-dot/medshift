@@ -4,6 +4,7 @@ var ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './drugs.js',
   './icon.svg'
 ];
 
