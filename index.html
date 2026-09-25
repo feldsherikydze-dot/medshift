@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
+<title>ООО «КрасНЕО» · смена</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="КрасНЕО">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<meta name="msapplication-TileImage" content="icon-192.png">
+<meta name="msapplication-TileColor" content="#0b5394">
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://geocoding-api.open-meteo.com" crossorigin>
+<link rel="preconnect" href="https://medshift-8daea-default-rtdb.europe-west1.firebasedatabase.app">
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="stylesheet" href="styles.css">
+<script src="drugs.js?v=2.5.6"></script>
+</head>
+<body>
+<header>
+  <div class="hdr-left">ООО «КрасНЕО» <span id="alarm"></span> <span id="headcount" style="font-size:calc(var(--fs) - 2px);opacity:.9"></span></div>
+  <span class="hdr-user" id="hdrUser"></span>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+<div id="msBg"></div>
+<script>
+window.__dbg = [];
+function dbgPush(m) {
+  window.__dbg.push(String(m).slice(0, 900));
+  try {
+    var b = document.getElementById('dbg');
+    if (b) { b.textContent = window.__dbg.join('\n---\n'); b.style.display = 'block'; document.title = '[ERR] ' + window.__dbg[window.__dbg.length - 1].slice(0, 60); }
+  } catch (_) {}
+}
+window.addEventListener('error', function (e) {
+  var d = e.error ? e.error.name + ': ' + (e.error.message || '') : (e.message || '');
+  var loc = ' @ ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0);
+  if (e.error && e.error.stack) loc += ' ||stack|| ' + String(e.error.stack).split('\n').slice(0, 4).join(' | ');
+  dbgPush('ERR ' + d + loc);
+  paintFatal('❌ Ошибка запуска\n\n' + d + '\n' + loc);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var r = e.reason;
+  var d = (r && r.name ? r.name + ': ' : '') + (r && r.message ? r.message : String(r));
+  var loc = '';
+  if (r && r.stack) loc = ' ||stack|| ' + String(r.stack).split('\n').slice(0, 4).join(' | ');
+  dbgPush('REJ ' + d + loc);
+  paintFatal('❌ Ошибка запуска (promise)\n\n' + d + '\n' + loc);
+});
+function paintFatal(t) {
+  try {
+    var f = document.getElementById('fatal');
+    if (!f) { f = document.createElement('pre'); f.id = 'fatal'; document.body.appendChild(f); }
+    f.style.cssText = 'position:fixed;left:0;right:0;top:0;bottom:0;z-index:999999;margin:0;background:#fff;color:#b00020;font:13px/1.5 monospace;white-space:pre-wrap;word-break:break-all;padding:16px;box-sizing:border-box;overflow:auto;display:block';
+    f.textContent = t;
+  } catch (_) {}
+}
+var _origCE = window.console.error.bind(window.console);
+window.console.error = function () {
+  _origCE.apply(null, arguments);
+  try { dbgPush('CONSOLE.ERROR ' + Array.prototype.map.call(arguments, function (a) { return typeof a === 'object' && a && a.message ? a.name + ': ' + a.message : String(a); }).join(' ')); } catch (_) {}
+};
+setTimeout(function () {
+  var jsDone = !!(window.DB && window.bootReady || window.__medshiftInstallPrompt || window.loginView);
+  if (!jsDone) {
+    try {
+      var b = document.getElementById('dbg');
+      if (b) { b.textContent = '⚠ boot.js НЕ выполнился за 3 с (ошибка при загрузке модулей). Открой панель сеть/консоль — либо сообщи текст выше.'; b.style.display = 'block'; }
+    } catch (_) {}
+    paintFatal('⚠ Приложение не загрузилось за 3 секунды.\n\nВероятные причины:\n• старый кэш — обновите страницу с очисткой данных сайта (или попробуйте приватную вкладку)\n• Simple Server отдаёт файлы не из той папки\n• сборка файлов разъехалась.\n\nЕсли вместо этого текста вы видите настоящий чёрный экран — напишите нам, пожалуйста.');
+  }
+}, 3000);
+</script>
+<pre id="dbg" style="display:none;position:fixed;left:6px;right:6px;bottom:6px;z-index:99999;background:#000;color:#ff4444;font-size:12px;white-space:pre-wrap;word-break:break-all;padding:8px;border-radius:8px;margin:0;pointer-events:none;max-height:45%;overflow:auto"></pre>
+<script type="module" src="./boot.js?v=2.5.6"></script>
+</body>
+</html>
