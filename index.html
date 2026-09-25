@@ -165,8 +165,6 @@ td,th{padding:6px 4px}
 <main id="main"></main>
 <dialog id="dlg"><div id="dlgBody"></div></dialog>
 <script>
-/* === ВЕРСИЯ (поднимать при каждом обновлении) === */
-var APP_VER = '2.4';
 /* === ДИНАМИЧЕСКИЙ VH + КЛАВИАТУРА + УМНЫЙ СКРОЛЛ К ПОЛЯМ === */
 function setVH(){document.documentElement.style.setProperty('--vh',window.innerHeight*0.01+'px')}
 function setKb(){var kb=0;if(window.visualViewport){kb=Math.max(0,window.innerHeight-window.visualViewport.height)}document.documentElement.style.setProperty('--kb',kb+'px')}
@@ -245,7 +243,7 @@ function showStatsDetail(){var tot=0,expN=0,soonN=0;var bagStats=[];var carStats
 function refView(){var h='<h3>💊 Справочник лекарственных средств</h3>';h+='<div class="refSearch"><input type="text" placeholder="🔍 Поиск препарата (название, группа, аналог)…" value="'+esc(refSearch)+'" oninput="refSearch=this.value;render()" autofocus><button class="searchClear" onclick="refSearch=\'\';render()">✕</button></div>';var filtered=DRUG_DB;if(refSearch&&refSearch.length>=2){var q=refSearch.toLowerCase();filtered=DRUG_DB.filter(function(d){return d.n.toLowerCase().indexOf(q)>=0||(d.s||'').toLowerCase().indexOf(q)>=0||(d.g||'').toLowerCase().indexOf(q)>=0||(d.a||[]).some(function(a){return a.toLowerCase().indexOf(q)>=0})})}if(!filtered.length){h+='<div class="refCard"><h4>💊 Справочник РЛС</h4><p style="font-size:calc(var(--fs) - 1px);color:var(--mut)">В базе '+DRUG_DB.length+' препаратов. Введите название, группу или аналог — появятся карточки. Тап по карточке открывает полную запись с латинской прописью.</p></div>'}else{h+='<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Найдено: '+filtered.length+' из '+DRUG_DB.length+'</p>';filtered.forEach(function(d){var gi=DRUG_DB.indexOf(d);h+='<div class="refCard" onclick="refDrugDlg('+gi+')"><h4>'+(d.g&&d.g.indexOf('⚕')>=0?'⚕ ':'')+esc(d.n)+'</h4>';h+='<div class="refRow"><span class="refLabel">Дозировка:</span><span class="refVal">'+esc(d.s)+'</span></div>';h+='<div class="refRow"><span class="refLabel">Форма:</span><span class="refVal">'+esc(d.u)+'</span></div>';if(d.g)h+='<div class="refRow"><span class="refLabel">Группа:</span><span class="refVal">'+esc(d.g)+'</span></div>';if(d.a&&d.a.length)h+='<div class="refAnalogs"><span class="refLabel">Аналоги:</span> '+d.a.map(function(a){return'<span>'+esc(a)+'</span>'}).join('')+'</div>';h+='<p style="margin:6px 0 0;color:var(--ac)">👁 Подробнее…</p></div>'})}return h}
 function refDrugDlg(gi){var d=DRUG_DB[gi];if(!d)return;var h='<h3>💊 '+esc(d.n)+'</h3>';h+='<div class="refRow"><span class="refLabel">Дозировка:</span><span class="refVal">'+esc(d.s)+'</span></div>';h+='<div class="refRow"><span class="refLabel">Форма:</span><span class="refVal">'+esc(d.u)+'</span></div>';if(d.g)h+='<div class="refRow"><span class="refLabel">Группа:</span><span class="refVal">'+esc(d.g)+'</span></div>';if(d.rx&&d.rx!=='—')h+='<div class="refRx">'+esc(d.rx)+'</div>';if(d.a&&d.a.length)h+='<div class="refAnalogs"><span class="refLabel">Аналоги:</span> '+d.a.map(function(a){return'<span>'+esc(a)+'</span>'}).join('')+'</div>';h+='<p style="margin-top:12px"><button class="btn sec wide" onclick="closeDlg()">Закрыть</button></p>';openDlg(h)}
 function render(){var u=me();if(!u){main.innerHTML=loginView();document.getElementById('alarm').innerHTML='';updHead();return}if(tab==='home')main.innerHTML=homeView();else if(tab==='bags')main.innerHTML=curPot?(curPotKit?potKitView():potentView()):curTpl?tplView():bagsView();else if(tab==='cars')main.innerHTML=carsView();else if(tab==='ref')main.innerHTML=refView();else if(tab==='sched')main.innerHTML=schedView();else if(tab==='chat')main.innerHTML=chatView();else main.innerHTML=setView();var a=alerts();document.getElementById('alarm').innerHTML=a.length?'<span class="badge bExp">! '+a.length+'</span>':'';updHead();if(tab==='home'){startClock();loadWeather()}}
-function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';var _bio=localStorage.getItem('medshift_bio');if(_bio){var b=null;try{b=JSON.parse(_bio)}catch(e){b=null}if(b){var bu=DB.users.find(function(x){return x.id===b.userId});if(bu&&!isDead(bu.id))h+='<button class="bigbtn" onclick="biometricLogin()" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>'+esc(bu.name)+'</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">'}}var myId=+localStorage.getItem('medshift_my')||0;var myu=DB.users.find(function(x){return x.id===myId});if(myu&&!isDead(myu.id)){h+='<button class="bigbtn" onclick="loginPick('+myu.id+')">👤 <b>'+esc(myu.name)+'</b></button>';if(loginFor===myu.id)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:calc(var(--fs) - 1px)"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>'}h+='<button class="btn sec wide" onclick="loginFor='+(loginFor===-2?'0':'-2')+';render()">👤 У меня уже есть учётная запись</button>';if(loginFor===-2)h+='<p><label>ФИО</label><input id="lnName"><label>PIN</label><input id="lnPin" type="password" inputmode="numeric"></p><p><button class="btn wide" onclick="loginByName()">Войти</button></p>';h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button>';h+='<button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div><p style="text-align:center;font-size:calc(var(--fs) - 3px);color:var(--mut)">v'+APP_VER+'</p>';return h}
+function loginView(){var h='<div class="loginwrap"><div class="card"><h2>МедСмена</h2><p>Вход по PIN</p>';var _bio=localStorage.getItem('medshift_bio');if(_bio){var b=null;try{b=JSON.parse(_bio)}catch(e){b=null}if(b){var bu=DB.users.find(function(x){return x.id===b.userId});if(bu&&!isDead(bu.id))h+='<button class="bigbtn" onclick="biometricLogin()" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>'+esc(bu.name)+'</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">'}}var myId=+localStorage.getItem('medshift_my')||0;var myu=DB.users.find(function(x){return x.id===myId});if(myu&&!isDead(myu.id)){h+='<button class="bigbtn" onclick="loginPick('+myu.id+')">👤 <b>'+esc(myu.name)+'</b></button>';if(loginFor===myu.id)h+='<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p><p><label style="font-size:calc(var(--fs) - 1px)"><input type="checkbox" id="remMe" style="width:auto"'+(localStorage.getItem('medshift_rem')==='1'?' checked':'')+'> запомнить меня на этом устройстве (24 ч)</label></p><p><button class="btn wide" onclick="loginDo()">Войти</button></p>'}h+='<button class="btn sec wide" onclick="loginFor='+(loginFor===-2?'0':'-2')+';render()">👤 У меня уже есть учётная запись</button>';if(loginFor===-2)h+='<p><label>ФИО</label><input id="lnName"><label>PIN</label><input id="lnPin" type="password" inputmode="numeric"></p><p><button class="btn wide" onclick="loginByName()">Войти</button></p>';h+='<button class="btn sec wide" onclick="regView()">➕ Зарегистрироваться</button>';h+='<button class="btn sec wide" onclick="qrDlg()">📲 QR-код и инструкция по установке</button></div></div>';return h}
 function loginPick(id){if(isDead(id))return;var u=DB.users.find(function(x){return x.id===id});if(!u.pin){DB.session=id;localStorage.setItem('medshift_my',String(id));localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));save();announceLogin(u);go(tab);return}loginFor=id;render()}
 function loginDo(){var u=DB.users.find(function(x){return x.id===loginFor});var v=document.getElementById('pinIn').value;if(v!==u.pin)return toast('Неверный PIN');var rm=document.getElementById('remMe');localStorage.setItem('medshift_rem',rm&&rm.checked?'1':'0');if(rm&&rm.checked)localStorage.setItem('medshift_rem_ts',String(Date.now()));localStorage.setItem('medshift_my',String(u.id));DB.session=u.id;loginFor=null;save();announceLogin(u);presBeat();go(tab);toast('Смена начата 👋')}
 function loginByName(){var n=normName(document.getElementById('lnName').value);var p=document.getElementById('lnPin').value;if(isBannedName(n))return toast('🚫 Вход запрещён: обратитесь к руководителю');var u=DB.users.find(function(x){return normName(x.name)===n});if(!u)return toast('Сотрудник не найден');if(u.pin!==p)return toast('Неверный PIN');localStorage.setItem('medshift_my',String(u.id));localStorage.setItem('medshift_rem','1');localStorage.setItem('medshift_rem_ts',String(Date.now()));DB.session=u.id;loginFor=null;save();announceLogin(u);presBeat();go(tab);toast('Смена начата 👋')}
@@ -318,7 +316,7 @@ function openPotItem(kid,idx){var k=(DB.potents||[]).find(function(x){return x.i
 function savePotItem(kid,idx){var k=(DB.potents||[]).find(function(x){return x.id===kid});if(!k)return;var o={name:document.getElementById('pot_name').value.trim(),spec:document.getElementById('pot_spec').value.trim(),qty:+document.getElementById('pQty').value||1,unit:document.getElementById('pot_unit').value.trim()||'шт',expiry:document.getElementById('pExp').value,potent:true};if(!o.name)return toast('Введите название');if(idx<0)k.items.push(o);else k.items[idx]=o;save();closeDlg();render();toast('Сохранено')}
 function delPotItem(kid,i){var k=(DB.potents||[]).find(function(x){return x.id===kid});if(!k)return;k.items.splice(i,1);save();render();toast('Позиция удалена')}
 function pickPotDrug(idx){var d=window['__drugs_pot_item'];if(!d||!d[idx])return;var it=d[idx];var resEl=document.getElementById('pot_item_results');if(resEl)resEl.innerHTML='';var se=document.getElementById('pot_item_search');if(se)se.value='';var ne=document.getElementById('pot_name');if(ne){ne.value=it.n;var spe=document.getElementById('pot_spec');if(spe)spe.value=it.s;var ue=document.getElementById('pot_unit');if(ue)ue.value=it.u;toast('✅ Подставлено: '+it.n);return}var k=(DB.potents||[]).find(function(x){return x.id===curPotKit});if(!k)return;k.items.push({name:it.n,spec:it.s,unit:it.u,qty:1,expiry:'',potent:true});save();render();toast('✅ Добавлено: '+it.n)}
-function schedView(){purgeSched();var h='<button class="btn '+(schedSub==='days'?'':'sec')+'" onclick="schedSub=\'days\';render()">📷 Журнал смены</button>';h+='<button class="btn '+(schedSub==='months'?'':'sec')+'" onclick="schedSub=\'months\';render()">📅 График месяца</button>';if(schedSub==='days'){h+='<p><label class="btn sec" style="display:inline-block">➕ Добавить фото журнала<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'days\')"></label></p>';h+='<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Фото журнала хранятся 2 дня и удаляются автоматически.</p>';if(DB.sched.days.length){h+='<div class="thumbs">'+DB.sched.days.map(function(p){return '<img loading="lazy" decoding="async" src="'+p.img+'" onclick="openPhoto(\'days\','+p.id+')">'}).join('')+'</div>'}else h+='<p>Фото журнала пока нет.</p>'}else{h+='<p><label class="btn sec" style="display:inline-block">➕ Добавить график месяца<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'months\')"></label></p>';h+='<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">График удаляется автоматически на 3-й день следующего месяца.</p>';if(DB.sched.months.length){h+='<div class="thumbs">'+DB.sched.months.map(function(p){return '<img loading="lazy" decoding="async" src="'+p.img+'" onclick="openPhoto(\'months\','+p.id+')">'}).join('')+'</div>'}else h+='<p>Графиков пока нет.</p>'}return h}
+function schedView(){purgeSched();var h='<button class="btn '+(schedSub==='days'?'':'sec')+'" onclick="schedSub=\'days\';render()">📷 Журнал смены</button>';h+='<button class="btn '+(schedSub==='months'?'':'sec')+'" onclick="schedSub=\'months\';render()">📅 График месяца</button>';if(schedSub==='days'){h+='<p><label class="btn sec" style="display:inline-block">➕ Добавить фото журнала<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'days\')"></label></p>';h+='<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Фото журнала хранятся 2 дня и удаляются автоматически.</p>';if(DB.sched.days.length){h+='<div class="thumbs">'+DB.sched.days.map(function(p){return '<img src="'+p.img+'" onclick="openPhoto(\'days\','+p.id+')">'}).join('')+'</div>'}else h+='<p>Фото журнала пока нет.</p>'}else{h+='<p><label class="btn sec" style="display:inline-block">➕ Добавить график месяца<input type="file" hidden accept="image/*" onchange="addSchedPhoto(this,\'months\')"></label></p>';h+='<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">График удаляется автоматически на 3-й день следующего месяца.</p>';if(DB.sched.months.length){h+='<div class="thumbs">'+DB.sched.months.map(function(p){return '<img src="'+p.img+'" onclick="openPhoto(\'months\','+p.id+')">'}).join('')+'</div>'}else h+='<p>Графиков пока нет.</p>'}return h}
 function compressImage(f,cb){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var max=1200;var w=im.width,h=im.height;if(w>max||h>max){var k=Math.min(max/w,max/h);w=Math.round(w*k);h=Math.round(h*k)}var cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);cb(cv.toDataURL('image/jpeg',0.7))};im.src=r.result};r.readAsDataURL(f)}
 function addSchedPhoto(inp,kind){var f=inp.files[0];if(!f)return;compressImage(f,function(img){try{DB.sched[kind].push({id:uid(),ts:Date.now(),month:todayStr().slice(0,7),img:img});save();render();toast('Фото добавлено')}catch(e){toast('Память телефона переполнена — удалите старые фото')}})}
 function openPhoto(kind,id){var p=null;DB.sched[kind].forEach(function(x){if(x.id===id)p=x});if(!p)return;var h='<div class="photoDlgBody"><div class="photoViewport" id="pvPort"><img id="pvImg" src="'+p.img+'"></div><div class="photoZoomBar"><button class="btn sec" onclick="pvZoom(-1)">−</button><span id="pvLabel">100%</span><button class="btn sec" onclick="pvZoom(1)">+</button><button class="btn sec" onclick="pvReset()">↺</button></div><div class="photoBtns"><button class="btn del" onclick="delPhoto(\''+kind+'\','+id+')">🗑 Удалить</button><button class="btn sec" onclick="closeDlg()">Закрыть</button></div></div>';openDlg(h);initPhotoViewer()}
@@ -1767,7 +1765,6 @@ return r;
 function bumpSchedMeta() {
 restPut('schedmeta', { ts: Date.now() }).then(function () {
 window.__schedSeen = Date.now();
-window.__schedDirty = false;
 });
 }
 function alive(kind, p, now) {
@@ -1789,9 +1786,7 @@ save();
 render();
 toast('Фото добавлено');
 if (window.__fbToken) {
-restPut('sched/' + kind + '/' + p.id, p).then(function () { bumpSchedMeta(); }).catch(function () { window.__schedDirty = true; });
-} else {
-window.__schedDirty = true;
+restPut('sched/' + kind + '/' + p.id, p).then(function () { bumpSchedMeta(); });
 }
 } catch (e) {
 toast('Память телефона переполнена — удалите старые фото');
@@ -1815,7 +1810,7 @@ function schedSync() {
 if (!window.FB_CONF || !FB_CONF.databaseURL || !window.__fbToken) return;
 restGet('schedmeta').then(function (m) {
 var ts = (m && m.ts) || 0;
-if (window.__schedSeenOnce && ts === window.__schedSeen && !window.__schedDirty) return;
+if (window.__schedSeenOnce && ts === window.__schedSeen) return;
 window.__schedSeen = ts;
 window.__schedSeenOnce = true;
 restGet('sched').then(function (rem) {
@@ -1836,7 +1831,7 @@ changedLocal = true;
 });
 llist.forEach(function (p) {
 if (!rlist[p.id] && alive(kind, p, now)) {
-restPut('sched/' + kind + '/' + p.id, p).catch(function () { window.__schedDirty = true; });
+restPut('sched/' + kind + '/' + p.id, p);
 changedRemote = true;
 }
 });
@@ -3012,88 +3007,6 @@ return h;
 };
 }
 setTimeout(function(){if(window.render)render()},0);
-})();
-</script>
-<script>
-/* ================= ДОПОЛНЕНИЕ 36: паритет с модульной версией — кэши рендера и debounce сохранения ================= */
-(function () {
-  if (window.__fix36_applied) return;
-  window.__fix36_applied = true;
-
-  var _mid36 = 0, _midAt36 = 0;
-  function todayMid36() {
-    var n = Date.now();
-    if (!_midAt36 || n - _midAt36 > 60000) { var t = new Date(n); t.setHours(0, 0, 0, 0); _mid36 = t.getTime(); _midAt36 = n; }
-    return _mid36;
-  }
-
-  if (window.daysLeft) {
-    var _dl36 = window.daysLeft;
-    window.daysLeft = function (iso) { return Math.round((new Date(iso + 'T00:00:00') - todayMid36()) / 864e5); };
-  }
-
-  var _ck36 = function () { return (DB.rev || 0) + '|' + Math.floor(Date.now() / 36e5); };
-  var _soon36 = null, _al36 = null, _bd36 = null;
-
-  if (window.soonList) {
-    var _sl36 = window.soonList;
-    window.soonList = function () {
-      var k = _ck36();
-      if (_soon36 && _soon36.k === k) return _soon36.v;
-      var v = _sl36.apply(this, arguments);
-      _soon36 = { k: k, v: v };
-      return v;
-    };
-  }
-  if (window.alerts) {
-    var _al36 = window.alerts;
-    window.alerts = function () {
-      var k = _ck36();
-      if (_al36 && _al36.k === k) return _al36.v;
-      var v = _al36.apply(this, arguments);
-      _al36 = { k: k, v: v };
-      return v;
-    };
-  }
-  var _badge36 = {}, _badgeN36 = 0;
-  if (window.badgeExp) {
-    var _be36 = window.badgeExp;
-    window.badgeExp = function (iso) {
-      var key = ((DB.settings && DB.settings.warnDays) || 10) + '|' + todayMid36() + '|' + (iso || '');
-      if (_badge36[key] !== undefined) return _badge36[key];
-      var v = _be36.apply(this, arguments);
-      if (_badgeN36 > 300) { _badge36 = {}; _badgeN36 = 0; }
-      _badge36[key] = v; _badgeN36++;
-      return v;
-    };
-  }
-  if (window.bdayToday) {
-    var _bt36 = window.bdayToday;
-    window.bdayToday = function () {
-      var k = (DB.rev || 0) + '|' + todayMid36();
-      if (_bd36 && _bd36.k === k) return _bd36.v;
-      var v = _bt36.apply(this, arguments);
-      _bd36 = { k: k, v: v };
-      return v;
-    };
-  }
-
-  var _svT36 = null;
-  var _write36 = function () {
-    try { localStorage.setItem(LS, JSON.stringify(DB)); } catch (e) { toast('⚠ Недостаточно места в хранилище — данные не сохранены'); }
-    syncPush();
-  };
-  var _flush36 = function () { if (_svT36 !== null) { clearTimeout(_svT36); _svT36 = null; _write36(); } };
-  window.save = function () {
-    if (window.purgeLocal) window.purgeLocal();
-    DB.rev = (DB.rev || 0) + 1;
-    if (_svT36 !== null) clearTimeout(_svT36);
-    _svT36 = setTimeout(_write36, 300);
-  };
-  window.saveNow = _flush36;
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') _flush36(); });
-  window.addEventListener('pagehide', _flush36);
-  window.addEventListener('beforeunload', _flush36);
 })();
 </script>
 </body>
