@@ -879,6 +879,26 @@ window.setAccRGB = (ch, el) => {
 window.setDark = (el) => { DB.settings.dark = el.value; save(); applyTheme(); };
 window.msToggleLeaves = (on) => { DB.settings.leaves = !!on; save(); if (on) startLeaves(); else stopLeaves(); };
 window.toggleLeaves = (el) => window.msToggleLeaves(!!el.checked);
+window.manualAccentDlg = () => {
+  const c = DB.settings.accent || '#0b5394';
+  const rgb = hexRgb(c);
+  const _cn = ['R', 'G', 'B'];
+  let h = '<h3>🎨 Ручная настройка цвета</h3>';
+  h += '<label>Цвет темы</label><div class="swRow" style="align-items:center;gap:8px">' +
+    '<input type="color" id="acColor" value="' + c + '" data-act="setAccent" title="Открыть палитру целиком" style="flex:1 1 auto;width:auto;height:42px;min-height:42px;border:1px solid var(--bd);border-radius:10px;padding:4px;background:var(--card);cursor:pointer">' +
+    '<span id="acHex" style="font-size:calc(var(--fs) - 2px);color:var(--mut);white-space:nowrap;font-family:monospace">' + c.toLowerCase() + '</span></div>';
+  _cn.forEach((nm, ci) => {
+    h += '<div class="swRow" style="align-items:center;gap:6px;margin:2px 0"><span style="width:16px;font-weight:700;flex-shrink:0">' + nm + '</span><input type="range" min="0" max="255" step="1" value="' + rgb[ci] + '" data-act="setAccRGB" data-arg="' + ci + '" style="flex:1"><span class="rgbVal" style="min-width:28px;text-align:right;font-family:monospace;color:var(--mut)">' + rgb[ci] + '</span></div>';
+  });
+  h += '<p><button class="btn" data-act="accOk">Готово</button></p>';
+  openDlg(h);
+  window.__dlgActions = {
+    setAccent: (a, el) => window.setAccent(a, el),
+    setAccRGB: (ch, el) => window.setAccRGB(ch, el),
+    accOk: () => closeDlg()
+  };
+};
+window.toggleLeaves = (el) => window.msToggleLeaves(!!el.checked);
 
 // ---------- Сотрудники (админ) ----------
 window.openRespDlg = (uid) => {

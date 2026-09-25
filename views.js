@@ -327,12 +327,7 @@ export function setView() {
   const _acc = DB.settings.accent || '#0b5394';
   ACCENTS.forEach(c => { h += '<span class="sw' + (String(c).toLowerCase() === String(_acc).toLowerCase() ? ' on' : '') + '" style="background:' + c + '" data-act="setAccent" data-arg="' + c + '" title="' + c + '"></span>'; });
   h += '<span class="swPickLabel" style="font-size:calc(var(--fs) - 2px);color:var(--mut)">быстрые цвета</span></div>';
-  h += '<label style="margin-top:8px">Свой цвет (палитра или R/G/B-слайдеры)</label><div class="swRow" style="align-items:center;gap:8px"><input type="color" id="acColor" value="' + esc(_acc) + '" data-act="setAccent" title="Открыть палитру целиком" style="flex:1 1 auto;width:auto;height:42px;min-height:42px;border:1px solid var(--bd);border-radius:10px;padding:4px;background:var(--card);cursor:pointer"><span id="acHex" style="font-size:calc(var(--fs) - 2px);color:var(--mut);white-space:nowrap;font-family:monospace">' + esc(_acc).toLowerCase() + '</span></div>';
-  const _rub = _rgbOf(_acc);
-  const _cn = ['R', 'G', 'B'];
-  _rub.forEach((vv, ci) => {
-    h += '<div class="swRow" style="align-items:center;gap:6px;margin:2px 0"><span style="width:16px;font-weight:700;flex-shrink:0">' + _cn[ci] + '</span><input type="range" min="0" max="255" step="1" value="' + vv + '" data-act="setAccRGB" data-arg="' + ci + '" style="flex:1"><span class="rgbVal" style="min-width:28px;text-align:right;font-family:monospace;color:var(--mut)">' + vv + '</span></div>';
-  });
+  h += '<div class="swRow" style="align-items:center;gap:8px;margin-top:8px"><button class="btn sec" data-act="manualAccentDlg">🎨 Ручная настройка цвета</button><span class="sw" style="background:' + _acc + '"></span><span id="acHex" style="font-size:calc(var(--fs) - 2px);color:var(--mut);white-space:nowrap;font-family:monospace">' + esc(_acc).toLowerCase() + '</span></div>';
   h += '<label>Режим оформления</label><select data-act="setDark"><option value="0"' + (DB.settings.dark === '0' ? ' selected' : '') + '>Светлый</option><option value="1"' + (DB.settings.dark === '1' ? ' selected' : '') + '>Тёмный</option><option value="auto"' + (DB.settings.dark === 'auto' ? ' selected' : '') + '>Авто</option></select>';
   h += '<label><input type="checkbox" style="width:auto"' + (DB.settings.leaves === false ? '' : ' checked') + ' data-act="toggleLeaves"> 🍂 Сезонные атрибуты (листопад, снег)</label>';
   h += '</div>';
