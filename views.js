@@ -4,7 +4,7 @@ import { onlineN } from './sync.js';
 
 export function loginView() {
   let h = '<div class="loginwrap"><div class="card">';
-  h += '<svg class="msLogo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="60" height="60" rx="16" fill="#0b5394"/><rect x="3" y="30" width="3.5" height="2" rx="1" fill="rgba(255,255,255,.75)"/><rect x="2" y="35" width="4.5" height="2" rx="1" fill="rgba(255,255,255,.55)"/><rect x="8" y="22" width="40" height="20" rx="4" fill="#fdd835"/><path d="M48 26h6l6 8v8H48z" fill="#fdd835"/><path d="M50 28h4l4 5h-8z" fill="#b3e5fc"/><rect x="8" y="36" width="52" height="3.5" fill="#e53935"/><rect x="24" y="24" width="4" height="10" fill="#e53935"/><rect x="21" y="27" width="10" height="4" fill="#e53935"/><rect x="30" y="17" width="9" height="5" rx="2" fill="#42a5f5"/><circle cx="34.5" cy="15" r="2.5" fill="#90caf9" opacity=".8"/><circle cx="20" cy="44" r="5" fill="#263238"/><circle cx="20" cy="44" r="2" fill="#cfd8dc"/><circle cx="50" cy="44" r="5" fill="#263238"/><circle cx="50" cy="44" r="2" fill="#cfd8dc"/></svg>';
+  h += '<svg class="msLogo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="60" height="60" rx="14" fill="#17528f"/><rect x="26" y="9" width="12" height="46" rx="3" fill="#fff"/><rect x="9" y="26" width="46" height="12" rx="3" fill="#fff"/><path d="M11.3,33.5 18.8,33.5 21,33.5 22.3,33 23.3,33 24.3,33.5 29,33.5 30.5,33.5 31.5,24.5 33,15 34.8,11.3 36.5,24.5 37.5,33.5 38.3,33.5 42,33.5 43.5,31.8 45,31.8 46.3,33.5 53,33.5" fill="none" stroke="#ff3a30" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   h += '<h2>ООО «КрасНЕО»</h2>';
   h += '<p style="margin:2px 0 8px;font-size:calc(var(--fs) - 2px);color:var(--mut)">первая частная скорая помощь<br>Красноярск · 203-03-03</p>';
   h += '<p>Вход по PIN</p>';
@@ -32,6 +32,7 @@ export function loginView() {
     h += '<p><button class="btn wide" data-act="loginByName">Войти</button></p>';
   }
   h += '<button class="btn sec wide" data-act="regView">➕ Зарегистрироваться</button>';
+  h += '<button class="btn sec wide" data-act="openKeyDlg">🔑 Ключ склада</button>';
   h += '<button class="btn sec wide" data-act="installApp">📲 Установить приложение</button>';
   h += '<button class="btn sec wide" data-act="qrDlg">📲 QR-код и инструкция</button>';
   h += '</div></div>';
@@ -279,6 +280,13 @@ function shiftGridView() {
   return h;
 }
 
+function _rgbOf(hex) {
+  let h = String(hex || '#0b5394').replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = '0b5394';
+  const i = parseInt(h, 16);
+  return [i >> 16 & 255, i >> 8 & 255, i & 255];
+}
 export function setView() {
   const u = me();
   if (u && window.FB_CONF && window.FB_CONF.databaseURL && window.presBeat) window.presBeat();
@@ -319,7 +327,12 @@ export function setView() {
   const _acc = DB.settings.accent || '#0b5394';
   ACCENTS.forEach(c => { h += '<span class="sw' + (String(c).toLowerCase() === String(_acc).toLowerCase() ? ' on' : '') + '" style="background:' + c + '" data-act="setAccent" data-arg="' + c + '" title="' + c + '"></span>'; });
   h += '<span class="swPickLabel" style="font-size:calc(var(--fs) - 2px);color:var(--mut)">быстрые цвета</span></div>';
-  h += '<label style="margin-top:8px">Свой цвет (оттенок и насыщенность)</label><div class="swRow" style="align-items:center;gap:8px"><input type="color" value="' + esc(_acc) + '" data-act="setAccent" title="Открыть палитру целиком" style="flex:1 1 auto;width:auto;height:42px;min-height:42px;border:1px solid var(--bd);border-radius:10px;padding:4px;background:var(--card);cursor:pointer"><span style="font-size:calc(var(--fs) - 2px);color:var(--mut);white-space:nowrap;font-family:monospace">' + esc(_acc) + '</span></div>';
+  h += '<label style="margin-top:8px">Свой цвет (палитра или R/G/B-слайдеры)</label><div class="swRow" style="align-items:center;gap:8px"><input type="color" id="acColor" value="' + esc(_acc) + '" data-act="setAccent" title="Открыть палитру целиком" style="flex:1 1 auto;width:auto;height:42px;min-height:42px;border:1px solid var(--bd);border-radius:10px;padding:4px;background:var(--card);cursor:pointer"><span id="acHex" style="font-size:calc(var(--fs) - 2px);color:var(--mut);white-space:nowrap;font-family:monospace">' + esc(_acc).toLowerCase() + '</span></div>';
+  const _rub = _rgbOf(_acc);
+  const _cn = ['R', 'G', 'B'];
+  _rub.forEach((vv, ci) => {
+    h += '<div class="swRow" style="align-items:center;gap:6px;margin:2px 0"><span style="width:16px;font-weight:700;flex-shrink:0">' + _cn[ci] + '</span><input type="range" min="0" max="255" step="1" value="' + vv + '" data-act="setAccRGB" data-arg="' + ci + '" style="flex:1"><span class="rgbVal" style="min-width:28px;text-align:right;font-family:monospace;color:var(--mut)">' + vv + '</span></div>';
+  });
   h += '<label>Режим оформления</label><select data-act="setDark"><option value="0"' + (DB.settings.dark === '0' ? ' selected' : '') + '>Светлый</option><option value="1"' + (DB.settings.dark === '1' ? ' selected' : '') + '>Тёмный</option><option value="auto"' + (DB.settings.dark === 'auto' ? ' selected' : '') + '>Авто</option></select>';
   h += '<label><input type="checkbox" style="width:auto"' + (DB.settings.leaves === false ? '' : ' checked') + ' data-act="toggleLeaves"> 🍂 Сезонные атрибуты (листопад, снег)</label>';
   h += '</div>';
@@ -384,6 +397,7 @@ function respRows(u, kind) {
 
 export function tplView() {
   let h = '<button class="btn sec" data-act="backBagsViews">← Сумки</button><h3>📑 Шаблоны оснащения</h3>';
+  h += '<p><button class="btn mini" data-act="newTplDlg">➕ Новый шаблон</button> <button class="btn sec mini" data-act="tplImportDlg">📥 Импорт шаблона</button></p>';
   h += '<div class="searchBox"><input id="tplSearch" placeholder="🔍 Поиск позиции…" value="' + esc(window.tplSearch) + '" oninput="window.__tplSearch(this.value)"><button class="searchClear" data-act="clearTpl">✕</button></div>';
   const q = (window.tplSearch || '').toLowerCase();
   const match = it => (it.name || '').toLowerCase().indexOf(q) >= 0 || (it.spec || '').toLowerCase().indexOf(q) >= 0;
@@ -415,14 +429,15 @@ function tplCard(id, title, items, q, match) {
   });
   h += '</tbody></table>';
   if (open && isBoss()) h += '<div class="tplDrugs">➕ <b>Поиск по справочнику:</b>' + (window.drugSearchHtml ? window.drugSearchHtml('tpl_' + id) : '') + '</div>';
-  if (isBoss()) h += '<p><button class="btn mini" data-act="addTplPos" data-arg="' + id + '">+ Позиция</button><button class="btn sec mini" data-act="toggleEditTpl" data-arg="' + id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button> <button class="btn sec mini" data-act="delTpl" data-arg="' + id + '">🗑 Удалить шаблон</button></p>';
+  if (isBoss()) h += '<p><button class="btn mini" data-act="addTplPos" data-arg="' + id + '">+ Позиция</button><button class="btn sec mini" data-act="toggleEditTpl" data-arg="' + id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button> <button class="btn sec mini" data-act="renameTpl" data-arg="' + id + '">✏️ Имя</button> <button class="btn sec mini" data-act="delTpl" data-arg="' + id + '">🗑 Удалить шаблон</button></p>';
+  if (isBoss() && /НС\/ПВ\/СД|Сильнодействующие/i.test(title)) h += '<p><button class="btn mini" data-act="createPotentFromTpl" data-arg="' + id + '">📦 Создать комплект из этого шаблона</button></p>';
   h += '</div></div>';
   return h;
 }
 
 export function potentView() {
   let h = '<button class="btn sec" data-act="backBagsViews">← Сумки</button><h3>⚕️ Комплекты НС/ПВ/СД</h3>';
-  h += '<p><button class="btn" data-act="createPotentBag">➕ Создать комплект из шаблона</button></p>';
+  h += '<p><button class="btn" data-act="potNewDlg">➕ Создать комплект (вручную / из шаблона)</button></p>';
   if (!(DB.potents || []).length) { h += '<p>Комплектов пока нет.</p>'; return h; }
   (DB.potents || []).forEach(k => {
     let bad = 0;

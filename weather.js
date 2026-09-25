@@ -8,6 +8,17 @@ export function wIcon(c) {
 
 let weatherTimer = null;
 
+function fetchJSON(url, ms) {
+  return new Promise((res, rej) => {
+    const ctl = new AbortController();
+    const to = setTimeout(() => ctl.abort(), ms || 7000);
+    fetch(url, { signal: ctl.signal })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)))
+      .then(j => { clearTimeout(to); res(j); })
+      .catch(e => { clearTimeout(to); rej(e); });
+  });
+}
+
 export function loadWeather() {
   const el = document.getElementById('cwWeather');
   if (!el) return;
@@ -16,37 +27,40 @@ export function loadWeather() {
   const now = Date.now();
   if (!city) { el.innerHTML = '<span class="cwDesc">город не задан</span>'; return; }
   const g = s.geo;
-  const showCache = () => { if (g && g.city === city) el.innerHTML = '<span class="cwTemp">' + wIcon(g.code) + ' ' + g.temp + '°C</span><br><span class="cwDesc">' + esc(city) + ' · из кэша</span>'; else el.innerHTML = '<span class="cwDesc">нет связи</span>'; };
-  if (g && g.city === city && now - g.ts < LIMITS.WEATHER_CACHE_MS) {
+  const showCache = () => {
+    if (g && g.city === city) el.innerHTML = '<span class="cwTemp">' + wIcon(g.code) + ' ' + g.temp + '°C</span><br><span class="cwDesc">' + esc(city) + ' · из кэша</span>';
+    else el.innerHTML = '<span class="cwDesc">' + (navigator.onLine ? 'нет связи' : 'нет связи (офлайн)') + '</span>';
+  };
+  if (g && g.city === city && now - g.ts < (LIMITS.WEATHER_CACHE_MS || 1800000)) {
     el.innerHTML = '<span class="cwTemp">' + wIcon(g.code) + ' ' + g.temp + '°C</span><br><span class="cwDesc">' + esc(city) + '</span>';
     return;
   }
   if (!navigator.onLine) { showCache(); return; }
-  if (now - (window.__weatherTryTs || 0) < LIMITS.WEATHER_RETRY_MS) return;
+  if (now - (window.__weatherTryTs || 0) < (LIMITS.WEATHER_RETRY_MS || 30000)) return;
   window.__weatherTryTs = now;
   el.innerHTML = '<span class="cwDesc">…</span>';
-  const ctl = new AbortController();
-  const to = setTimeout(() => ctl.abort(), 7000);
-  fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=1&language=ru', { signal: ctl.signal })
-    .then(r => r.ok ? r.json() : Promise.reject())
+  const apply = (temp, code) => {
+    s.geo = { city, ts: Date.now(), temp, code };
+    save();
+    el.innerHTML = '<span class="cwTemp">' + wIcon(code) + ' ' + temp + '°C</span><br><span class="cwDesc">' + esc(city) + '</span>';
+  };
+  fetchJSON('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=1&language=ru', 8000)
     .then(j => {
-      if (!j.results || !j.results[0]) throw 0;
+      if (!j.results || !j.results[0]) throw new Error('geo');
       const c = j.results[0];
-      return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + c.latitude + '&longitude=' + c.longitude + '&current=temperature_2m,weather_code', { signal: ctl.signal })
-        .then(r => r.ok ? r.json() : Promise.reject());
+      return fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=' + c.latitude + '&longitude=' + c.longitude + '&current=temperature_2m,weather_code', 8000);
     })
     .then(w => {
-      if (!w.current) throw 0;
-      clearTimeout(to);
-      const t = Math.round(w.current.temperature_2m);
-      const code = w.current.weather_code;
-      s.geo = { city, ts: Date.now(), temp: t, code };
-      save();
-      el.innerHTML = '<span class="cwTemp">' + wIcon(code) + ' ' + t + '°C</span><br><span class="cwDesc">' + esc(city) + '</span>';
+      if (!w.current) throw new Error('cur');
+      apply(Math.round(w.current.temperature_2m), w.current.weather_code);
     })
     .catch(() => {
-      clearTimeout(to);
-      showCache();
+      fetchJSON('https://wttr.in/' + encodeURIComponent(city.split(' ')[0]) + '?format=j1&lang=ru', 10000)
+        .then(w => {
+          if (!w.current_condition || !w.current_condition[0]) throw new Error('wt');
+          apply(Math.round(+w.current_condition[0].temp_C || 0), +w.current_condition[0].weatherCode || 0);
+        })
+        .catch(showCache);
     });
 }
 

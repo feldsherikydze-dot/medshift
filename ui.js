@@ -5,7 +5,7 @@ const VALID_TABS = ['home','bags','cars','ref','sched','chat','set','reports'];
 if (!VALID_TABS.includes(tab)) tab = 'home';
 let toastTimer = null;
 export function toast(msg) { let t = document.getElementById('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); } t.textContent = msg; t.className = 'toast show'; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = 'toast'; }, 4000); }
-export function openDlg(html) { const body = document.getElementById('dlgBody'); body.innerHTML = html; document.getElementById('dlg').showModal(); window.__dlgActions = null; body.onclick = e => { const btn = e.target.closest('[data-act]'); if (!btn) return; const fn = window.__dlgActions && window.__dlgActions[btn.dataset.act]; if (fn) fn(btn.dataset.arg, btn, e); }; }
+export function openDlg(html) { const body = document.getElementById('dlgBody'); body.innerHTML = html; document.getElementById('dlg').showModal(); window.__dlgActions = null; body.onclick = e => { const btn = e.target.closest('[data-act]'); if (!btn) return; const fn = window.__dlgActions && window.__dlgActions[btn.dataset.act]; if (fn) try { fn(btn.dataset.arg, btn, e); } catch (err) { toast('Ошибка: ' + err.message); } }; }
 export function closeDlg() { document.getElementById('dlg').close(); if (window.__photoCleanup) { window.__photoCleanup(); window.__photoCleanup = null; } }
 export function ask(msg, cb) { openDlg('<h3>Подтверждение</h3><p>' + esc(msg) + '</p><p><button class="btn" data-act="askY">Да</button><button class="btn sec" data-act="askN">Отмена</button></p>'); window.__dlgActions = { askY: () => { closeDlg(); cb(); }, askN: () => closeDlg() }; }
 export function askText(title, def, cb) { openDlg('<h3>' + esc(title) + '</h3><input id="askV" value="' + esc(def || '') + '"><p><button class="btn" data-act="ok">Создать</button><button class="btn sec" data-act="cancel">Отмена</button></p>'); window.__dlgActions = { ok: () => { const v = document.getElementById('askV').value.trim(); closeDlg(); if (v) cb(v); }, cancel: () => closeDlg() }; }
@@ -41,3 +41,43 @@ window.__onSync = () => { updHead(); if (tab === 'set') render(); };
 window.__onAdopt = () => { applyTheme(); render(); toast('🔄 Синхронизировано'); };
 window.toast = toast; window.openDlg = openDlg; window.closeDlg = closeDlg; window.ask = ask; window.askText = askText; window.applyTheme = applyTheme; window.applyFontSize = applyFontSize; window.updHead = updHead; window.renderNav = renderNav; window.render = render; window.go = go; window.esc = esc;
 Object.defineProperty(window, 'tab', { get: () => tab, set: v => { tab = v; }, configurable: true });
+
+/* Глазок показа/скрытия PIN и паролей во всех полях приложения (автооборачивание) */
+(function () {
+  if (!window.MutationObserver) return;
+  let n = 0;
+  function eyeify(root) {
+    const els = root.querySelectorAll('input[type="password"]');
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      if (el.dataset.eyed) continue;
+      el.dataset.eyed = '1';
+      if (!el.id) el.id = 'pw_' + (++n);
+      const wrap = document.createElement('span');
+      wrap.className = 'pwBox';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'eyeBtn';
+      btn.setAttribute('aria-label', 'Показать или скрыть');
+      btn.textContent = '👁️';
+      btn.onclick = function () {
+        if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+        else { el.type = 'password'; btn.textContent = '👁️'; }
+      };
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+      wrap.appendChild(btn);
+    }
+  }
+  const mo = new MutationObserver(function (muts) {
+    for (let i = 0; i < muts.length; i++) {
+      const m = muts[i];
+      for (let j = 0; j < m.addedNodes.length; j++) {
+        const nd = m.addedNodes[j];
+        if (nd.nodeType === 1) eyeify(nd);
+      }
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+  eyeify(document.body);
+})();

@@ -17,15 +17,16 @@ function todayMid() {
 export let DB = JSON.parse(localStorage.getItem(LS) || 'null');
 const EMPTY_DB = () => ({
   seq: 1, rev: 0,
-  settings: { warnDays: 10, city: '', accent: '#0b5394', dark: 'auto', fontSize: 14 },
+  settings: { warnDays: 10, city: 'Красноярск', accent: '#0b5394', dark: 'auto', fontSize: 14 },
   users: [], session: null, bagTypes: [], bags: [], cars: [], ecg: [],
   reports: [], tasks: [], chat: [], sched: { months: [], days: [] },
   tomb: [], bans: [], kitTemplates: [], potents: [],
   bagTomb: [], carTomb: [], potTomb: [], tplTomb: [], schedTomb: {}
 });
 export function seedBasics() {
+  if (!DB.settings.city) DB.settings.city = 'Красноярск';
   if (window.SEED && window.SEED.length && !DB.bagTypes.length) {
-    DB.bagTypes.push({ id: 1, name: 'Шаблон сумки (стандарт)', items: window.SEED.map(r => ({ name: r[2], spec: r[3], unit: r[4], qty: r[5], expiry: '', potent: false })) });
+    DB.bagTypes.push({ id: 1, name: 'Рабочая сумка', items: window.SEED.map(r => ({ name: r[2], spec: r[3], unit: r[4], qty: r[5], expiry: '', potent: false })) });
   }
   if (!DB.kitTemplates.length) {
     const from = list => (window[list] || []).map(r => ({ name: r[0], spec: '', unit: r[2], qty: r[1], expiry: '', potent: false }));
@@ -38,7 +39,7 @@ export function seedBasics() {
       { name: '⚕ Сильнодействующие', items: potentItems }
     );
   }
-  const REN = { 'Универсальная': 'Шаблон сумки (стандарт)', 'Перевязочная': 'Травматологическая', 'Токсикологическая': 'Термосумка', '⚕ Сильнодействующие (НС/ПВ/СД)': '⚕ Сильнодействующие' };
+  const REN = { 'Универсальная': 'Рабочая сумка', 'Шаблон сумки (стандарт)': 'Рабочая сумка', 'Перевязочная': 'Травматологическая', 'Токсикологическая': 'Термосумка', '⚕ Сильнодействующие (НС/ПВ/СД)': '⚕ Сильнодействующие' };
   if (DB.bagTypes.length && REN[DB.bagTypes[0].name]) DB.bagTypes[0].name = REN[DB.bagTypes[0].name];
   DB.kitTemplates.forEach(k => { if (REN[k.name]) k.name = REN[k.name]; });
 }

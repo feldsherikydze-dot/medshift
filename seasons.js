@@ -74,8 +74,8 @@ function newPart(stagger) {
   const el = document.createElement('span');
   el.className = 'msLeaf';
   el.textContent = set[Math.floor(Math.random() * set.length)];
-  const r = 10 + Math.random() * 8;
-  el.style.fontSize = (r * 1.6) + 'px';
+  const r = 7 + Math.random() * 6;
+  el.style.fontSize = (r * 1.25) + 'px';
   ensureBox().appendChild(el);
   return {
     el, r,
@@ -115,7 +115,7 @@ function loop(ts) {
 }
 
 export function startLeaves() {
-  stopLeaves();
+  if (rafId) return;
   if (!window.me || !window.me()) return;
   if (DB.settings.leaves === false) return;
   const n = window.innerWidth < 480 ? LIMITS.LEAVES_COUNT_MOBILE : LIMITS.LEAVES_COUNT_DESKTOP;
