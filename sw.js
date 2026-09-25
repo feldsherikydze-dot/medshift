@@ -3,7 +3,7 @@
    Стратегия: Network First + Cache Fallback
    При обновлении — bump CACHE (v204 → v205 и т.д.)
    ===================================================================== */
-var CACHE = 'medshift-cache-v226';
+var CACHE = 'medshift-cache-v227';
 
 var ASSETS = [
   './',
