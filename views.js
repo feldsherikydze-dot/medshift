@@ -182,7 +182,7 @@ export function bagView() {
   let h = '<button class="btn sec" data-act="backBags">← Сумки</button><h3>👜 ' + (em ? '<button class="cellTap" data-act="renameBag" data-arg="' + b.id + '" title="Переименовать сумку" style="display:inline-block;margin:0;padding:3px 8px;max-width:74%;white-space:normal">' + esc(b.name) + '</button>' : esc(b.name)) + '</h3>';
   h += '<button class="btn" data-act="openItemDlg" data-arg="' + b.id + ',-1">+ Позиция</button>';
   h += '<button class="btn sec" data-act="fillBagFromTpl" data-arg="' + b.id + '">📋 Шаблон</button>';
-  h += '<button class="btn sec" data-act="openImportDlg" data-arg="' + b.id + '">📥 Импорт .txt</button>';
+  h += '<button class="btn sec" data-act="openImportDlg" data-arg="' + b.id + '">📥 Импорт (txt/csv/Excel/фото)</button>';
   if (isBoss()) h += '<button class="btn sec" data-act="toggleEditBag" data-arg="' + b.id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button>';
   h += '<table class="' + (em ? 'editMode' : '') + '"><thead><tr><th class="col-name">Наименование</th><th class="col-spec">Форма</th><th class="col-qty">Кол-во</th><th class="col-exp">Срок</th><th class="col-act"></th></tr></thead><tbody>';
   (b.items || []).forEach((it, i) => {
@@ -340,10 +340,10 @@ function shiftGridView() {
   if (!DB.shiftGrid) DB.shiftGrid = [];
   let h = '<div class="card"><b>🗓 График смен</b>';
   h += '<p style="margin-top:6px"><button class="btn mini" data-act="openShiftDlg" data-arg="-1">+ Добавить смену</button> ';
-  h += '<label class="btn sec mini" style="display:inline-block">📥 Импорт CSV<input type="file" hidden accept=".csv,.txt,text/csv" onchange="window.__importShiftGrid(this)"></label> ';
+  h += '<label class="btn sec mini" style="display:inline-block">📥 Импорт (txt/csv/Excel/фото)<input type="file" hidden accept=".txt,.csv,.tsv,.xls,.xlsx,.png,.jpg,.jpeg,text/plain,text/csv" onchange="window.__importShiftGrid(this)"></label> ';
   if (isBoss()) h += '<button class="btn del mini" data-act="clearShiftGrid">🗑 Очистить</button></p>';
   else h += '</p>';
-  h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Формат CSV: Дата;Бригада;Машина;Сотрудники;Примечание</p>';
+  h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">Формат: Дата;Бригада;Машина;Сотрудники;Примечание (CSV/Excel/фото через OCR — голубчик, фото распознаем, но проверьте текст)</p>';
   if (!DB.shiftGrid.length) { h += '<p class="shiftEmpty">Смен пока нет</p></div>'; return h; }
   const sorted = DB.shiftGrid.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   h += '<table><thead><tr><th>Дата</th><th>Бригада</th><th>Машина</th><th>Сотрудники</th><th>Прим.</th><th></th></tr></thead><tbody>';
@@ -466,7 +466,7 @@ function respRows(u, kind) {
 
 export function tplView() {
   let h = '<button class="btn sec" data-act="backBagsViews">← Сумки</button><h3>📑 Шаблоны оснащения</h3>';
-  h += '<p><button class="btn mini" data-act="newTplDlg">➕ Новый шаблон</button> <button class="btn sec mini" data-act="tplImportDlg">📥 Импорт шаблона</button></p>';
+  h += '<p><button class="btn mini" data-act="newTplDlg">➕ Новый шаблон</button> <button class="btn sec mini" data-act="tplImportDlg">📥 Импорт (txt/csv/Excel/фото)</button></p>';
   h += '<div class="searchBox"><input id="tplSearch" placeholder="🔍 Поиск позиции…" value="' + esc(window.tplSearch) + '" oninput="window.__tplSearch(this.value)"><button class="searchClear" data-act="clearTpl">✕</button></div>';
   const q = (window.tplSearch || '').toLowerCase();
   const match = it => (it.name || '').toLowerCase().indexOf(q) >= 0 || (it.spec || '').toLowerCase().indexOf(q) >= 0;
