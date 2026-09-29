@@ -14,7 +14,7 @@ import { syncInit, syncTest, presBeat, fbUrl, restGet, restPut, restDelete, adop
 import { restoreToken, verifyPin, pinCheck, setPin, loginAs, logout, checkSessionExpiry, enableBiometric, disableBiometric, biometricLogin, banUser, unbanUser, signIn, errText } from './auth.js';
 import { toast, openDlg, closeDlg, ask, askText, applyTheme, applyFontSize, updHead, renderNav, render, go, tab } from './ui.js';
 import { loadWeather, showForecast, startClock, wIcon, clearWeatherCache } from './weather.js';
-import { shiftKeyOf, parseShiftCsv, parseItemList, fsHintText, isIsoDate } from './logic.js';
+import { shiftKeyOf, parseShiftCsv, parseItemList, parseTplLines as parseTplLinesLogic, htmlTableToText, sheetRowsToText, fsHintText, isIsoDate } from './logic.js';
 import { withDrugs, drugsReady, preloadDrugs } from './drugload.js';
 import { updateFoot } from './views.js';
 import { seasonHtml, startLeaves, stopLeaves } from './seasons.js';
@@ -102,57 +102,183 @@ window.newTplDlg = () => {
     toast('Шаблон создан. Добавляй позиции кнопкой «+ Позиция» или через поиск лекарств');
   });
 };
-function parseTplLines(text) {
-  const items = [];
-  String(text).split(/\r?\n/).forEach(line => {
-    line = line.trim();
-    if (!line) return;
-    line = line.replace(/^[-*•]\s*/, '').replace(/^\s*\d{1,4}\s*[.)]\s*/, '');
-    let name = line, qty = 1, unit = 'шт';
-    const cells = line.split(/\t|;|\|/).map(s => s.trim());
-    if (cells.length >= 2 && cells[0]) {
-      name = cells[0];
-      for (let i = 1; i < cells.length; i++) {
-        const c = cells[i]; if (!c) continue;
-        const num = c.replace(',', '.').match(/\d+(?:\.\d+)?/);
-        if (num) { qty = Math.max(1, Math.round(parseFloat(num[0]))); continue; }
-        const um = c.match(/(амп|фл|шт|пар|уп|таб|капс|компл|блистер|пакет)/i);
-        if (um && unit === 'шт') unit = um[1].toLowerCase();
-      }
-    } else {
-      const m = line.match(/^(.*?)\s+([0-9]{1,4})\s*(амп|фл|шт|пар|уп|таб|капс|компл|блистер|пакет)?\.?$/i);
-      if (m) { name = m[1]; qty = +m[2]; if (m[3]) unit = m[3].toLowerCase(); }
-    }
-    if (!name.trim()) return;
-    items.push({ name: name.trim(), spec: '', unit, qty, expiry: '', potent: false });
-  });
-  return items;
-}
+/* Единый парсер шаблонов — тот же, что и для сумок, голубчик.
+   Раньше здесь жила своя копия с коротким списком единиц («пары» и «бл»
+   тихо превращались в «шт»). Теперь один рецепт из logic.js на всех. */
+function parseTplLines(text) { return parseTplLinesLogic(text); }
 window.parseTplLines = parseTplLines;
+/* ---------- Универсальный импорт таблицы: текст / Excel / фото ----------
+   Голубчик, один вход для всех файлов — попейте чаю, а давление-то мерили?
+   Текст (.txt/.csv/.tsv) читаем сразу, Excel (.xls/.xlsx) — через SheetJS
+   если он под рукой, иначе подсказываем сохранить как CSV. Фото
+   (.png/.jpg) — через Tesseract.js CDN, а без сети честно говорим
+   «положите фото рядом и вбейте текстом» и даём textarea. Офлайн PWA
+   не ломаем: все внешние скрипты грузятся лениво и с заглушкой. */
+window.__tableAccept = '.txt,.csv,.tsv,.xls,.xlsx,.png,.jpg,.jpeg';
+function __isImgName(n) { return /\.(png|jpe?g)$/i.test(n || ''); }
+function __isExcelName(n) { return /\.xlsx?$/i.test(n || ''); }
+function __fileToText(file) {
+  const p1 = (file && typeof file.text === 'function') ? file.text().then(t => {
+    if (t && t.indexOf(' ') >= 0 && file.arrayBuffer) {
+      return file.arrayBuffer().then(buf => {
+        try {
+          const dec = new TextDecoder('windows-1251');
+          const t2 = dec.decode(buf);
+          if (/[А-Яа-яЁё]/.test(t2)) return t2;
+        } catch (_) {}
+        return t;
+      }).catch(() => t);
+    }
+    return t;
+  }).catch(() => null) : Promise.resolve(null);
+  return p1.then(t => {
+    if (t != null) return String(t);
+    return new Promise((res, rej) => {
+      try {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result || ''));
+        r.onerror = () => rej(new Error('read'));
+        r.readAsText(file, 'UTF-8');
+      } catch (e) { rej(e); }
+    });
+  });
+}
+window.__fileToText = __fileToText;
+function __ensureXlsxLib() {
+  if (window.XLSX && window.XLSX.read) return Promise.resolve(true);
+  return new Promise(resolve => {
+    try {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+      s.async = true;
+      s.onload = () => resolve(!!(window.XLSX && window.XLSX.read));
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+      setTimeout(() => resolve(!!(window.XLSX && window.XLSX.read)), 8000);
+    } catch (_) { resolve(false); }
+  });
+}
+window.__ensureXlsxLib = __ensureXlsxLib;
+async function __extractTableText(file) {
+  const name = (file && file.name) || '';
+  if (__isImgName(name)) throw { isImage: true };
+  if (__isExcelName(name)) {
+    if (window.XLSX && window.XLSX.read) {
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = window.XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+        const txt = sheetRowsToText(rows);
+        if (txt && txt.trim()) return txt;
+      } catch (_) {}
+    }
+    let txt = '';
+    try { txt = await __fileToText(file); } catch (_) {}
+    if (txt && (/<table[\s>]/i.test(txt) || /<html/i.test(txt))) {
+      const conv = htmlTableToText(txt);
+      if (conv && conv.trim()) return conv;
+    }
+    if (txt && txt.trim() && !(txt.charCodeAt(0) === 80 && txt.charCodeAt(1) === 75)) return txt;
+    throw { isExcelNeedLib: true };
+  }
+  return await __fileToText(file);
+}
+window.__extractTableText = __extractTableText;
+async function __ocrImageToText(file, ta) {
+  try { toast('🔍 Распознаю фото… это займёт ~10–20 сек'); } catch (_) {}
+  try {
+    if (!window.Tesseract) {
+      await new Promise((resolve, reject) => {
+        try {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          s.async = true;
+          s.onload = () => resolve(true);
+          s.onerror = () => reject(new Error('cdn'));
+          document.head.appendChild(s);
+          setTimeout(() => { if (!window.Tesseract) reject(new Error('timeout')); }, 12000);
+        } catch (e) { reject(e); }
+      });
+    }
+    if (!window.Tesseract || !window.Tesseract.recognize) throw new Error('no lib');
+    const out = await window.Tesseract.recognize(file, 'rus+eng');
+    const txt = String((out && out.data && out.data.text) || '').trim();
+    if (!txt) throw new Error('empty');
+    if (ta) ta.value = txt;
+    try { toast('✅ Текст распознан — проверьте и нажмите «Импортировать»'); } catch (_) {}
+    return txt;
+  } catch (_) {
+    try { toast('⚠ Фото без сети не распознать — положите фото рядом и вбейте текстом (или вставьте распознанное)'); } catch (_) {}
+    if (ta) {
+      ta.placeholder = 'Вставьте сюда текст с фото:\n1. | Адреналин г/хл р-р д/ин. 0,1 % амп 1 мл | 10 амп\n2. | Бинт стерильный 5х10 | 5 шт';
+      try { ta.focus(); } catch (_) {}
+    }
+    return null;
+  }
+}
+window.__ocrImageToText = __ocrImageToText;
+window.__handleTableFile = async (file, taId) => {
+  const ta = document.getElementById(taId);
+  if (!file) return;
+  const name = file.name || '';
+  if (__isImgName(name)) {
+    if (ta) ta.value = '';
+    try { toast('📷 Фото принято — распознаю…'); } catch (_) {}
+    await __ocrImageToText(file, ta);
+    return;
+  }
+  try {
+    const txt = await __extractTableText(file);
+    if (ta) ta.value = txt;
+    const n = String(txt || '').split(/\r?\n/).filter(l => l.trim()).length;
+    try { toast('Файл прочитан (' + n + ' строк) — нажмите «Импортировать»'); } catch (_) {}
+  } catch (err) {
+    if (err && err.isExcelNeedLib) {
+      try { toast('📊 Excel без библиотеки не разобрать: сохраните лист как CSV (Файл → Сохранить как → CSV) или скопируйте ячейки и вставьте в окно'); } catch (_) {}
+      if (ta) {
+        ta.placeholder = 'Вставьте сюда скопированные из Excel ячейки:\nАнальгин | 10 | таб\nАдреналин | 2 | амп';
+        try { ta.focus(); } catch (_) {}
+      }
+      __ensureXlsxLib().then(ok => { try { if (ok) toast('📊 Библиотека Excel подгрузилась — выберите файл ещё раз'); } catch (_) {} });
+      return;
+    }
+    try { toast('Не удалось прочитать файл'); } catch (_) {}
+  }
+};
 window.tplImportDlg = () => {
-  openDlg('<h3>📥 Импорт шаблона</h3><p class="impHint">Позиции — каждая с новой строки. Формат «Название, количество, единица», «Название 10 фл» или вставка из Excel (колонки через табуляцию).</p>' +
-    '<label class="btn sec" style="display:inline-block">📄 Из файла (.txt/.csv)<input type="file" hidden accept=".txt,.csv,text/plain" onchange="window.__rdTpl(this.files[0])"></label>' +
+  openDlg('<h3>📥 Импорт шаблона</h3><p class="impHint">Позиции — каждая с новой строки. Формат «№ | Наименование | Количество» («1. | Адреналин … | 10 амп»), «Название 10 фл», «Название, 10, таб» или вставка из Excel (колонки через tab). Можно выбрать .txt/.csv/.tsv/.xls/.xlsx или фото (.png/.jpg — распознаем через OCR).</p>' +
+    '<label class="btn sec" style="display:inline-block">📄 Из файла (текст/Excel/фото)<input type="file" hidden accept=".txt,.csv,.tsv,.xls,.xlsx,.png,.jpg,.jpeg,text/plain,text/csv" onchange="window.__rdTpl(this.files[0])"></label>' +
     '<textarea id="tpTxt" rows="8" placeholder="Анальгин, 10, таб&#10;Амплитизол, 5, фл&#10;Бинт стерильный, 2, уп"></textarea>' +
-    '<p><button class="btn" data-act="tplPasteDo">📋 Импортировать</button><button class="btn sec" data-act="close">Закрыть</button></p>');
+    '<p><button class="btn" data-act="tplPasteDo">📋 Импортировать как укладку</button> <button class="btn sec" data-act="tplPasteDoBag">👜 Как сумку</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.__rdTpl = (f) => {
   if (!f) return;
-  if (/\.xlsx?$/i.test(f.name)) return toast('Для Excel: сохраните лист как CSV или просто скопируйте ячейки и вставьте в это окно');
-  const r = new FileReader();
-  r.onload = () => { const ta = document.getElementById('tpTxt'); if (ta) ta.value = r.result; toast('Файл прочитан — нажмите «Импортировать»'); };
-  r.onerror = () => toast('Не удалось прочитать файл');
-  r.readAsText(f);
+  window.__handleTableFile(f, 'tpTxt');
 };
 window.tplPasteDo = () => {
   const ta = document.getElementById('tpTxt');
   const items = parseTplLines(ta ? ta.value : '');
-  if (!items.length) return toast('Не распознаны позиции — проверьте формат');
+  if (!items.length) return toast('Не распознаны позиции — проверьте формат (пример: «1. | Адреналин … | 10 амп»)');
   askText('Название шаблона', 'Шаблон из файла', n => {
     if (!n.trim()) return;
     DB.kitTemplates = DB.kitTemplates || [];
     DB.kitTemplates.push({ id: uid(), name: n.trim(), items: items });
     save(); curTpl = true; openTplId = 'kit_' + (DB.kitTemplates.length - 1); render();
     toast('Шаблон создан, позиций: ' + items.length);
+  });
+};
+window.tplPasteDoBag = () => {
+  const ta = document.getElementById('tpTxt');
+  const items = parseTplLines(ta ? ta.value : '');
+  if (!items.length) return toast('Не распознаны позиции — проверьте формат');
+  askText('Название шаблона сумки', 'Рабочая сумка', n => {
+    if (!n.trim()) return;
+    DB.bagTypes = DB.bagTypes || [];
+    const rec = { id: (DB.bagTypes[0] && DB.bagTypes[0].id) || 1, name: n.trim(), items: items };
+    if (!DB.bagTypes.length) DB.bagTypes.push(rec); else DB.bagTypes[0] = rec;
+    save(); curTpl = true; openTplId = 'bag'; render();
+    toast('Шаблон сумки создан, позиций: ' + items.length);
   });
 };
 window.renameTpl = (id) => {
@@ -277,16 +403,19 @@ window.saveItemDlg = (arg) => {
   save(); closeDlg(); render();
 };
 window.openImportDlg = (bid) => {
-  openDlg('<h3>📥 Импорт списка</h3><label class="btn sec" style="display:inline-block">📄 Выбрать файл<input type="file" hidden accept=".txt,.csv,text/plain" onchange="window.__readImpFile(this.files[0])"></label><textarea id="impTa" placeholder="Строки: Название 10 амп"></textarea><p><button class="btn" data-act="doImport" data-arg="' + bid + '">➕ Добавить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
+  openDlg('<h3>📥 Импорт списка</h3><p class="impHint">Формат «№ | Наименование | Количество» («1. | Адреналин … | 10 амп»), «Название 10 амп» или колонки из Excel. Принимаем .txt/.csv/.tsv/.xls/.xlsx и фото (.png/.jpg через OCR).</p><label class="btn sec" style="display:inline-block">📄 Выбрать файл (текст/Excel/фото)<input type="file" hidden accept=".txt,.csv,.tsv,.xls,.xlsx,.png,.jpg,.jpeg,text/plain,text/csv" onchange="window.__readImpFile(this.files[0])"></label><textarea id="impTa" rows="8" placeholder="Строки: Название 10 амп&#10;1. | Адреналин … | 10 амп"></textarea><p><button class="btn" data-act="doImport" data-arg="' + bid + '">➕ Добавить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.__readImpFile = (f) => {
-  if (!f) return; const r = new FileReader();
-  r.onload = () => { const e = document.getElementById('impTa'); if (e) e.value = r.result; };
-  r.readAsText(f);
+  if (!f) return;
+  window.__handleTableFile(f, 'impTa');
 };
 window.doImport = (bid) => {
   const b = DB.bags.find(x => x.id == bid);
-  const items = parseItemList(document.getElementById('impTa').value);
+  if (!b) return toast('Сумка не найдена — обновите экран');
+  const ta = document.getElementById('impTa');
+  const items = parseItemList(ta ? ta.value : '');
+  if (!items.length) return toast('Не распознаны позиции — проверьте формат (пример: «1. | Адреналин … | 10 амп»)');
+  b.items = b.items || [];
   b.items.push(...items);
   save(); closeDlg(); render(); toast('Добавлено позиций: ' + items.length);
 };
@@ -913,17 +1042,33 @@ window.clearShiftGrid = () => {
     DB.shiftGrid = []; save(); render(); toast('Очищено');
   });
 };
-window.__importShiftGrid = (inp) => {
-  const f = inp.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
+window.__importShiftGrid = async (inp) => {
+  const f = inp.files && inp.files[0]; if (!f) return;
+  const done = (txt) => {
     DB.shiftGrid = DB.shiftGrid || [];
-    const added = parseShiftCsv(r.result, DB.shiftGrid);
+    const added = parseShiftCsv(txt, DB.shiftGrid);
     DB.shiftGrid.push(...added);
-    save(); render(); toast(added.length ? 'Импортировано: ' + added.length : 'Новых строк нет (уже импортировано)');
+    save(); render(); toast(added.length ? 'Импортировано смен: ' + added.length : 'Новых строк нет (уже импортировано)');
+    try { inp.value = ''; } catch (_) {}
   };
-  r.onerror = () => toast('Не удалось прочитать файл');
-  r.readAsText(f);
+  try {
+    if (__isImgName(f.name)) {
+      toast('📷 Фото графика принято — распознаю…');
+      const tmp = document.createElement('textarea');
+      const txt = await __ocrImageToText(f, tmp);
+      if (!txt) { try { inp.value = ''; } catch (_) {} return; }
+      done(txt);
+      return;
+    }
+    const txt = await __extractTableText(f);
+    done(txt);
+  } catch (err) {
+    if (err && err.isExcelNeedLib) {
+      toast('📊 Excel без библиотеки не разобрать: сохраните лист как CSV или скопируйте ячейки и вставьте через «+ Добавить смену»');
+      __ensureXlsxLib();
+    } else toast('Не удалось прочитать файл');
+    try { inp.value = ''; } catch (_) {}
+  }
 };
 window.schedDays = () => { schedSub = 'days'; render(); };
 window.schedMonths = () => { schedSub = 'months'; render(); };
