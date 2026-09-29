@@ -32,7 +32,9 @@ export function parseShiftCsv(text, existing, now) {
   String(text == null ? '' : text).split(/\r?\n/).forEach(line => {
     line = line.trim().replace(/^﻿/, '');
     if (!line) return;
-    const parts = line.split(/[;,\t]/).map(x => x.trim().replace(/^"|"$/g, ''));
+    // Голубчик, Excel отдаёт колонки через «|» (sheetRowsToText), а CSV — через ; , tab.
+    // Принимаем все четыре, а то график из Excel не встанет. Старые тесты на ; , tab — зелёные.
+    const parts = line.split(/[;,\t|]/).map(x => x.trim().replace(/^"|"$/g, ''));
     // Заголовок пропускаем всегда, а не только в первой строке: пустая
     // строка или BOM в начале файла раньше сдвигали индекс, и «Дата;Бригада»
     // попадала в график как смена.
@@ -56,22 +58,260 @@ export function parseShiftCsv(text, existing, now) {
   return rows;
 }
 
-/* Импорт списка позиций в сумку/шаблон: «Название 10 амп».
-   Возвращает массив позиций. Разбор числителя и единицы измерения —
-   место, где молча получались неверные количества. */
+/* Импорт списка позиций в сумку/шаблон: единый парсер таблицы.
+   Голубчик, один рецепт от всех хворей: понимает и «Название 10 амп»,
+   и «1. | Адреналин г/хл р-р д/ин. 0,1 % амп 1 мл | 10 амп» из sumka.txt,
+   и вставку из Excel (колонки через tab / ; / |), и «Анальгин, 10, таб».
+   С № и без №, с «Не менее 4 шт», «3 пары», «1 бл», «2 уп», «1 туба».
+   Возвращает {name, spec, unit, qty} — как addBagTpl из SEED складывает
+   (name=r[2], spec=r[3], unit=r[4], qty=r[5]). Пустышки и заголовки
+   («№ | НАИМЕНОВАНИЕ | КОЛИЧЕСТВО», «РАБОЧАЯ СУМКА — полный список»)
+   в таблицу не попадают — а то давление подскочит. */
+function _isKnownUnitWord(w) {
+  const s = String(w || '').toLowerCase().replace(/\./g, '').trim();
+  if (!s) return false;
+  if (['ам', 'амп', 'фл', 'шт', 'пар', 'пара', 'пары', 'уп', 'таб', 'табл', 'капс', 'компл', 'бл', 'блистер', 'пакет', 'туба', 'туб'].includes(s)) return true;
+  if (/^ампул/.test(s)) return true;
+  if (/^флакон/.test(s)) return true;
+  if (/^штук/.test(s)) return true;
+  if (/^упак/.test(s)) return true;
+  if (/^таблет/.test(s)) return true;
+  if (/^капсул/.test(s)) return true;
+  if (/^комплект/.test(s)) return true;
+  if (/^блист/.test(s)) return true;
+  if (/^пакет/.test(s)) return true;
+  if (/^туб/.test(s)) return true;
+  return false;
+}
+function _normUnit(w) {
+  const s = String(w || '').toLowerCase().replace(/\./g, '').trim();
+  if (!s) return 'шт';
+  if (s === 'ам' || s === 'амп' || /^ампул/.test(s)) return 'амп';
+  if (s === 'фл' || /^флакон/.test(s)) return 'фл';
+  if (s === 'шт' || /^штук/.test(s) || s === 'штука' || s === 'штуки') return 'шт';
+  if (s === 'пар' || s === 'пара' || s === 'пары' || /^пар/.test(s)) return 'пар';
+  if (s === 'уп' || /^упак/.test(s)) return 'уп';
+  if (s === 'таб' || s === 'табл' || /^таблет/.test(s)) return 'таб';
+  if (s === 'капс' || /^капсул/.test(s)) return 'капс';
+  if (s === 'компл' || /^комплект/.test(s)) return 'компл';
+  if (s === 'бл') return 'бл';
+  if (/^блист/.test(s) || s === 'блистер') return 'блистер';
+  if (/^пакет/.test(s)) return 'пакет';
+  if (/^туб/.test(s) || s === 'туба') return 'туба';
+  return s || 'шт';
+}
+function _isHeaderLine(line) {
+  const s = String(line || '');
+  const low = s.toLowerCase();
+  if (/^\s*№\s*[\|\t;]?\s*наимен/i.test(s)) return true;
+  if (/^\s*наименование\b/i.test(s)) return true;
+  if (/наимен/i.test(s) && (/колич/i.test(s) || /кол-?\s*во/i.test(s) || /\bqty\b/i.test(s))) return true;
+  if (/рабочая сумка.*полный список/i.test(s)) return true;
+  if (/таблетированные формы/i.test(s)) return true;
+  if (/нумерация как в оригинале/i.test(s)) return true;
+  if (/позиция.*отсутствует/i.test(s)) return true;
+  return false;
+}
+function _parseQtyCell(qtyStr) {
+  const s = String(qtyStr == null ? '' : qtyStr).trim().replace(/\s+/g, ' ');
+  if (!s) return { qty: 1, unit: 'шт', confident: false };
+  const m = s.match(/(?:не\s+менее\s+)?(\d{1,4}(?:[.,]\d+)?)\s*([а-яёa-z]+)?\.?\s*$/i);
+  if (!m) return { qty: 1, unit: 'шт', confident: false };
+  const numStr = m[1], unitRaw = (m[2] || '').trim();
+  if (unitRaw && !_isKnownUnitWord(unitRaw)) return { qty: 1, unit: 'шт', confident: false };
+  if (!unitRaw) {
+    if (/^(?:не\s+менее\s+)?\d{1,4}(?:[.,]\d+)?\s*\.?$/.test(s)) {
+      const qty = Math.max(1, Math.round(parseFloat(numStr.replace(',', '.'))) || 1);
+      return { qty, unit: 'шт', confident: true };
+    }
+    return { qty: 1, unit: 'шт', confident: false };
+  }
+  const qty = Math.max(1, Math.round(parseFloat(numStr.replace(',', '.'))) || 1);
+  return { qty, unit: _normUnit(unitRaw), confident: true };
+}
+/* Делит полное наименование на имя + форму ТОЧНО как шаблон SEED.
+   Постановили на совещании: строка в строку!
+   Стадия 1 — лекарства: р-р, конц., таб./табл., аэр., пор., сусп., глаз.
+   Стадия 2 — цифры-обозначения это форма: бинты 7х14, 0,9%, 0,05%-100 мл,
+   Глицин 100 мг, пакеты 50х60 см. Берем самое раннее начало.
+   Скобки: если вся форма в скобках "(не менее 70 см х 140 см)" — режем перед "(".
+   \b для кириллицы не работает — проверяем вручную. */
+function _splitNameSpec(full) {
+  full = String(full || '').trim();
+  if (!full) return { name: '', spec: '' };
+  const isLD = (ch) => /[а-яёa-z0-9]/i.test(ch || '');
+  const bi = full.indexOf('(');
+  const search1 = bi >= 0 ? full.slice(0, bi) : full;
+  const low1 = search1.toLowerCase();
+  const kws = ['конц.', 'табл.', 'таб.', 'аэр.', 'пор.', 'сусп.', 'глаз.', 'р-р'];
+  let best1 = -1;
+  for (const kw of kws) {
+    let from = 0;
+    while (true) {
+      const idx = low1.indexOf(kw, from);
+      if (idx === -1) break;
+      const prev = idx === 0 ? ' ' : low1[idx - 1];
+      let ok = !isLD(prev);
+      if (ok && kw === 'р-р') {
+        const nxt = low1[idx + 3] || ' ';
+        if (isLD(nxt)) ok = false;
+      }
+      if (ok) { if (best1 === -1 || idx < best1) best1 = idx; break; }
+      from = idx + 1;
+    }
+  }
+  // Скобка-форма: "(не менее 70 см х 140 см)" — после ")" пусто, внутри цифры.
+  let bestBr = -1;
+  if (bi !== -1) {
+    const ci = full.indexOf(')', bi);
+    if (ci !== -1) {
+      const inside = full.slice(bi + 1, ci);
+      const after = full.slice(ci + 1).trim();
+      if (!after && /\d/.test(inside)) bestBr = bi;
+    }
+  }
+  // Стадия 2 — ищем по ВСЕЙ строке (размеры могут быть после скобок: пакеты 50х60).
+  const low2 = full.toLowerCase();
+  let best2 = -1;
+  for (const kw of ['фл.', 'туба']) {
+    let from = 0;
+    while (true) {
+      const idx = low2.indexOf(kw, from);
+      if (idx === -1) break;
+      const prev = idx === 0 ? ' ' : low2[idx - 1];
+      if (!isLD(prev)) { if (best2 === -1 || idx < best2) best2 = idx; break; }
+      from = idx + 1;
+    }
+  }
+  const re2 = /(\d+[.,]?\d*\s*%(?![а-яёa-z0-9])|\d+[.,]?\d*\s*(?:мг|г|мл|мм|см|л)(?![а-яёa-z0-9])|\d+[.,]?\d*\s*[хx\*]\s*\d+|№\s*\d+)/i;
+  const m2 = low2.match(re2);
+  if (m2 && m2.index != null) {
+    if (best2 === -1 || m2.index < best2) best2 = m2.index;
+  }
+  // самое раннее побеждает: доза 0,9% раньше чем р-р (Натрия хлорид 0,9% р-р...)
+  let best = -1;
+  [best1, bestBr, best2].forEach((b) => { if (b !== -1 && (best === -1 || b < best)) best = b; });
+  if (best === -1) return { name: full, spec: '' };
+  const n = full.slice(0, best).trim().replace(/[,\s]+$/, '');
+  const s = full.slice(best).trim();
+  if (!n || n.length < 2) return { name: full, spec: '' };
+  return { name: n, spec: s };
+}
+function _parseSingleLine(s) {
+  s = String(s || '').trim();
+  if (!s) return null;
+  const m = s.match(/^(.*?)\s+(?:не\s+менее\s+)?(\d{1,4}(?:[.,]\d+)?)\s*([а-яёa-z]+)?\.?\s*$/i);
+  if (m) {
+    const namePart = (m[1] || '').trim();
+    const numStr = m[2], unitRaw = (m[3] || '').trim();
+    if (!namePart) return null;
+    if (unitRaw) {
+      if (!_isKnownUnitWord(unitRaw)) { const sp0 = _splitNameSpec(s); return { name: sp0.name || s, spec: sp0.spec || '', unit: 'шт', qty: 1, expiry: '', potent: false }; }
+      const qty = Math.max(1, Math.round(parseFloat(numStr.replace(',', '.'))) || 1);
+      const sp = _splitNameSpec(namePart);
+      return { name: sp.name, spec: sp.spec, unit: _normUnit(unitRaw), qty, expiry: '', potent: false };
+    }
+    if (/[0-9]/.test(namePart)) { const sp9 = _splitNameSpec(s); return { name: sp9.name || s, spec: sp9.spec || '', unit: 'шт', qty: 1, expiry: '', potent: false }; }
+    const qty = Math.max(1, Math.round(parseFloat(numStr.replace(',', '.'))) || 1);
+    const sp2 = _splitNameSpec(namePart);
+    return { name: sp2.name, spec: sp2.spec, unit: 'шт', qty, expiry: '', potent: false };
+  }
+  const spF = _splitNameSpec(s);
+  return { name: spF.name || s, spec: spF.spec || '', unit: 'шт', qty: 1, expiry: '', potent: false };
+}
 export function parseItemList(text) {
   const out = [];
-  String(text == null ? '' : text).split(/\r?\n/).forEach(line => {
-    line = line.trim();
+  String(text == null ? '' : text).split(/\r?\n/).forEach(rawLine => {
+    let line = String(rawLine == null ? '' : rawLine).replace(/^﻿/, '').replace(/^\uFEFF/, '').trim();
     if (!line) return;
-    line = line.replace(/^\s*\d{1,3}\s*[.)]\s*/, '');
-    let qty = 1, unit = 'шт';
-    const m = line.match(/^(.*?)\s+([0-9]{1,4})\s*(амп|фл|шт|пар|уп|таб|капс|компл|блистер|пакет)?\.?$/i);
-    if (m) { line = m[1]; qty = +m[2]; if (m[3]) unit = m[3].toLowerCase(); }
-    if (!line) return;
-    out.push({ name: line, spec: '', unit, qty, expiry: '', potent: false });
+    if (_isHeaderLine(line)) return;
+    let s = line.replace(/^[-*•–—]\s*/, '');
+    s = s.replace(/^\s*\d{1,4}\s*[.)]\s*(\|\s*)?/, '');
+    s = s.replace(/^\s*\d{1,4}\s*\|\s*/, '');
+    s = s.trim();
+    if (!s) return;
+    if (_isHeaderLine(s)) return;
+    if (/[|\t;]/.test(s)) {
+      let cells = s.split(/[|\t;]/).map(c => c.trim()).filter(c => c !== '');
+      if (!cells.length) return;
+      if (cells.length === 1) { const one = _parseSingleLine(cells[0]); if (one && one.name) out.push(one); return; }
+      const name = cells[0];
+      let specCells = cells.slice(1, -1);
+      let qtySrc = cells[cells.length - 1];
+      if (!/\d/.test(qtySrc) && specCells.length) {
+        const prev = specCells[specCells.length - 1];
+        if (/\d/.test(prev)) { qtySrc = prev + ' ' + qtySrc; specCells = specCells.slice(0, -1); }
+        else { const joined = _parseSingleLine(cells.join(' ')); if (joined && joined.name) out.push(joined); return; }
+      }
+      const q = _parseQtyCell(qtySrc);
+      if (!q.confident) { const joined = _parseSingleLine(cells.join(' ')); if (joined && joined.name) out.push(joined); return; }
+      if (!name.trim()) return;
+      const spN = _splitNameSpec(name.trim());
+      const extra = specCells.join(' ').trim();
+      const finSpec = (spN.spec ? spN.spec + (extra ? ' ' + extra : '') : extra).trim();
+      out.push({ name: spN.name, spec: finSpec, unit: q.unit, qty: q.qty, expiry: '', potent: false });
+      return;
+    }
+    if (/,/.test(s) && /,\s*(?:не\s+менее\s+)?\d|,\s*(?:амп?|фл|шт|пар|уп|таб|бл|туба|блистер|капс|компл|пакет)/i.test(s)) {
+      const cells = s.split(',').map(c => c.trim()).filter(c => c !== '');
+      if (cells.length >= 2) {
+        if (cells.length === 2 && /^\d/.test(cells[0]) === false && /^\d/.test(cells[1]) && /\d,\d/.test(s) && !/,\s*(?:не\s+менее\s+)?\d+\s*(?:амп|фл|шт|пар|уп|таб|бл|туба|блистер)/i.test(s)) {
+          const one = _parseSingleLine(s); if (one && one.name) out.push(one); return;
+        }
+        const name = cells[0];
+        let specCells = cells.slice(1, -1);
+        let qtySrc = cells[cells.length - 1];
+        if (!/\d/.test(qtySrc) && specCells.length) {
+          const prev = specCells[specCells.length - 1];
+          if (/\d/.test(prev)) { qtySrc = prev + ' ' + qtySrc; specCells = specCells.slice(0, -1); }
+          else { const one = _parseSingleLine(s); if (one && one.name) out.push(one); return; }
+        }
+        const q = _parseQtyCell(qtySrc);
+        if (!q.confident) { const one = _parseSingleLine(s); if (one && one.name) out.push(one); return; }
+        if (!name.trim()) return;
+        const spC = _splitNameSpec(name.trim());
+        const extraC = specCells.join(' ').trim();
+        const finC = (spC.spec ? spC.spec + (extraC ? ' ' + extraC : '') : extraC).trim();
+        out.push({ name: spC.name, spec: finC, unit: q.unit, qty: q.qty, expiry: '', potent: false });
+        return;
+      }
+    }
+    const one = _parseSingleLine(s);
+    if (one && one.name) out.push(one);
   });
   return out;
+}
+/* Шаблонный импорт — тот же единый парсер, голубчик: раньше здесь жила
+   своя копия с другим списком единиц, и «пары» с «бл» тихо терялись.
+   Держим один рецепт на всех, а то давление скачет. */
+export function parseTplLines(text) { return parseItemList(text); }
+/* HTML-таблица из .xls (Excel умеет сохраняться как HTML) -> текст «a | b».
+   Чистая функция: на вход строка, на выход строки для parseItemList. */
+export function htmlTableToText(html) {
+  const out = [];
+  String(html == null ? '' : html).replace(/<tr[^>]*>([\s\S]*?)<\/tr\s*>/gi, (m, row) => {
+    const cells = [];
+    row.replace(/<(td|th)[^>]*>([\s\S]*?)<\/\1\s*>/gi, (mm, tag, cell) => {
+      let t = String(cell || '').replace(/<br[^>]*>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').trim().replace(/\s+/g, ' ');
+      cells.push(t);
+      return '';
+    });
+    const nonEmpty = cells.map(c => (c || '').trim()).filter(c => c !== '');
+    if (nonEmpty.length) out.push(nonEmpty.join(' | '));
+    return '';
+  });
+  return out.join('\n');
+}
+/* Строки листа Excel (SheetJS sheet_to_json header:1) -> текст для парсера. */
+export function sheetRowsToText(rows) {
+  const out = [];
+  (rows || []).forEach(r => {
+    const cells = (r || []).map(c => String(c == null ? '' : c).trim()).filter(c => c !== '');
+    if (!cells.length) return;
+    if (cells.length === 1 && !String(cells[0]).trim()) return;
+    out.push(cells.join(' | '));
+  });
+  return out.join('\n');
 }
 
 /* ---------- Размер шрифта под размер окна ----------
