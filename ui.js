@@ -46,7 +46,16 @@ window.addEventListener('resize', () => {
 window.addEventListener('orientationchange', () => { setTimeout(setVH, 100); setTimeout(setKb, 150); });
 if (window.visualViewport) { window.visualViewport.addEventListener('resize', () => { setVH(); setKb(); }); window.visualViewport.addEventListener('scroll', () => { setVH(); setKb(); }); }
 document.addEventListener('focusin', e => { const t = e.target; if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') setTimeout(() => { setKb(); const kb = window.visualViewport ? Math.max(0, window.innerHeight - window.visualViewport.height) : 0; const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight; const rect = t.getBoundingClientRect(); if (rect.bottom + kb >= vh) window.scrollBy({ top: rect.bottom - vh + 20, behavior: 'smooth' }); const box = document.getElementById('cbox'); if (box) box.scrollTop = box.scrollHeight; }, 300); });
-export function updHead() { const e = document.getElementById('headcount'); if (e) e.textContent = '👥 ' + DB.users.length + (onlineN == null ? '' : ' · 🟢 ' + onlineN); const u = me(), hu = document.getElementById('hdrUser'); if (!hu) return; if (!u) { hu.textContent = ''; return; } const n = u.name.trim().split(/\s+/); hu.textContent = n.length >= 3 ? n[0] + ' ' + n[1][0] + '.' + n[2][0] + '.' : n.length === 2 ? n[0] + ' ' + n[1][0] + '.' : n[0] || ''; }
+export function updHead() {
+  const u = me();
+  const e = document.getElementById('headcount');
+  // До входа показываем только число сотрудников — новичку это ориентир,
+  // а число онлайн-устройств до ввода PIN знать незачем (решение по п. 4.3).
+  if (e) e.textContent = u
+    ? '👥 ' + DB.users.length + (onlineN == null ? '' : ' · 🟢 ' + onlineN)
+    : '👥 ' + DB.users.length;
+  const hu = document.getElementById('hdrUser'); if (!hu) return; if (!u) { hu.textContent = ''; return; } const n = u.name.trim().split(/\s+/); hu.textContent = n.length >= 3 ? n[0] + ' ' + n[1][0] + '.' + n[2][0] + '.' : n.length === 2 ? n[0] + ' ' + n[1][0] + '.' : n[0] || '';
+}
 export function renderNav() { const nav = document.getElementById('nav'), u = me(); nav.innerHTML = ''; if (!u) return; const tabs = [['home','Главная'],['bags','Сумки'],['cars','Машины'],['sched','Смены'],['chat','Чат'],['ref','💊'],['set','Ещё']]; if (DB.reports) tabs.splice(3, 0, ['reports','Отчёты']); tabs.forEach(([k, label]) => { const b = document.createElement('button'); if (tab === k) b.className = 'on'; b.textContent = label; b.onclick = () => go(k); nav.appendChild(b); }); }
 export function go(t) { tab = t; localStorage.setItem('medshift_tab', t); if (t !== 'bags') { window.curTpl = false; window.curPot = false; window.curPotKit = null; window.openTplId = null; window.tplSearch = ''; } if (t !== 'ref') window.refSearch = ''; renderNav(); render(); }
 export function render() {
