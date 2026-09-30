@@ -36,7 +36,7 @@
      service worker (network-first, имя кэша берётся из config.js).
      Значение обязано совпадать с VERSION в config.js: это проверяет
      тест «версия в одном месте» в tests/run.mjs. -->
-<script src="seed.js?v=2.6.1"></script>
+<script src="seed.js?v=2.6.2"></script>
 </head>
 <body>
 <header>
@@ -61,7 +61,7 @@ window.addEventListener('error', function (e) {
   var loc = ' @ ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0);
   if (e.error && e.error.stack) loc += ' ||stack|| ' + String(e.error.stack).split('\n').slice(0, 4).join(' | ');
   dbgPush('ERR ' + d + loc);
-  paintFatal('❌ Ошибка запуска\n\n' + d + '\n' + loc);
+  paintFatal('❌ Ошибка приложения (старт не закончен)\n\n' + d + '\n' + loc);
 });
 window.addEventListener('unhandledrejection', function (e) {
   var r = e.reason;
@@ -69,14 +69,29 @@ window.addEventListener('unhandledrejection', function (e) {
   var loc = '';
   if (r && r.stack) loc = ' ||stack|| ' + String(r.stack).split('\n').slice(0, 4).join(' | ');
   dbgPush('REJ ' + d + loc);
-  paintFatal('❌ Ошибка запуска (promise)\n\n' + d + '\n' + loc);
+  paintFatal('❌ Ошибка приложения (promise, старт не закончен)\n\n' + d + '\n' + loc);
 });
 function paintFatal(t) {
   try {
+    // Полноэкранный оверлей — только пока приложение не поднялось.
+    // Раньше любая поздняя ошибка (отказ сети, переполнение квоты, биометрия)
+    // заливала экран без кнопки закрытия, и приложение превращалось в
+    // «программу умерла». После старта текст уходит в dbg-панель и в тост
+    // (ui.js слушает те же события), а экран остаётся рабочим.
+    if (window.bootReady) return;
     var f = document.getElementById('fatal');
-    if (!f) { f = document.createElement('pre'); f.id = 'fatal'; document.body.appendChild(f); }
-    f.style.cssText = 'position:fixed;left:0;right:0;top:0;bottom:0;z-index:999999;margin:0;background:#fff;color:#b00020;font:13px/1.5 monospace;white-space:pre-wrap;word-break:break-all;padding:16px;box-sizing:border-box;overflow:auto;display:block';
-    f.textContent = t;
+    if (!f) {
+      f = document.createElement('div');
+      f.id = 'fatal';
+      f.style.cssText = 'position:fixed;left:0;right:0;top:0;bottom:0;z-index:999999;margin:0;background:#fff;color:#b00020;font:13px/1.5 monospace;padding:16px;box-sizing:border-box;overflow:auto;display:block';
+      f.innerHTML = '<button id="fatalClose" style="float:right;background:#b00020;color:#fff;border:0;border-radius:6px;padding:8px 14px;font:14px system-ui;cursor:pointer">✕ Закрыть</button>'
+        + '<pre id="fatalText" style="white-space:pre-wrap;word-break:break-all;margin:0;clear:both;padding-top:24px"></pre>';
+      document.body.appendChild(f);
+      var cl = document.getElementById('fatalClose');
+      if (cl) cl.onclick = function () { try { f.parentNode.removeChild(f); } catch (_) {} };
+    }
+    var tx = document.getElementById('fatalText');
+    if (tx) tx.textContent = t;
   } catch (_) {}
 }
 var _origCE = window.console.error.bind(window.console);
@@ -101,6 +116,6 @@ setTimeout(function () {
 }, 3000);
 </script>
 <pre id="dbg" style="display:none;position:fixed;left:6px;right:6px;bottom:6px;z-index:99999;background:#000;color:#ff4444;font-size:12px;white-space:pre-wrap;word-break:break-all;padding:8px;border-radius:8px;margin:0;pointer-events:none;max-height:45%;overflow:auto"></pre>
-<script type="module" src="./boot.js?v=2.6.1"></script>
+<script type="module" src="./boot.js?v=2.6.2"></script>
 </body>
 </html>
