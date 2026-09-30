@@ -45,7 +45,12 @@ self.addEventListener('install', function (event) {
       .catch(function () { return ''; })
       .then(function (txt) {
         var m = txt.match(/VERSION\s*=\s*['"]([^'"]+)['"]/);
-        if (m) CACHE = 'medshift-cache-' + m[1];
+        // Версию не прочитали — установка не удалась, и это правильно:
+        // раньше CACHE оставался 'medshift-cache-dev', новый воркер
+        // активировался и сносил боевой кэш, хотя ставить было нечего.
+        // Теперь старый воркер и старый кэш остаются как были.
+        if (!m) throw new Error('[SW] no VERSION in config.js, install aborted');
+        CACHE = 'medshift-cache-' + m[1];
         return caches.open(CACHE).then(function (cache) {
           return cache.addAll(ASSETS).catch(function (err) {
             console.warn('[SW] partial cache fail:', err);
@@ -53,16 +58,19 @@ self.addEventListener('install', function (event) {
           });
         });
       })
+      .then(function () { self.skipWaiting(); })
   );
-  self.skipWaiting();
 });
 
 /* ---------- ACTIVATE: чистка старых кэшей ---------- */
 self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
+      // Сносим только свои старые кэши. Запасной 'medshift-cache-dev'
+      // (установка без версии) ничего не трогает — пояс для подтяжек к 5.2.
+      if (CACHE === 'medshift-cache-dev') return Promise.resolve();
       return Promise.all(
-        keys.filter(function (key) { return key !== CACHE; })
+        keys.filter(function (key) { return key.indexOf('medshift-cache-') === 0 && key !== CACHE; })
             .map(function (key) { return caches.delete(key); })
       );
     })
@@ -90,14 +98,26 @@ self.addEventListener('fetch', function (event) {
 
   // Ответ из кэша. Для навигации последним рубежом служит index.html:
   // пользователь должен получить работающее приложение, а не страницу ошибки.
+  // Запрос может прийти с версией (?v=2.6.2, так подключает index.html),
+  // а в precache лежит голый './boot.js': версию снимаем и ищем голый URL.
+  // Раньше первая загрузка в офлайне держалась только на рантайм-кэше.
   function fromCache() {
     return caches.match(req).then(function (cached) {
       if (cached) return cached;
-      if (req.mode === 'navigate') return caches.match('./index.html');
-      return new Response('Нет сети', {
-        status: 503,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-      });
+      if (url.search) {
+        return caches.match(url.pathname).then(function (c2) {
+          if (c2) return c2;
+          return navFallback();
+        });
+      }
+      return navFallback();
+    });
+  }
+  function navFallback() {
+    if (req.mode === 'navigate') return caches.match('./index.html');
+    return new Response('Нет сети', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
   }
 
