@@ -14,7 +14,7 @@ import { syncInit, syncTest, presBeat, fbUrl, restGet, restPut, restDelete, adop
 import { restoreToken, verifyPin, pinCheck, setPin, loginAs, logout, checkSessionExpiry, enableBiometric, disableBiometric, biometricLogin, banUser, unbanUser, signIn, errText } from './auth.js';
 import { toast, openDlg, closeDlg, ask, askText, applyTheme, applyFontSize, updHead, renderNav, render, go, tab } from './ui.js';
 import { loadWeather, showForecast, startClock, wIcon, clearWeatherCache } from './weather.js';
-import { shiftKeyOf, parseShiftCsv, parseItemList, parseTplLines as parseTplLinesLogic, htmlTableToText, sheetRowsToText, fsHintText, isIsoDate } from './logic.js';
+import { shiftKeyOf, parseShiftCsv, parseItemList, parseTplLines as parseTplLinesLogic, htmlTableToText, sheetRowsToText, fsHintText, isIsoDate, expInputType } from './logic.js';
 import { withDrugs, drugsReady, preloadDrugs } from './drugload.js';
 import { updateFoot } from './views.js';
 import { seasonHtml, startLeaves, stopLeaves } from './seasons.js';
@@ -72,7 +72,24 @@ window.biometricLogin = async () => { const u = await biometricLogin(); if (!u) 
 // в ui.js) и window.closeDlg. Раньше здесь стояло window.close = closeDlg:
 // это перетирало нативный window.close, который браузер использует сам —
 // выигрыша не было (незакрытых вызовов close() в проекте нет), а риск был.
-window.__tplSearch = (v) => { tplSearch = v; render(); };
+/* Права: проверка живёт внутри обработчика, а не в разметке. Скрытая
+   кнопка — не защита: вызов доступен из консоли и по data-act, а правка
+   уезжает в общий синк. Одно правило — одна функция, чтобы текст тоста и
+   сама проверка не разъезжались по экранам (правило зафиксировано в плане:
+   очистка графика, delUser/banUser уже сделаны так же). */
+const BAG_NO = 'Сумка не ваша — правит руководитель или тот, кому она назначена';
+function bagOk(id) { if (canUseBag(id)) return true; toast(BAG_NO); return false; }
+const BOSS_NO = 'Это действие доступно руководителю или админу';
+function bossOk() { if (isBoss()) return true; toast(BOSS_NO); return false; }
+
+window.__tplSearch = (v) => {
+  tplSearch = v;
+  // Только блок результатов: полный render() пересоздавал поле ввода,
+  // фокус и каретка терялись, и набрать больше одного символа было нельзя.
+  const box = document.getElementById('tplList');
+  if (box && window.tplResults) { box.innerHTML = window.tplResults(); return; }
+  render();
+};
 window.clearTpl = () => { tplSearch = ''; const i = document.getElementById('tplSearch'); if (i) i.value = ''; render(); };
 /* У ui-шаблонов id позиционный ('bag' / 'kit_3'), а в базе у каждого свой
    uid(). Могилу кладём по настоящему id шаблона — иначе удалённый шаблон
@@ -80,6 +97,7 @@ window.clearTpl = () => { tplSearch = ''; const i = document.getElementById('tpl
    `DB.bagTypes = DB.bagTypes || []`: клик по «удалить шаблон сумки» показывал
    «Шаблон удалён», но ничего не удалял. */
 window.delTpl = (id) => {
+  if (!bossOk()) return;
   ask('Удалить шаблон?', () => {
     const arr = id === 'bag' ? (DB.bagTypes = DB.bagTypes || []) : (DB.kitTemplates = DB.kitTemplates || []);
     const i = id === 'bag' ? 0 : parseInt(String(id).replace('kit_', ''));
@@ -94,6 +112,7 @@ window.delTpl = (id) => {
   });
 };
 window.newTplDlg = () => {
+  if (!bossOk()) return;
   askText('Название нового шаблона', 'Новый шаблон', n => {
     if (!n.trim()) return;
     DB.kitTemplates = DB.kitTemplates || [];
@@ -310,6 +329,7 @@ window.saveBagDlg = () => {
   save(); closeDlg(); render(); toast('Сумка создана');
 };
 window.renameBag = (id) => {
+  if (!bagOk(id)) return;
   const b = DB.bags.find(x => x.id == id); if (!b) return;
   // Правка названия и таблички одним диалогом. Табличка нужна, чтобы
   // отличить сумки в списке: номер меняется при перестановках, а «ночная,
@@ -320,6 +340,7 @@ window.renameBag = (id) => {
   openDlg(h);
 };
 window.saveRenameBag = (id) => {
+  if (!bagOk(id)) return;
   const b = DB.bags.find(x => x.id == id); if (!b) return;
   const n = (document.getElementById('rbName').value || '').trim();
   if (!n) return toast('Введите название');
@@ -352,6 +373,7 @@ window.newBagFromTpl = () => {
   });
 };
 window.fillBagFromTpl = (bid) => {
+  if (!bagOk(bid)) return;
   const b = DB.bags.find(x => x.id == bid); const t = DB.bagTypes[0];
   if (!t) return toast('Шаблон не найден');
   b.items = b.items.concat(t.items.map(i => ({ name: i.name, spec: i.spec, unit: i.unit, qty: i.qty, expiry: '', potent: !!i.potent })));
@@ -359,37 +381,44 @@ window.fillBagFromTpl = (bid) => {
 };
 window.toggleEditBag = (bid) => {
   bid = +bid;
+  if (!bagOk(bid)) return;
   if (editBag === bid) { editBag = null; save(); toast('Сохранено'); } else { editBag = bid; editKit = null; }
   render();
 };
 window.editBagItem = (arg) => {
-  const [bid, i, field] = String(arg).split(','); const b = DB.bags.find(x => x.id == bid);
+  const [bid, i, field] = String(arg).split(','); if (!bagOk(bid)) return;
+  const b = DB.bags.find(x => x.id == bid);
   const el = document.querySelector(`[data-act="editBagItem"][data-arg="${arg}"]`);
   if (!el) return; const val = el.value;
   if (field === 'qty') b.items[+i].qty = +val; else b.items[+i][field] = val;
 };
 window.delBagItemEdit = (arg) => {
-  const [bid, i] = String(arg).split(','); const b = DB.bags.find(x => x.id == bid);
+  const [bid, i] = String(arg).split(','); if (!bagOk(bid)) return;
+  const b = DB.bags.find(x => x.id == bid);
   b.items.splice(+i, 1); render();
 };
 window.setExp = (arg) => {
-  const [bid, i] = String(arg).split(','); const b = DB.bags.find(x => x.id == bid);
+  const [bid, i] = String(arg).split(','); if (!bagOk(bid)) return;
+  const b = DB.bags.find(x => x.id == bid);
   const el = document.querySelector(`[data-act="setExp"][data-arg="${arg}"]`);
   b.items[+i].expiry = el.value; save(); render();
 };
 window.delItem = (arg) => {
   const [bid, i] = String(arg).split(',');
+  if (!bagOk(bid)) return;
   ask('Удалить позицию?', () => {
     const b = DB.bags.find(x => x.id == bid); b.items.splice(+i, 1); save(); render(); toast('Позиция удалена');
   });
 };
 window.openItemDlg = (arg) => {
-  const [bid, idx] = String(arg).split(','); const b = DB.bags.find(x => x.id == bid);
+  const [bid, idx] = String(arg).split(','); if (!bagOk(bid)) return;
+  const b = DB.bags.find(x => x.id == bid);
   const it = idx < 0 ? {} : b.items[+idx];
-  openDlg('<h3>Позиция</h3><label>Название</label><input id="item_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('item') + '<label>Форма</label><input id="item_spec" value="' + esc(it.spec || '') + '"><div class="row"><div><label>Кол-во</label><input id="iQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="item_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Срок годности</label><input id="iExp" type="date" value="' + (it.expiry || '') + '"><label><input type="checkbox" style="width:auto" id="iPot"' + (it.potent ? ' checked' : '') + '> Сильнодействующий препарат</label><p><button class="btn" data-act="saveItemDlg" data-arg="' + bid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
+  openDlg('<h3>Позиция</h3><label>Название</label><input id="item_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('item') + '<label>Форма</label><input id="item_spec" value="' + esc(it.spec || '') + '"><div class="row"><div><label>Кол-во</label><input id="iQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="item_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Срок годности</label><input id="iExp" type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '"><label><input type="checkbox" style="width:auto" id="iPot"' + (it.potent ? ' checked' : '') + '> Сильнодействующий препарат</label><p><button class="btn" data-act="saveItemDlg" data-arg="' + bid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.saveItemDlg = (arg) => {
-  const [bid, idx] = String(arg).split(','); const b = DB.bags.find(x => x.id == bid);
+  const [bid, idx] = String(arg).split(','); if (!bagOk(bid)) return;
+  const b = DB.bags.find(x => x.id == bid);
   const o = {
     name: document.getElementById('item_name').value.trim(),
     spec: document.getElementById('item_spec').value.trim(),
@@ -403,6 +432,7 @@ window.saveItemDlg = (arg) => {
   save(); closeDlg(); render();
 };
 window.openImportDlg = (bid) => {
+  if (!bagOk(bid)) return;
   openDlg('<h3>📥 Импорт списка</h3><p class="impHint">Формат «№ | Наименование | Количество» («1. | Адреналин … | 10 амп»), «Название 10 амп» или колонки из Excel. Принимаем .txt/.csv/.tsv/.xls/.xlsx и фото (.png/.jpg через OCR).</p><label class="btn sec" style="display:inline-block">📄 Выбрать файл (текст/Excel/фото)<input type="file" hidden accept=".txt,.csv,.tsv,.xls,.xlsx,.png,.jpg,.jpeg,text/plain,text/csv" onchange="window.__readImpFile(this.files[0])"></label><textarea id="impTa" rows="8" placeholder="Строки: Название 10 амп&#10;1. | Адреналин … | 10 амп"></textarea><p><button class="btn" data-act="doImport" data-arg="' + bid + '">➕ Добавить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.__readImpFile = (f) => {
@@ -410,6 +440,7 @@ window.__readImpFile = (f) => {
   window.__handleTableFile(f, 'impTa');
 };
 window.doImport = (bid) => {
+  if (!bagOk(bid)) return;
   const b = DB.bags.find(x => x.id == bid);
   if (!b) return toast('Сумка не найдена — обновите экран');
   const ta = document.getElementById('impTa');
@@ -484,6 +515,7 @@ window.addKitDlg = (cid) => {
   openDlg(h);
 };
 window.addKitDo = (cid) => {
+  if (!bossOk()) return;
   const c = DB.cars.find(x => x.id == cid); if (!c) return;
   const name = document.getElementById('akName').value.trim();
   const sel = document.getElementById('akTpl').value; let items = [];
@@ -514,11 +546,11 @@ window.cellEdit = (arg) => {
   const p = String(arg).split(',');
   let target = null, field = '',
     LAB = { name: 'Наименование', spec: 'Форма', ovm: 'Инв. №', qty: 'Кол-во', expiry: 'Срок годности', charge: 'Отметки', defect: 'Пометка' };
-  if (p[0] === 'bag') { const b = DB.bags.find(x => x.id == p[1]); if (b && b.items[+p[2]]) { target = b.items[+p[2]]; field = p[3]; } }
-  else if (p[0] === 'kit') { const c = DB.cars.find(x => x.id == p[1]); const k = c && c.kits.find(x => x.id == p[2]); if (k && k.items[+p[3]]) { target = k.items[+p[3]]; field = p[4]; } }
-  else if (p[0] === 'eq') { const c = DB.cars.find(x => x.id == p[1]); if (c && c.equip[+p[2]]) { target = c.equip[+p[2]]; field = p[3]; } }
+  if (p[0] === 'bag') { if (!bagOk(p[1])) return; const b = DB.bags.find(x => x.id == p[1]); if (b && b.items[+p[2]]) { target = b.items[+p[2]]; field = p[3]; } }
+  else if (p[0] === 'kit') { if (!bossOk()) return; const c = DB.cars.find(x => x.id == p[1]); const k = c && c.kits.find(x => x.id == p[2]); if (k && k.items[+p[3]]) { target = k.items[+p[3]]; field = p[4]; } }
+  else if (p[0] === 'eq') { if (!bossOk()) return; const c = DB.cars.find(x => x.id == p[1]); if (c && c.equip[+p[2]]) { target = c.equip[+p[2]]; field = p[3]; } }
   else if (p[0] === 'pot') { const k = (DB.potents || []).find(x => x.id == p[1]); if (k && k.items[+p[2]]) { target = k.items[+p[2]]; field = p[3]; } }
-  else if (p[0] === 'tpl') { let list = null; if (p[1] === 'bag') { const t = DB.bagTypes && DB.bagTypes[0]; if (t) list = t.items; } else { const ki = +p[1].replace('kit_', ''); const kt = DB.kitTemplates && DB.kitTemplates[ki]; if (kt) list = kt.items; } if (list && list[+p[2]]) { target = list[+p[2]]; field = p[3]; } }
+  else if (p[0] === 'tpl') { if (!bossOk()) return; let list = null; if (p[1] === 'bag') { const t = DB.bagTypes && DB.bagTypes[0]; if (t) list = t.items; } else { const ki = +p[1].replace('kit_', ''); const kt = DB.kitTemplates && DB.kitTemplates[ki]; if (kt) list = kt.items; } if (list && list[+p[2]]) { target = list[+p[2]]; field = p[3]; } }
   if (!target) return toast('Позиция не найдена');
   const val = target[field] == null ? '' : target[field];
   const num = field === 'qty', date = field === 'expiry', one = field === 'ovm';
@@ -547,6 +579,7 @@ window.cellEdit = (arg) => {
   };
 };
 window.addEquipItem = (cid) => {
+  if (!bossOk()) return;
   const c = DB.cars.find(x => x.id == cid); if (!c) return;
   c.equip = c.equip || [];
   c.equip.push({ id: uid(), ovm: '', name: 'Новое оборудование', status: 'ok', charge: '', defect: '' });
@@ -573,17 +606,20 @@ window.openKit = (id) => { curKit = +id; render(); };
 window.backKits = () => { curKit = null; highlightItem = null; editKit = null; render(); };
 window.toggleEditKit = (kid) => {
   kid = +kid;
+  if (!bossOk()) return;
   if (editKit === kid) { editKit = null; save(); toast('Сохранено'); } else editKit = kid;
   render();
 };
 window.openKitItem = (arg) => {
   const [cid, kid, idx] = String(arg).split(',');
+  if (!bossOk()) return;
   const k = DB.cars.find(x => x.id == cid).kits.find(x => x.id == kid);
   const it = idx < 0 ? {} : k.items[+idx];
-  openDlg('<h3>Позиция укладки</h3><label>Название</label><input id="kit_item_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('kit_item') + '<div class="row"><div><label>Кол-во</label><input id="kQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="kit_item_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Форма</label><input id="kit_item_spec" value="' + esc(it.spec || '') + '"><label>Срок</label><input id="kExp" type="date" value="' + (it.expiry || '') + '"><label><input type="checkbox" style="width:auto" id="kPot"' + (it.potent ? ' checked' : '') + '> Сильнодействующий</label><p><button class="btn" data-act="saveKitItem" data-arg="' + cid + ',' + kid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
+  openDlg('<h3>Позиция укладки</h3><label>Название</label><input id="kit_item_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('kit_item') + '<div class="row"><div><label>Кол-во</label><input id="kQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="kit_item_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Форма</label><input id="kit_item_spec" value="' + esc(it.spec || '') + '"><label>Срок</label><input id="kExp" type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '"><label><input type="checkbox" style="width:auto" id="kPot"' + (it.potent ? ' checked' : '') + '> Сильнодействующий</label><p><button class="btn" data-act="saveKitItem" data-arg="' + cid + ',' + kid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.saveKitItem = (arg) => {
   const [cid, kid, idx] = String(arg).split(',');
+  if (!bossOk()) return;
   const k = DB.cars.find(x => x.id == cid).kits.find(x => x.id == kid);
   const o = {
     name: document.getElementById('kit_item_name').value.trim(),
@@ -599,6 +635,7 @@ window.saveKitItem = (arg) => {
 };
 window.editKitItem = (arg) => {
   const [cid, kid, i, field] = String(arg).split(',');
+  if (!bossOk()) return;
   const c = DB.cars.find(x => x.id == cid); const k = c.kits.find(x => x.id == kid);
   const el = document.querySelector(`[data-act="editKitItem"][data-arg="${arg}"]`);
   if (!el) return; const val = el.value;
@@ -606,11 +643,13 @@ window.editKitItem = (arg) => {
 };
 window.delKitItemEdit = (arg) => {
   const [cid, kid, i] = String(arg).split(',');
+  if (!bossOk()) return;
   const c = DB.cars.find(x => x.id == cid); const k = c.kits.find(x => x.id == kid);
   k.items.splice(+i, 1); render();
 };
 window.setExpKit = (arg) => {
   const [cid, kid, i] = String(arg).split(',');
+  if (!bossOk()) return;
   const c = DB.cars.find(x => x.id == cid); const k = c.kits.find(x => x.id == kid);
   const el = document.querySelector(`[data-act="setExpKit"][data-arg="${arg}"]`);
   k.items[+i].expiry = el.value; save(); render();
@@ -622,6 +661,7 @@ window.setExpPot = (arg) => {
 };
 window.delKitItem = (arg) => {
   const [cid, kid, i] = String(arg).split(',');
+  if (!bossOk()) return;
   ask('Удалить позицию?', () => {
     const c = DB.cars.find(x => x.id == cid); const k = c.kits.find(x => x.id == kid);
     k.items.splice(+i, 1); save(); render(); toast('Позиция удалена');
@@ -634,10 +674,12 @@ window.goPot = () => { curPot = true; render(); };
 window.backBagsViews = () => { curTpl = false; curPot = false; curPotKit = null; openTplId = null; editTpl = null; tplSearch = ''; render(); };
 window.toggleTplOpen = (id) => { openTplId = openTplId === id ? null : id; tplSearch = ''; render(); };
 window.toggleEditTpl = (id) => {
+  if (!bossOk()) return;
   if (editTpl === id) { editTpl = null; save(); toast('Сохранено'); } else editTpl = id;
   render();
 };
 window.addTplPos = (id) => {
+  if (!bossOk()) return;
   if (id === 'bag') {
     if (!DB.bagTypes[0]) return toast('Шаблон сумки не создан');
     DB.bagTypes[0].items.push({ name: 'Новая позиция', spec: '', unit: 'шт', qty: 1, potent: false });
@@ -649,6 +691,7 @@ window.addTplPos = (id) => {
   save(); render();
 };
 window.delTplPos = (arg) => {
+  if (!bossOk()) return;
   const parts = String(arg).split(','); const id = parts[0], i = +parts[1];
   const t = id === 'bag' ? (DB.bagTypes || [])[0] : (DB.kitTemplates || [])[parseInt(id.replace('kit_', ''))];
   if (!t || !Array.isArray(t.items) || i < 0 || i >= t.items.length) return toast('Позиция не найдена');
@@ -703,7 +746,7 @@ window.delPotKit = (id) => {
 window.openPotItem = (arg) => {
   const [kid, idx] = String(arg).split(','); const k = DB.potents.find(x => x.id == kid);
   const it = idx < 0 ? {} : k.items[+idx];
-  openDlg('<h3>Позиция</h3><label>Название</label><input id="pot_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('pot_item') + '<label>Форма</label><input id="pot_spec" value="' + esc(it.spec || '') + '"><div class="row"><div><label>Кол-во</label><input id="pQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="pot_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Срок</label><input id="pExp" type="date" value="' + (it.expiry || '') + '"><p><button class="btn" data-act="savePotItem" data-arg="' + kid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
+  openDlg('<h3>Позиция</h3><label>Название</label><input id="pot_name" value="' + esc(it.name || '') + '">' + drugSearchHtml('pot_item') + '<label>Форма</label><input id="pot_spec" value="' + esc(it.spec || '') + '"><div class="row"><div><label>Кол-во</label><input id="pQty" type="number" value="' + (it.qty || 1) + '"></div><div><label>Ед.</label><input id="pot_unit" value="' + esc(it.unit || 'шт') + '"></div></div><label>Срок</label><input id="pExp" type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '"><p><button class="btn" data-act="savePotItem" data-arg="' + kid + ',' + idx + '">Сохранить</button><button class="btn sec" data-act="close">Закрыть</button></p>');
 };
 window.savePotItem = (arg) => {
   const [kid, idx] = String(arg).split(','); const k = DB.potents.find(x => x.id == kid);
@@ -812,7 +855,7 @@ window.__addSchedPhoto = (inp, kind) => {
   const f = inp.files[0]; if (!f) return;
   compressImage(f, img => {
     try {
-      const p = { id: uid(), ts: Date.now(), month: todayStr().slice(0, 7), img };
+      const p = { id: uid(), ts: Date.now(), month: todayStr().slice(0, 7), img, by: DB.session };
       DB.sched[kind].push(p);
       save(); render(); toast('Фото добавлено');
       if (kind === 'days' || kind === 'months') {
@@ -847,7 +890,7 @@ window.__addSchedDoc = (inp, kind) => {
   const r = new FileReader();
   r.onload = () => {
     try {
-      const p = { id: uid(), ts: Date.now(), month: todayStr().slice(0, 7), doc: 1, name: f.name, mime: f.type || '', size: f.size, img: r.result };
+      const p = { id: uid(), ts: Date.now(), month: todayStr().slice(0, 7), doc: 1, name: f.name, mime: f.type || '', size: f.size, img: r.result, by: DB.session };
       DB.sched[kind].push(p);
       save(); render(); toast('📄 ' + f.name + ' добавлен');
       if (kind === 'days' || kind === 'months') {
@@ -868,11 +911,16 @@ function fmtSize(n) {
 window.openPhoto = (arg) => {
   const [kind, id] = String(arg).split(',');
   const p = DB.sched[kind].find(x => x.id == id); if (!p) return;
+  // Кнопку показываем только тому, кто может удалить: автору или
+  // руководителю. Спрятать кнопку недостаточно — delPhoto проверяет сам.
+  const delBtn = photoCanDelete(p)
+    ? '<button class="btn del" data-act="delPhoto" data-arg="' + kind + ',' + id + '">🗑 Удалить</button> '
+    : '';
   if (p.doc) {
-    openDlg('<div class="photoDlgBody"><div class="docTile">📄</div><p class="docName">' + esc(p.name || 'документ') + '</p><p class="docMeta">' + fmtSize(p.size) + '</p><div class="photoBtns"><a class="btn" href="' + p.img + '" download="' + esc(p.name || 'file') + '">⬇ Скачать</a> <button class="btn del" data-act="delPhoto" data-arg="' + kind + ',' + id + '">🗑 Удалить</button> <button class="btn sec" data-act="close">Закрыть</button></div></div>');
+    openDlg('<div class="photoDlgBody"><div class="docTile">📄</div><p class="docName">' + esc(p.name || 'документ') + '</p><p class="docMeta">' + fmtSize(p.size) + '</p><div class="photoBtns"><a class="btn" href="' + p.img + '" download="' + esc(p.name || 'file') + '">⬇ Скачать</a> ' + delBtn + '<button class="btn sec" data-act="close">Закрыть</button></div></div>');
     return;
   }
-  openDlg('<div class="photoDlgBody"><div class="photoViewport" id="pvPort"><img id="pvImg" src="' + p.img + '"></div><div class="photoZoomBar"><button class="btn sec" data-act="pvZoom" data-arg="-1">−</button><span id="pvLabel">100%</span><button class="btn sec" data-act="pvZoom" data-arg="1">+</button><button class="btn sec" data-act="pvReset">↺</button></div><div class="photoBtns"><button class="btn del" data-act="delPhoto" data-arg="' + kind + ',' + id + '">🗑 Удалить</button><button class="btn sec" data-act="close">Закрыть</button></div></div>');
+  openDlg('<div class="photoDlgBody"><div class="photoViewport" id="pvPort"><img id="pvImg" src="' + p.img + '"></div><div class="photoZoomBar"><button class="btn sec" data-act="pvZoom" data-arg="-1">−</button><span id="pvLabel">100%</span><button class="btn sec" data-act="pvZoom" data-arg="1">+</button><button class="btn sec" data-act="pvReset">↺</button></div><div class="photoBtns">' + delBtn + '<button class="btn sec" data-act="close">Закрыть</button></div></div>');
   window.__pvZoomFn = null; window.__pvResetFn = null;
   setTimeout(() => initPhotoViewer(), 0);
 };
@@ -966,8 +1014,20 @@ function initPhotoViewer() {
 }
 window.pvZoom = (dir) => { if (typeof window.__pvZoomFn === 'function') window.__pvZoomFn(+dir); };
 window.pvReset = () => { if (typeof window.__pvResetFn === 'function') window.__pvResetFn(); };
+/* Кто может удалить фото или документ смены: автор снимка либо
+   руководитель (решение по п. 2.6). У старых записей поля автора нет —
+   для них остаётся руководитель, чужое случайно не стирается.
+   Удаление уезжает на всю станцию через schedtomb, поэтому проверка
+   обязательна в самом обработчике, а не только кнопкой. */
+function photoCanDelete(p) {
+  const u = me(); if (!u) return false;
+  if (isBoss()) return true;
+  return !!(p && p.by != null && String(p.by) === String(u.id));
+}
 window.delPhoto = (arg) => {
   const [kind, id] = String(arg).split(',');
+  const p = (DB.sched[kind] || []).find(x => x.id == id);
+  if (!photoCanDelete(p)) return toast('Фото может удалить его автор или руководитель');
   DB.sched[kind] = DB.sched[kind].filter(x => x.id != id);
   // Само фото лежит в отдельном хранилище (medshift_media) — иначе после
   // удаления записи оно осталось бы там навсегда и съедало квоту.
@@ -1075,11 +1135,17 @@ window.schedMonths = () => { schedSub = 'months'; render(); };
 window.schedGrid = () => { schedSub = 'grid'; render(); };
 
 // ---------- Профиль / настройки ----------
-window.setName = (el) => { me().name = (el.value || '').trim(); save(); };
-window.setPhone = (el) => { me().phone = (el.value || '').trim(); save(); };
+window.setName = (el) => { const u = me(); if (!u) return; u.name = (el.value || '').trim(); save(); };
+window.setPhone = (el) => { const u = me(); if (!u) return; u.phone = (el.value || '').trim(); save(); };
 window.setBday = () => {
+  const u = me(); if (!u) return;
   const d = document.getElementById('bdD').value, m = document.getElementById('bdM').value, y = document.getElementById('bdY').value;
-  me().bday = (y === '0' || m === '0' || d === '0') ? '' : (y + '-' + m + '-' + d); save(); toast('Сохранено');
+  if (y === '0' || m === '0' || d === '0') { u.bday = ''; save(); toast('Сохранено'); return; }
+  // «31 февраля» раньше сохранялось молча, и напоминание не срабатывало
+  // никогда: сверяем с календарём до записи.
+  const dt = new Date(+y, +m - 1, +d);
+  if (dt.getFullYear() !== +y || dt.getMonth() !== +m - 1 || dt.getDate() !== +d) { toast('Такой даты нет в календаре'); return; }
+  u.bday = y + '-' + m + '-' + d; save(); toast('Сохранено');
 };
 window.changePinDlg = () => {
   const u = me(); if (!u) return;
@@ -1100,19 +1166,27 @@ window.changePinDo = async () => {
   }
 };
 window.addResp = (kind) => {
-  const u = me(); u[kind] = u[kind] || [];
+  // Эскалация прав: раньше обработчик не проверял ничего, и сотрудник мог
+  // назначить себе любую сумку — вместе с правом её править, — а запись
+  // уезжала в общий синк. Назначает только руководитель, как и соседний
+  // openRespDlg.
+  if (!bossOk()) return;
+  const u = me(); if (!u) return;
+  u[kind] = u[kind] || [];
   const list = kind === 'cars' ? DB.cars : DB.bags;
   const free = list.find(o => !u[kind].includes(o.id));
   if (!free) return toast('Сначала создайте объект');
   u[kind].push(free.id); save(); render();
 };
 window.setRespSel = (arg) => {
-  const [kind, i] = String(arg).split(','); const u = me();
+  if (!bossOk()) return;
+  const [kind, i] = String(arg).split(','); const u = me(); if (!u) return;
   const el = document.querySelector(`[data-act="setRespSel"][data-arg="${arg}"]`);
   u[kind][+i] = +el.value; save();
 };
 window.rmResp = (arg) => {
-  const [kind, i] = String(arg).split(','); const u = me();
+  if (!bossOk()) return;
+  const [kind, i] = String(arg).split(','); const u = me(); if (!u) return;
   u[kind].splice(+i, 1); save(); render();
 };
 window.toggleBiometric = async (el) => {
@@ -1121,7 +1195,10 @@ window.toggleBiometric = async (el) => {
     render();
   } catch (err) { toast(err.message || 'Ошибка'); render(); }
 };
-window.setFontSize = (el) => {
+window.setFontSize = (a, el) => {
+  // Вызывается двояко: change-делегат даёт (el), input-делегат — (arg, el).
+  // Берём тот аргумент, который похож на элемент.
+  el = (el && 'value' in Object(el)) ? el : a;
   const v = +el.value; DB.settings.fontSize = v;
   document.getElementById('fsLabel').textContent = v + 'px';
   // Подпись «на этом экране» обязана ехать за ползунком, иначе она врёт:
@@ -1130,7 +1207,13 @@ window.setFontSize = (el) => {
   if (hint) hint.textContent = fsHintText(v, window.innerWidth);
   applyFontSize(); save();
 };
-window.setWarnDays = (el) => { DB.settings.warnDays = +el.value || 10; save(); };
+window.setWarnDays = (el) => {
+  // 0 — валидное значение («показывать всё»), и +el.value || 10 превращал
+  // его в 10. Проверяем числом, как normalizeDB.
+  const v = +el.value;
+  DB.settings.warnDays = Number.isFinite(v) ? v : 10;
+  save();
+};
 window.setCity = (el) => { DB.settings.city = (el.value || '').trim(); clearWeatherCache(); save(); render(); };
 window.setAccent = (a, el) => {
   const v = (typeof a === 'string' && /^#[0-9a-f]{6}$/i.test(a)) ? a : (el && el.value);
@@ -1327,7 +1410,7 @@ window.doDeleteMyAccount = async () => {
 };
 window.safeResetDlg = () => {
   const u = me(); if (!u) return toast('Сначала войдите');
-  openDlg('<h3>♻️ Сброс устройства</h3><p style="color:var(--mut)">Очистит кэш <b>только на этом устройстве</b>. База на сервере сохранится.</p><label>PIN</label><input id="resetPin" type="password" inputmode="numeric" maxlength="4"><p><button class="btn del" data-act="doSafeReset">Сбросить</button><button class="btn sec" data-act="close">Отмена</button></p>');
+  openDlg('<h3>♻️ Сброс устройства</h3><p style="color:var(--mut)">Очистит кэш <b>только на этом устройстве</b>: настройки, вход и <b>локальные копии фото и файлов смен</b>. База на сервере сохранится, фото приедут оттуда заново после входа.</p><label>PIN</label><input id="resetPin" type="password" inputmode="numeric" maxlength="4"><p><button class="btn del" data-act="doSafeReset">Сбросить</button><button class="btn sec" data-act="close">Отмена</button></p>');
 };
 window.doSafeReset = async () => {
   const u = me(); if (!u) return;
@@ -1336,6 +1419,9 @@ window.doSafeReset = async () => {
   localStorage.removeItem('medshift_v3'); localStorage.removeItem('medshift_my');
   localStorage.removeItem('medshift_rem'); localStorage.removeItem('medshift_rem_ts');
   localStorage.removeItem('medshift_tab');
+  // Локальная копия фото — часть того же кэша: без этого пункта «полный
+  // сброс» оставлял у человека все картинки смен, то есть не сбрасывал.
+  try { localStorage.removeItem('medshift_media'); } catch {}
   try { localStorage.removeItem('medshift_bio'); } catch {}
   DB.session = null; closeDlg();
   toast('♻️ Сброшено'); saveNow(); setTimeout(() => location.reload(), 800);
@@ -1590,7 +1676,7 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => {
   const el = e.target; if (!el.dataset || !el.dataset.act) return;
   const act = el.dataset.act;
-  if (['editBagItem', 'editEquipItem', 'editKitItem', 'setRespSel', 'setAccRGB'].includes(act)) {
+  if (['editBagItem', 'editEquipItem', 'editKitItem', 'setRespSel', 'setAccRGB', 'setFontSize'].includes(act)) {
     const fn = window[act]; if (fn) try { fn(el.dataset.arg, el); } catch (err) { console.error(err); }
   }
 });
