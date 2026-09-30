@@ -20,13 +20,25 @@ function todayMid() {
   if (!_midAt || n - _midAt > 60000) { const t = new Date(n); t.setHours(0, 0, 0, 0); _midMs = t.getTime(); _midAt = n; }
   return _midMs;
 }
-export let DB = JSON.parse(localStorage.getItem(LS) || 'null');
+/* Хранилище может быть битым: ручная правка, обрыв записи, несовместимый
+   старый формат. Раньше JSON.parse бросал прямо на импорте модуля — падал
+   весь граф зависимостей, и человек видел только заглушку watchdog про
+   три секунды вместо причины. Повреждённая база читается как пустая. */
+export let DB = (() => {
+  try { return JSON.parse(localStorage.getItem(LS) || 'null'); }
+  catch (e) { if (window.console && console.warn) console.warn('medshift: хранилище повреждено, база начата заново — ' + (e && e.message)); return null; }
+})();
 const EMPTY_DB = () => ({
   seq: 1, rev: 0,
   settings: { warnDays: 10, city: 'Красноярск', accent: '#0b5394', dark: 'auto', fontSize: 14 },
   users: [], session: null, bagTypes: [], bags: [], cars: [], ecg: [],
   reports: [], tasks: [], chat: [], sched: { months: [], days: [] },
   tomb: [], bans: [], kitTemplates: [], potents: [],
+  /* banTomb — снятые бани. Нужен, чтобы снятие переживало синхронизацию:
+     без него устройство, у которого бан уже снят, снова получал бы бан
+     с сервера (и наоборот: бан, снятый на одном телефоне, воскресал бы на
+     всех). Работает так же, как могилы удалений, только для бана. */
+  banTomb: [],
   bagTomb: [], carTomb: [], potTomb: [], tplTomb: [], schedTomb: {},
   shiftGrid: [], shiftTomb: []
 });
@@ -83,7 +95,14 @@ export function mediaDrop(id) { delete mediaStore()[String(id)]; }
    а фото и файлы смен — отдельным файлом. Второй довод: фото и так
    синхронизируются со станцией, поэтому при переносе на новый телефон они
    приедут сами, даже если этот файл потерялся. */
-export function exportSlim() { return { ...DB, sched: mediaDetach() }; }
+export function exportSlim() {
+  const o = { ...DB, sched: mediaDetach() };
+  // Сессия — личность вошедшего, в файле выгрузки ей не место: иначе
+  // импортёр входит под тем, кто выгружал. sync.js в той же ситуации
+  // явно вырезает session перед отправкой на сервер.
+  delete o.session;
+  return o;
+}
 export function mediaAll() {
   const ms = mediaStore(), out = {};
   Object.keys(ms).forEach(k => { out[k] = ms[k]; });
@@ -139,7 +158,7 @@ function mediaAttach() {
     if (p && !p.img && ms[String(p.id)]) p.img = ms[String(p.id)];
   }));
 }
-let _write = () => {
+let _doWrite = (notify) => {
   try {
     const slim = mediaDetach();
     // Сначала главная база: медиа не должны иметь права помешать
@@ -150,9 +169,20 @@ let _write = () => {
   } catch (e) {
     if (window.toast) window.toast('⚠ Хранилище переполнено — новые правки не сохранятся. Удалите старые фото и файлы смен.');
   }
-  if (window.__onSave) window.__onSave();
+  if (notify && window.__onSave) window.__onSave();
 };
-let _flushSave = () => { if (_svT !== null) { clearTimeout(_svT); _svT = null; _write(); } };
+let _write = () => _doWrite(true);
+/* saveNow() обязан писать всегда. Раньше он только сбрасывал отложенный
+   таймер, и если таймера не было — молчал: вызывающий думал, что сохранил. */
+let _flushSave = () => { if (_svT !== null) { clearTimeout(_svT); _svT = null; } _write(); };
+/* Немедленная запись без события __onSave — для синхронизатора. Пишет тем же
+   путём, что и обычное сохранение (медиа отцепляются в отдельный ключ,
+   переполнение ловится), но не будит лишний пуш: adoptState и syncPut сами
+   уже находятся внутри цикла обмена. Прямой JSON.stringify(DB) здесь был
+   опасен: в базе в памяти лежат base64-фото, они возвращались в главный
+   ключ, раздували его на мегабайты и упирались в квоту — а квота тогда
+   глушится, и новые правки молча перестают сохраняться. */
+export function saveLocalNow() { if (_svT !== null) { clearTimeout(_svT); _svT = null; } _doWrite(false); }
 export function save() {
   DB.rev = (DB.rev || 0) + 1;
   if (_svT !== null) clearTimeout(_svT);
@@ -197,7 +227,7 @@ export function normalizeDB() {
   if (!/^#[0-9a-f]{6}$/i.test(String(DB.settings.accent || ''))) DB.settings.accent = '#0b5394';
   if (DB.settings.leaves !== undefined) DB.settings.leaves = !!DB.settings.leaves;
   ['days', 'months'].forEach(k => { if (!Array.isArray(DB.sched[k])) DB.sched[k] = []; });
-  ['users','bags','cars','chat','tasks','reports','ecg','tomb','bans','kitTemplates','potents','bagTomb','carTomb','potTomb','tplTomb','bagTypes','shiftGrid','shiftTomb'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
+  ['users','bags','cars','chat','tasks','reports','ecg','tomb','bans','banTomb','kitTemplates','potents','bagTomb','carTomb','potTomb','tplTomb','bagTypes','shiftGrid','shiftTomb'].forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
   if (typeof DB.schedTomb !== 'object' || DB.schedTomb === null) DB.schedTomb = {};
   seedBasics();
   // Записи, пришедшие извне, могут быть null — иначе u.cars ронял бы normalizeDB()
@@ -245,6 +275,50 @@ export function termSanitize() {
   DB.cars.forEach(c => walk(c.kits));
   return ch;
 }
+/* Слияние содержимого двух одноимённых записей.
+   Записи с одинаковым именем и разными id — это почти всегда правки одной
+   и той же сумки/машины/укладки, сделанные с разных телефонов. Раньше
+   побеждала одна запись целиком, а содержимое второй уходило молча:
+   человек добавил позицию на станции, она пропала при первом же синке.
+   Выживший выбирается прежним правилом (меньший id), чтобы не сдвинуть
+   назначения и отчёты, — а вот содержимое складывается в него целиком. */
+function itemKey(it) { return normName((it && it.name) || '') + '|' + ((it && it.spec) || '') + '|' + ((it && it.expiry) || ''); }
+function mergeItemsInto(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return;
+  const seen = {};
+  a.forEach(it => { seen[itemKey(it)] = 1; });
+  b.forEach(it => { const k = itemKey(it); if (seen[k]) return; seen[k] = 1; a.push(it); });
+}
+function mergeKitsInto(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return;
+  b.forEach(kb => {
+    const key = normName((kb && kb.name) || '');
+    const ka = a.find(x => normName(x.name || '') === key);
+    if (ka) mergeItemsInto(ka.items, kb.items);
+    else a.push(kb);
+  });
+}
+function mergeDupContent(survivor, other, coll) {
+  if (!survivor || !other) return;
+  mergeItemsInto(survivor.items, other.items);
+  mergeKitsInto(survivor.kits, other.kits);
+  if (coll === 'cars' && Array.isArray(other.equip)) {
+    if (!Array.isArray(survivor.equip)) survivor.equip = [];
+    const seen = {};
+    survivor.equip.forEach(e => { seen[String(e.id)] = 1; const n = normName(e.name || ''); if (n) seen[n] = 1; });
+    other.equip.forEach(e => {
+      const id = String(e.id), n = normName(e.name || '');
+      if (seen[id] || (n && seen[n])) return;
+      seen[id] = 1; if (n) seen[n] = 1;
+      survivor.equip.push(e);
+    });
+  }
+  // Скалярные поля переносим только в пустую сторону: табличка, госномер,
+  // заряд и дефект из дубля не должны затирать уже вписанное.
+  ['desc', 'typeId', 'plates', 'charge', 'defect'].forEach(k => {
+    if ((survivor[k] === '' || survivor[k] == null) && other[k] !== '' && other[k] != null) survivor[k] = other[k];
+  });
+}
 export function dedupe() {
   const remap = {};
   ['bags', 'cars', 'kitTemplates'].forEach(coll => {
@@ -254,6 +328,10 @@ export function dedupe() {
       if (!key) { out.push(o); return; }
       if (!by[key]) { by[key] = o; out.push(o); return; }
       const keep = by[key], drop = o;
+      // Выживший определяется заранее, чтобы содержимое сложилось именно
+      // в ту запись, которая останется в базе.
+      const survivor = (drop.id < keep.id) ? drop : keep;
+      mergeDupContent(survivor, (survivor === keep) ? drop : keep, coll);
       if (drop.id < keep.id) {
         remap[keep.id] = drop.id; by[key] = drop;
         const ix = out.indexOf(keep); out[ix] = drop;
@@ -376,7 +454,9 @@ export function alerts() {
     });
   }
   if (so.length) out.push({ t: 'Истекает/просрочено: ' + so.length + ' поз.', l: 'bSoon', items: so });
-  DB.cars.forEach(c => (c.equip || []).forEach(e => { if (e.status === 'def') out.push({ t: c.name + ': дефект ' + (e.name || ''), l: 'bExp', carId: c.id }); }));
+  // Дефекты — тоже по ответственности: раньше сотрудник получал тревогу по
+  // чужой машине, а счётчик главной и тревоги считались по разным правилам.
+  myCars().forEach(c => (c.equip || []).forEach(e => { if (e.status === 'def') out.push({ t: c.name + ': дефект ' + (e.name || ''), l: 'bExp', carId: c.id }); }));
   if (isBoss()) (DB.reports || []).forEach(r => {
     if (r.viewed || r.status === 'green') return;
     // Машина может быть не указана (отчёт со старого телефона) — тогда в
