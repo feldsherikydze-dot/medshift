@@ -45,8 +45,10 @@ export function reportsView() {
 export let repCar = null;
 
 export function openRep(cid) {
+  if (!me()) { if (window.toast) window.toast('Войдите в систему, чтобы подать отчёт'); return; }
   repCar = cid;
   const c = DB.cars.find(x => eqId(x.id, cid));
+  if (!c) { if (window.toast) window.toast('Машина не найдена — обновите экран'); return; }
   let h = '<h3>📨 Отчёт по смене · ' + esc(c.name) + '</h3>';
   h += '<p style="font-size:calc(var(--fs) - 1px);color:var(--mut)">Дата и время: <b>' + new Date().toLocaleString('ru-RU') + '</b> · Сотрудник: <b>' + esc((me() || {}).name || '') + '</b></p>';
   h += '<div class="row"><div><label>№ бригады</label><input id="rpBrig" inputmode="numeric"></div><div><label>Рабочая сумка</label><select id="rpBag">';
@@ -70,12 +72,22 @@ export function openRep(cid) {
 }
 
 export function submitRep(mode) {
-  if (mode === 'rem' && !document.getElementById('rpRem').value.trim()) {
+  // Отчёт уходит в учёт, по нему штрафы — собрать его надо строго.
+  // Раньше пропавший элемент давал `|| 'ok'` (статус машины затирался на
+  // «всё хорошо») или TypeError тостом с частичной записью. Отсутствующего
+  // элемента нет: отправка не выполняется, человек видит, к кому идти.
+  const fail = () => { if (window.toast) window.toast('Не удалось собрать отчёт, обратитесь к руководителю'); };
+  const u = me();
+  if (!u) { fail(); return; }
+  const c = DB.cars.find(x => eqId(x.id, repCar));
+  if (!c) { fail(); return; }
+  const el = id => document.getElementById(id);
+  const brigEl = el('rpBrig'), bagEl = el('rpBag'), ecgEl = el('rpEcg'), ecgChEl = el('rpEcgCh'), remEl = el('rpRem');
+  if (!brigEl || !bagEl || !ecgEl || !ecgChEl || !remEl) { fail(); return; }
+  if (mode === 'rem' && !remEl.value.trim()) {
     if (window.toast) window.toast('Опишите замечания');
     return;
   }
-  const c = DB.cars.find(x => eqId(x.id, repCar));
-  const u = me();
   const expList = soonList();
   const hasExpired = expList.some(x => x.item && expClass(x.item.expiry) === 'exp');
   const exp = expList.map(x => {
@@ -85,13 +97,17 @@ export function submitRep(mode) {
     return place + ': ' + itemName + ' (' + itemExp + ')';
   });
   const defs = [], equip = [];
+  let формаЦела = true;
   (c.equip || []).forEach(e => {
-    const st = (document.getElementById('re_' + e.id) || {}).value || 'ok';
-    const df = (document.getElementById('rd_' + e.id) || {}).value || '';
+    const stEl = el('re_' + e.id), dfEl = el('rd_' + e.id);
+    if (!stEl || !dfEl) { формаЦела = false; return; }
+    const st = stEl.value || 'ok';
+    const df = dfEl.value || '';
     e.status = st; e.defect = df;
     if (st !== 'ok') defs.push(e.name + (df ? ' (' + df + ')' : ''));
     equip.push({ ovm: e.ovm, name: e.name, status: st, charge: e.charge, defect: df });
   });
+  if (!формаЦела) { fail(); return; }
   const body = document.getElementById('dlgBody');
   const pboxes = body ? body.querySelectorAll('input[data-pot]:checked') : [];
   const pbSel = [];
@@ -101,12 +117,12 @@ export function submitRep(mode) {
   DB.reports.push({
     id: uid(), ts: Date.now(), kind: 'shift', carId: c.id, car: c.name,
     userId: u.id, user: u.name,
-    brigade: document.getElementById('rpBrig').value.trim(),
-    bagNum: document.getElementById('rpBag').value,
-    ecgNum: document.getElementById('rpEcg').value,
-    ecgCharge: document.getElementById('rpEcgCh').value.trim(),
+    brigade: brigEl.value.trim(),
+    bagNum: bagEl.value,
+    ecgNum: ecgEl.value,
+    ecgCharge: ecgChEl.value.trim(),
     potentBag: potBag, status: st,
-    remarks: document.getElementById('rpRem').value.trim(),
+    remarks: remEl.value.trim(),
     expired: exp, defects: defs, equip, viewed: false, resolved: false
   });
   save();
@@ -128,7 +144,10 @@ export function delReport(id) {
 export function viewReport(id) {
   const r = DB.reports.find(x => eqId(x.id, id));
   if (!r) return;
-  r.viewed = true; save();
+  // Отметка «просмотрено» гасит тревогу «непрочитанный отчёт», а она
+  // считается только у руководителя. Поэтому ставит её только руководитель:
+  // раньше любой открывший гасил чужой счётчик.
+  if (isBoss()) { r.viewed = true; save(); }
   let h = '<div class="reportDetail">';
   h += '<h3>📨 Отчёт · ' + esc(r.car || '') + '</h3>';
   h += '<p><b>Статус:</b> ' + reportBadge(r) + '</p>';
