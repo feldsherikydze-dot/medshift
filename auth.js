@@ -65,7 +65,12 @@ export function logout() { DB.session = null; localStorage.setItem(LS_KEYS.REM, 
 export function checkSessionExpiry() {
   if (!DB.session) return;
   if (localStorage.getItem(LS_KEYS.REM) !== '1' || Date.now() - (+localStorage.getItem(LS_KEYS.REM_TS) || 0) > LIMITS.SESSION_TTL_MS) {
-    window.loginFor = DB.session; DB.session = null; localStorage.setItem(LS_KEYS.REM, '0'); localStorage.setItem(LS_KEYS.DB, JSON.stringify(DB));
+    window.loginFor = DB.session; DB.session = null; localStorage.setItem(LS_KEYS.REM, '0');
+    // Писать надо штатным сохранением, а не прямой записью в хранилище:
+    // прямая запись утаскивала base64-фото обратно в главный ключ (их
+    // отцепляет только _write) и падала без try/catch при переполнении
+    // квоты — исключение из таймера заливало экран ошибкой.
+    save();
     if (window.toast) window.toast('Сессия истекла (24 ч)'); if (window.renderNav) window.renderNav(); if (window.render) window.render();
   }
 }
@@ -94,7 +99,20 @@ export function banUser(id) {
   if (!isBoss()) throw new Error('Блокировка доступна только руководителю');
   if (String(id) === String(DB.session)) throw new Error('Нельзя себя');
   const u = DB.users.find(x => String(x.id) === String(id)); if (!u) throw new Error('Не найден');
-  DB.bans = DB.bans || []; DB.bans.push(u); DB.users = DB.users.filter(x => String(x.id) !== String(id)); save();
+  DB.bans = DB.bans || []; DB.bans.push(u); DB.users = DB.users.filter(x => String(x.id) !== String(id));
+  // Снятие бана на другом телефоне не должно вернуть человека в список.
+  // Если этот же человек банится заново — снятие забываем, иначе бан
+  // перестал бы работать сразу после одного раза.
+  DB.banTomb = (DB.banTomb || []).filter(x => String(x) !== String(id));
+  save();
 }
-export function unbanUser(id) { DB.bans = DB.bans || []; const u = DB.bans.find(x => String(x.id) === String(id)); if (!u) throw new Error('Не найден'); DB.bans = DB.bans.filter(x => String(x.id) !== String(id)); DB.users.push(u); save(); }
+export function unbanUser(id) {
+  if (!isBoss()) throw new Error('Снятие блокировки доступно только руководителю');
+  DB.bans = DB.bans || []; const u = DB.bans.find(x => String(x.id) === String(id)); if (!u) throw new Error('Не найден');
+  DB.bans = DB.bans.filter(x => String(x.id) !== String(id));
+  // Снятие должно пережить синхронизацию: иначе следующий же забор
+  // вернул бы бан с сервера, и человек не смог бы зарегистрироваться.
+  DB.banTomb = (DB.banTomb || []); if (!DB.banTomb.some(x => String(x) === String(id))) DB.banTomb.push(id);
+  DB.users.push(u); save();
+}
 window.signIn = signIn; window.restoreToken = restoreToken; window.verifyPin = verifyPin; window.setPin = setPin; window.pinCheck = pinCheck; window.pinLockedMs = pinLockedMs; window.loginAs = loginAs; window.logout = logout; window.enableBiometric = enableBiometric; window.disableBiometric = disableBiometric; window.biometricLogin = biometricLogin; window.banUser = banUser; window.unbanUser = unbanUser;
