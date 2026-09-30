@@ -28,7 +28,7 @@ export const LS_KEYS = {
 // Единственный источник версии: sw.js читает её отсюда при установке,
 // а index.html дублирует в '?v=' — расхождение ловит тест
 // «версия в одном месте» в tests/run.mjs.
-export const VERSION = '2.6.1';
+export const VERSION = '2.6.2';
 
 export const LIMITS = {
   CHAT_MAX: 500, CHAT_SHOW: 100, REPORTS_SHOW: 50, DRUG_SEARCH_LIMIT: 15,
