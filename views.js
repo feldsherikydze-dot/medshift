@@ -1,7 +1,7 @@
 import { DB, save, uid, me, isBoss, myBags, безНазначений, canUseBag, esc, todayStr, daysLeft, expClass, normName, isDead, isBannedName, purgeSched, bdayToday } from './db.js';
 import { LIMITS, VERSION, APP } from './config.js';
 import { onlineN } from './sync.js';
-import { fsEffective, fsHintText } from './logic.js';
+import { fsEffective, fsHintText, expInputType } from './logic.js';
 import { ensureDrugs, drugsReady, drugsState, withDrugs } from './drugload.js';
 import { reportStatusOf, reportDateText, countNoExpiry } from './logic.js';
 
@@ -71,9 +71,14 @@ export function homeView() {
   let tot = 0, expN = 0;
   // Раньше комплекты НС/ПВ/СД (DB.potents) здесь не считались, хотя
   // тревоги их учитывают — счётчик на главной расходился с числом в тревогах.
+  // Позиции и просрочка — по ответственности, как и тревоги рядом:
+  // руководителю myBags/myCars отдают всё, сотруднику — назначенное плюс
+  // общие комплекты НС/ПВ/СД. Раньше главная считала по всем сумкам и
+  // машинам, и числа расходились с тревогами («просрочено: 2», а в
+  // тревогах одна позиция). Инвентарные итоги ниже — по станции явно.
   const count = list => (list || []).forEach(it => { tot++; if (expClass(it && it.expiry) === 'exp') expN++; });
-  DB.bags.forEach(b => count(b.items));
-  DB.cars.forEach(c => (c.kits || []).forEach(k => count(k.items)));
+  myBags().forEach(b => count(b.items));
+  myCars().forEach(c => (c.kits || []).forEach(k => count(k.items)));
   (DB.potents || []).forEach(k => count(k.items));
   let h = '<div class="clockWeather" data-act="showForecast"><div class="cwLeft"><span class="cwTime" id="cwTime">--:--</span><span class="cwDate" id="cwDate">—</span></div><div class="cwSeason" id="cwSeason">' + (window.seasonHtml ? window.seasonHtml() : '') + '</div><div class="cwRight" id="cwWeather"><span class="cwDesc">…</span></div></div>';
   h += '<div class="wgrid"><div class="card span2">' + calGrid() + '</div></div>';
@@ -157,7 +162,9 @@ export function bagsView() {
   // руководителем («Ещё» → сотрудник → «Ответственность»), у человека их
   // может быть несколько, и права приходят вместе с назначением.
   const видны = myBags();
-  if (!DB.bags.length) h += '<p>Сумок пока нет</p>';
+  // Пустота объясняется словами: сам по себе пустой экран похож на ошибку
+  // загрузки, а причины всего две — сумок нет в базе или нет назначений.
+  if (!DB.bags.length) h += '<p>Сумок пока нет. Попросите руководителя создать сумку или назначить вам существующую.</p>';
   if (безНазначений()) h += '<p style="color:var(--mut);font-size:calc(var(--fs) - 2px)">Вам ещё не назначили сумки, поэтому видны все. Попросите руководителя проставить назначение.</p>';
   видны.forEach(b => {
     h += '<div class="card"><b>👜 ' + esc(b.name) + '</b>' + (b.desc ? '<br><small style="color:var(--mut)">' + esc(b.desc) + '</small>' : '') + '<br>' + infoPlate(b.items)
@@ -179,11 +186,17 @@ export function bagView() {
   const b = DB.bags.find(x => x.id === window.curBag);
   if (!b) { window.curBag = null; return bagsView(); }
   const em = window.editBag === window.curBag;
-  let h = '<button class="btn sec" data-act="backBags">← Сумки</button><h3>👜 ' + (em ? '<button class="cellTap" data-act="renameBag" data-arg="' + b.id + '" title="Переименовать сумку" style="display:inline-block;margin:0;padding:3px 8px;max-width:74%;white-space:normal">' + esc(b.name) + '</button>' : esc(b.name)) + '</h3>';
-  h += '<button class="btn" data-act="openItemDlg" data-arg="' + b.id + ',-1">+ Позиция</button>';
-  h += '<button class="btn sec" data-act="fillBagFromTpl" data-arg="' + b.id + '">📋 Шаблон</button>';
-  h += '<button class="btn sec" data-act="openImportDlg" data-arg="' + b.id + '">📥 Импорт (txt/csv/Excel/фото)</button>';
-  if (isBoss()) h += '<button class="btn sec" data-act="toggleEditBag" data-arg="' + b.id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button>';
+  // Правки показываем тому, кому сумка назначена (или руководителю) — иначе
+  // кнопка ведёт в тост «Сумка не ваша». Проверка всё равно остаётся в
+  // обработчиках: спрятанная кнопка не защищает от прямого вызова.
+  const canE = canUseBag(b.id);
+  let h = '<button class="btn sec" data-act="backBags">← Сумки</button><h3>👜 ' + (em && canE ? '<button class="cellTap" data-act="renameBag" data-arg="' + b.id + '" title="Переименовать сумку" style="display:inline-block;margin:0;padding:3px 8px;max-width:74%;white-space:normal">' + esc(b.name) + '</button>' : esc(b.name)) + '</h3>';
+  if (canE) {
+    h += '<button class="btn" data-act="openItemDlg" data-arg="' + b.id + ',-1">+ Позиция</button>';
+    h += '<button class="btn sec" data-act="fillBagFromTpl" data-arg="' + b.id + '">📋 Шаблон</button>';
+    h += '<button class="btn sec" data-act="openImportDlg" data-arg="' + b.id + '">📥 Импорт (txt/csv/Excel/фото)</button>';
+    h += '<button class="btn sec" data-act="toggleEditBag" data-arg="' + b.id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button>';
+  }
   h += '<table class="' + (em ? 'editMode' : '') + '"><thead><tr><th class="col-name">Наименование</th><th class="col-spec">Форма</th><th class="col-qty">Кол-во</th><th class="col-exp">Срок</th><th class="col-act"></th></tr></thead><tbody>';
   (b.items || []).forEach((it, i) => {
     const hl = window.highlightItem && it.name === window.highlightItem ? ' highlight' : '';
@@ -191,7 +204,10 @@ export function bagView() {
     if (em) {
       h += '<tr class="' + rc + hl + '" data-item="' + esc(it.name) + '">' + cellTap('bag,' + b.id + ',' + i + ',name', (it.potent ? '⚕ ' : '') + (it.name || ''), 'наименование') + cellTap('bag,' + b.id + ',' + i + ',spec', it.spec, 'форма') + cellTap('bag,' + b.id + ',' + i + ',qty', it.qty, 'кол-во') + cellTap('bag,' + b.id + ',' + i + ',expiry', it.expiry, 'срок годности') + '<td><button class="btn del" data-act="delBagItemEdit" data-arg="' + b.id + ',' + i + '">🗑</button></td></tr>';
     } else {
-      h += '<tr class="' + rc + hl + '" data-item="' + esc(it.name) + '"><td>' + (it.potent ? '⚕ ' : '') + esc(it.name) + '</td><td>' + esc(it.spec || '') + '</td><td>' + it.qty + ' ' + esc(it.unit) + '</td><td><input type="date" value="' + (it.expiry || '') + '" data-act="setExp" data-arg="' + window.curBag + ',' + i + '"></td><td><button class="btn del" data-act="delItem" data-arg="' + window.curBag + ',' + i + '">🗑</button></td></tr>';
+      const ячейки = canE
+        ? '<td><input type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '" data-act="setExp" data-arg="' + window.curBag + ',' + i + '"></td><td><button class="btn del" data-act="delItem" data-arg="' + window.curBag + ',' + i + '">🗑</button></td>'
+        : '<td>' + (it.expiry ? esc(it.expiry) : '<span style="color:var(--mut)">—</span>') + '</td><td></td>';
+      h += '<tr class="' + rc + hl + '" data-item="' + esc(it.name) + '"><td>' + (it.potent ? '⚕ ' : '') + esc(it.name) + '</td><td>' + esc(it.spec || '') + '</td><td>' + it.qty + ' ' + esc(it.unit) + '</td>' + ячейки + '</tr>';
     }
   });
   h += '</tbody></table>';
@@ -280,9 +296,12 @@ function kitView(c) {
   const k = c.kits.find(x => x.id === window.curKit);
   if (!k) { window.curKit = null; return carView(c); }
   const em = window.editKit === window.curKit;
+  // Укладку правит руководитель: кнопки «+ Позиция» и удаление раньше были
+  // видны всем, хотя режим редактирования — «босс-овский».
+  const canE = isBoss();
   let h = '<button class="btn sec" data-act="backKits">← Укладки</button><h4>🧰 ' + esc(k.name) + '</h4>';
-  h += '<button class="btn" data-act="openKitItem" data-arg="' + c.id + ',' + k.id + ',-1">+ Позиция</button>';
-  if (isBoss()) h += '<button class="btn sec" data-act="toggleEditKit" data-arg="' + k.id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button>';
+  if (canE) h += '<button class="btn" data-act="openKitItem" data-arg="' + c.id + ',' + k.id + ',-1">+ Позиция</button>';
+  if (canE) h += '<button class="btn sec" data-act="toggleEditKit" data-arg="' + k.id + '">' + (em ? '💾 Сохранить' : '✏️ Редактировать') + '</button>';
   h += '<table class="' + (em ? 'editMode' : '') + '"><thead><tr><th class="col-name">Наименование</th><th class="col-qty">Кол-во</th><th class="col-exp">Срок</th><th class="col-act"></th></tr></thead><tbody>';
   (k.items || []).forEach((it, i) => {
     const hl = window.highlightItem && it.name === window.highlightItem ? ' highlight' : '';
@@ -290,7 +309,10 @@ function kitView(c) {
     if (em) {
       h += '<tr class="' + rc + hl + '">' + cellTap('kit,' + c.id + ',' + k.id + ',' + i + ',name', (it.potent ? '⚕ ' : '') + (it.name || ''), 'наименование') + cellTap('kit,' + c.id + ',' + k.id + ',' + i + ',qty', it.qty, 'кол-во') + cellTap('kit,' + c.id + ',' + k.id + ',' + i + ',expiry', it.expiry, 'срок годности') + '<td><button class="btn del" data-act="delKitItemEdit" data-arg="' + c.id + ',' + k.id + ',' + i + '">🗑</button></td></tr>';
     } else {
-      h += '<tr class="' + rc + hl + '"><td>' + (it.potent ? '⚕ ' : '') + esc(it.name) + '</td><td>' + it.qty + ' ' + esc(it.unit) + '</td><td><input type="date" value="' + (it.expiry || '') + '" data-act="setExpKit" data-arg="' + c.id + ',' + k.id + ',' + i + '"></td><td><button class="btn del" data-act="delKitItem" data-arg="' + c.id + ',' + k.id + ',' + i + '">🗑</button></td></tr>';
+      const ячейки = canE
+        ? '<td><input type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '" data-act="setExpKit" data-arg="' + c.id + ',' + k.id + ',' + i + '"></td><td><button class="btn del" data-act="delKitItem" data-arg="' + c.id + ',' + k.id + ',' + i + '">🗑</button></td>'
+        : '<td>' + (it.expiry ? esc(it.expiry) : '<span style="color:var(--mut)">—</span>') + '</td><td></td>';
+      h += '<tr class="' + rc + hl + '"><td>' + (it.potent ? '⚕ ' : '') + esc(it.name) + '</td><td>' + it.qty + ' ' + esc(it.unit) + '</td>' + ячейки + '</tr>';
     }
   });
   h += '</tbody></table>';
@@ -357,6 +379,9 @@ function shiftGridView() {
 
 export function setView() {
   const u = me();
+  // Экран настроек — только для вошедшего (render и так не пускает без
+  // входа, но обработчики висят на window и вызываются напрямую).
+  if (!u) return '';
   if (u && window.FB_CONF && window.FB_CONF.databaseURL && window.presBeat) window.presBeat();
   let h = '<div class="card"><h3>Профиль и зоны ответственности</h3>';
   h += '<label>ФИО</label><input value="' + esc(u.name) + '" data-act="setName">';
@@ -387,7 +412,7 @@ export function setView() {
   h += '<p style="font-size:calc(var(--fs) - 1px)">Склад: ' + (window.FB_CONF && window.FB_CONF.databaseURL ? 'подключён' : 'не задан') + '<br>Онлайн сейчас: ' + (onlineN == null ? '—' : onlineN) + '<br>🔑 Ключ склада: ' + (window.__fbToken ? '✅ задан' : '⚠ НЕ задан') + '<br>Отправка: ' + (SYNCSTAT.pushOk ? '✅' : '⚠') + ' ' + (SYNCSTAT.lastPush ? new Date(SYNCSTAT.lastPush).toLocaleTimeString('ru-RU') : '—') + '<br>Приём: ' + (SYNCSTAT.lastPull ? new Date(SYNCSTAT.lastPull).toLocaleTimeString('ru-RU') : '—') + (SYNCSTAT.lastErr ? '<br>Ошибка: ' + esc(SYNCSTAT.lastErr) : '') + '</p>';
   h += '<p><button class="btn sec mini" data-act="syncTest">🔍 Проверить связь</button> <button class="btn sec mini" data-act="fbCredDlg">🔑 Ключ склада</button></p></div>';
   h += '<div class="card"><h3>Правила и уведомления</h3>';
-  h += '<label>Размер шрифта</label><div class="row" style="align-items:center"><input type="range" min="10" max="22" step="1" value="' + (DB.settings.fontSize || 14) + '" data-act="setFontSize" style="flex:1"><span id="fsLabel" style="min-width:40px;text-align:center;font-weight:700">' + (DB.settings.fontSize || 14) + 'px</span></div>';
+  h += '<label>Размер шрифта</label><div class="row" style="align-items:center"><input type="range" min="10" max="30" step="1" value="' + (DB.settings.fontSize || 14) + '" data-act="setFontSize" style="flex:1"><span id="fsLabel" style="min-width:40px;text-align:center;font-weight:700">' + (DB.settings.fontSize || 14) + 'px</span></div>';
   // Честно показываем, что на этом экране получится не выбранное число, а
   // выбранное, умноженное на размер окна: на телефоне 14 → 14, на большом
   // мониторе 14 → 19. Иначе выглядит так, будто шрифт проигнорировали.
@@ -468,8 +493,19 @@ export function tplView() {
   let h = '<button class="btn sec" data-act="backBagsViews">← Сумки</button><h3>📑 Шаблоны оснащения</h3>';
   h += '<p><button class="btn mini" data-act="newTplDlg">➕ Новый шаблон</button> <button class="btn sec mini" data-act="tplImportDlg">📥 Импорт (txt/csv/Excel/фото)</button></p>';
   h += '<div class="searchBox"><input id="tplSearch" placeholder="🔍 Поиск позиции…" value="' + esc(window.tplSearch) + '" oninput="window.__tplSearch(this.value)"><button class="searchClear" data-act="clearTpl">✕</button></div>';
+  // Список в отдельном блоке: поиск перерисовывает только его, поле ввода
+  // не трогается — иначе каждый символ пересоздавал поле, фокус и каретка
+  // терялись, и на телефоне падала клавиатура.
+  h += '<div id="tplList">' + tplResults() + '</div>';
+  return h;
+}
+
+/* Только карточки шаблонов для поиска. Тот же приём, что у справочника
+   (__refSearchInput перерисовывает блок результатов, а не весь экран). */
+export function tplResults() {
   const q = (window.tplSearch || '').toLowerCase();
   const match = it => (it.name || '').toLowerCase().indexOf(q) >= 0 || (it.spec || '').toLowerCase().indexOf(q) >= 0;
+  let h = '';
   if (DB.bagTypes && DB.bagTypes[0]) {
     h += tplCard('bag', '👜 ' + (DB.bagTypes[0].name || 'Шаблон сумки'), DB.bagTypes[0].items || [], q, match);
   }
@@ -529,7 +565,7 @@ export function potKitView() {
     if (em) {
       h += '<tr class="' + rc + '">' + cellTap('pot,' + k.id + ',' + i + ',name', (it.potent ? '⚕ ' : '') + (it.name || ''), 'наименование') + cellTap('pot,' + k.id + ',' + i + ',spec', it.spec, 'форма') + cellTap('pot,' + k.id + ',' + i + ',qty', it.qty, 'кол-во') + cellTap('pot,' + k.id + ',' + i + ',expiry', it.expiry, 'срок годности') + '<td><button class="btn del" data-act="delPotItem" data-arg="' + k.id + ',' + i + '">🗑</button></td></tr>';
     } else {
-      h += '<tr class="' + rc + '"><td>⚕ ' + esc(it.name) + '</td><td>' + esc(it.spec || '') + '</td><td>' + it.qty + ' ' + esc(it.unit || 'шт') + '</td><td><input type="date" value="' + (it.expiry || '') + '" data-act="setExpPot" data-arg="' + k.id + ',' + i + '"></td><td><button class="btn del" data-act="delPotItem" data-arg="' + k.id + ',' + i + '">🗑</button></td></tr>';
+      h += '<tr class="' + rc + '"><td>⚕ ' + esc(it.name) + '</td><td>' + esc(it.spec || '') + '</td><td>' + it.qty + ' ' + esc(it.unit || 'шт') + '</td><td><input type="' + expInputType(it.expiry) + '" value="' + esc(it.expiry || '') + '" data-act="setExpPot" data-arg="' + k.id + ',' + i + '"></td><td><button class="btn del" data-act="delPotItem" data-arg="' + k.id + ',' + i + '">🗑</button></td></tr>';
     }
   });
   h += '</tbody></table>';
@@ -597,6 +633,7 @@ window.refView = refView;
 window.schedView = schedView;
 window.setView = setView;
 window.tplView = tplView;
+window.tplResults = tplResults;
 window.potentView = potentView;
 window.potKitView = potKitView;
 window.renderRefResults = renderRefResults;
