@@ -1,5 +1,5 @@
 import { FB_CONF, LIMITS, LS_KEYS } from './config.js';
-import { DB, DEV, save, isDead, normName, dedupe } from './db.js';
+import { DB, DEV, save, saveLocalNow, isDead, normName, dedupe } from './db.js';
 export const SYNCSTAT = { pushOk: false, lastPush: 0, lastPull: 0, lastErr: '' };
 let syncBusy = false, pushTimer = null, tickTimer = null;
 export let onlineN = null;
@@ -16,11 +16,12 @@ export function restGet(p) {
 }
 export function restDelete(p) { return fetch(fbUrl(p), { method: 'DELETE' }).catch(() => {}); }
 function mergeArr(local, rem, tomb) {
-  const ids = {}; local.forEach(x => ids[x.id] = 1);
+  const ids = {}; local.forEach(x => ids[x && x.id] = 1);
   // tomb обязателен: mergeTombs() выше уже отфильтровал удалённое из rem,
   // а без проверки mergeArr() возвращал его локальной копией обратно —
   // удалённая сумка воскресала и тут же уезжала на сервер.
-  rem.forEach(x => { if (!ids[x.id] && !tombHas(tomb, x.id)) local.push(x); });
+  rem.forEach(x => { if (!x || typeof x !== 'object') return; if (!ids[x.id] && !tombHas(tomb, x.id)) local.push(x); });
+  local = local.filter(x => x && typeof x === 'object');
   local.sort((a, b) => (a.ts || 0) - (b.ts || 0));
   return local;
 }
@@ -29,8 +30,27 @@ function mergeArr(local, rem, tomb) {
    indexOf() из-за этого молча не срабатывал, и удалённое воскресало. */
 function tombHas(list, id) { return (list || []).some(x => String(x) === String(id)); }
 function mergeUsers(rem, loc) { rem = rem.filter(u => !isDead(u.id)); const ids = {}; rem.forEach(u => ids[u.id] = 1); loc.forEach(u => { if (!ids[u.id] && !isDead(u.id)) rem.push(u); }); return rem; }
+/* Баны — отдельный список, а не «мёртвые записи», и mergeUsers() им не
+   подходит. isDead() считает бан мёртвым, поэтому тот же фильтр срабатывал
+   и на серверную, и на локальную сторону: любой уже наказанный бан
+   выбрасывался из обоих списков, DB.bans обнулялся, и человек снова
+   мог войти. Снятие бана живёт в banTomb и отсекает вернувшийся с
+   сервера бан — так же, как могилы отсекают удалённое. */
+function mergeBans(rem, loc, banTomb) {
+  const dead = {};
+  (banTomb || []).forEach(x => { dead[String(x)] = 1; });
+  const out = [], seen = {};
+  (rem || []).concat(loc || []).forEach(b => {
+    if (!b || b.id == null) return;
+    const k = String(b.id);
+    if (dead[k] || seen[k]) return;
+    seen[k] = 1; out.push(b);
+  });
+  return out;
+}
 function mergeTombs(rem) {
   ['bagTomb', 'carTomb', 'potTomb', 'tplTomb'].forEach(k => { rem[k] = (rem[k] || []).concat((DB[k] || []).filter(x => !tombHas(rem[k], x))); });
+  rem.banTomb = (rem.banTomb || []).concat((DB.banTomb || []).filter(x => !tombHas(rem.banTomb, x)));
   rem.schedTomb = rem.schedTomb || {};
   Object.entries(DB.schedTomb || {}).forEach(([id, ts]) => { if (!rem.schedTomb[id] || ts > rem.schedTomb[id]) rem.schedTomb[id] = ts; });
   rem.bags = (rem.bags || []).filter(b => !tombHas(rem.bagTomb, b.id));
@@ -145,7 +165,24 @@ export function serverCleanup() {
     }).catch(() => {});
   }).catch(() => {});
 }
+/* Форма состояния с сервера. Правила Firebase не гарантируют, что по пути
+   лежит именно то, что клали: раньше `bags` не-массив ронял TypeError
+   прямо в слиянии, исключение уходило в глобальный обработчик ошибок и
+   заливало экран — приложение переставало открываться. Обрывать приём
+   безопаснее, чем ломать запуск: данные на сервере остаются, а следующий
+   забор попробует снова. */
+const FORM_ARR = ['chat', 'reports', 'tasks', 'bags', 'cars', 'potents', 'kitTemplates', 'bagTypes', 'users', 'bans', 'tomb', 'ecg', 'shiftGrid', 'bagTomb', 'carTomb', 'potTomb', 'tplTomb', 'banTomb', 'shiftTomb'];
+function stateFormBad(rem) {
+  if (!rem || typeof rem !== 'object' || Array.isArray(rem)) return true;
+  for (let i = 0; i < FORM_ARR.length; i++) { const k = FORM_ARR[i]; if (rem[k] !== undefined && !Array.isArray(rem[k])) return true; }
+  if (rem.schedTomb !== undefined && (typeof rem.schedTomb !== 'object' || rem.schedTomb === null)) return true;
+  return false;
+}
 export function adoptState(rem, rrev) {
+  if (stateFormBad(rem)) {
+    if (window.console && console.warn) console.warn('adoptState: состояние с сервера пришло не той формы, приём пропущен');
+    return;
+  }
   mergeTombs(rem);
   const lt = (DB.tomb || []).slice(), lb = (DB.bans || []).slice();
   rem.chat = mergeArr(rem.chat || [], DB.chat); rem.reports = mergeArr(rem.reports || [], DB.reports);
@@ -158,13 +195,15 @@ export function adoptState(rem, rrev) {
   rem.shiftGrid = mergeShiftGrid(rem.shiftGrid, DB.shiftGrid, rem.shiftTomb);
   rem.ecg = (DB.ecg.length >= (rem.ecg || []).length) ? DB.ecg : (rem.ecg || []);
   rem.tomb = (rem.tomb || []).concat(lt.filter(x => !tombHas(rem.tomb, x)));
-  rem.bans = mergeUsers(rem.bans || [], lb); rem.users = mergeUsers(rem.users || [], DB.users);
+  rem.bans = mergeBans(rem.bans, lb, rem.banTomb); rem.users = mergeUsers(rem.users || [], DB.users);
   rem.users = rem.users.filter(u => !tombHas(rem.tomb, u.id) && !rem.bans.some(b => String(b.id) === String(u.id)));
   rem.session = DB.session; rem.sched = DB.sched; rem.settings = DB.settings;
   Object.assign(DB, rem); DB.rev = rrev;
   mergeTomb(DB.schedTomb); purgeLocal();
   dedupe();
-  try { localStorage.setItem(LS_KEYS.DB, JSON.stringify(DB)); } catch {}
+  // Писать надо штатным путём: прямой JSON.stringify(DB) возвращал в главный
+  // ключ base64-фото из памяти и раздувал хранилище до квоты.
+  saveLocalNow();
   if (window.__onAdopt) window.__onAdopt();
 }
 /* График смен — плоский список строк без id, поэтому слияние по id не
@@ -195,7 +234,7 @@ function syncPut(attempt = 0) {
       if (v && v.data && +v.data.rev > srev) srev = +v.data.rev;
       if (v && v.data && srev > (DB.rev || 0)) adoptState(v.data, srev);
       const nr = Math.max(DB.rev || 0, srev) + 1; DB.rev = nr;
-      try { localStorage.setItem(LS_KEYS.DB, JSON.stringify(DB)); } catch {}
+      saveLocalNow();   // как и в adoptState: без base64 в главном ключе
       const d = JSON.parse(JSON.stringify(DB)); delete d.session; delete d.sched;
       return restPut('state', { rev: nr, data: d }).then(() => restPut('meta', { rev: nr, ts: Date.now() }));
     });
@@ -215,7 +254,10 @@ export function presBeat() {
   if (!FB_CONF.databaseURL || !window.__fbToken) return;
   const now = Date.now(); if (now - (window.__pb39 || 0) < LIMITS.PRESENCE_COOLDOWN_MS) return; window.__pb39 = now;
   const u = (window.me ? window.me() : null);
-  restPut('online/' + DEV, { n: (u && u.name) || 'гость', t: Date.now() }).catch(() => {});
+  // Без входа устройство в онлайн станции не публикуется: раньше оно
+  // светилось там как «гость» и раздувало счётчик 🟢 на экране входа.
+  // Список при этом читать продолжаем — счётчик должен быть честным.
+  if (u) restPut('online/' + DEV, { n: u.name, t: Date.now() }).catch(() => {});
   restGet('online').then(o => {
     if (!o) { onlineN = null; if (window.__onSync) window.__onSync(); return; }
     let n = 0; const map = {}, t2 = Date.now();
@@ -237,7 +279,7 @@ export function syncInit() {
   setTimeout(schedSync, 3000);
   setTimeout(serverCleanup, 4000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { presBeat(); syncPull(); schedSync(); serverCleanup(); } });
-  window.addEventListener('pagehide', () => { try { fetch(fbUrl('online/' + DEV), { method: 'DELETE', keepalive: true }); } catch {} });
+  window.addEventListener('pagehide', () => { try { const pr = fetch(fbUrl('online/' + DEV), { method: 'DELETE', keepalive: true }); if (pr && typeof pr.catch === 'function') pr.catch(() => {}); } catch {} });
 }
 export function syncTest() {
   if (!FB_CONF.databaseURL) { if (window.toast) window.toast('Склад не настроен'); return; }
