@@ -57,7 +57,11 @@ export function sendMsg() {
   if (!el) return;
   const v = el.value.trim();
   if (!v) return;
-  const m = { id: uid(), ts: Date.now(), author: (me() || {}).name || 'аноним', room, text: v };
+  // Писать может только вошедший: без входа автором становился «аноним»,
+  // и сообщение приходило в чат станции от неизвестного. Решение по п. 5.9.
+  const u = me();
+  if (!u) { if (window.toast) window.toast('Войдите в систему, чтобы писать в чат'); return; }
+  const m = { id: uid(), ts: Date.now(), author: u.name || 'аноним', room, text: v };
   DB.chat.push(m);
   if (DB.chat.length > LIMITS.CHAT_MAX) DB.chat = DB.chat.slice(-LIMITS.CHAT_MAX);
   save();
@@ -74,6 +78,10 @@ export function sendMsg() {
 }
 
 export function clearChat() {
+  // Чат общий для станции и стирается насовсем, поэтому — только
+  // руководитель, как и в banUser. Кнопка у босса спрятана, но вызов
+  // висит на window и доступен любому вошедшему.
+  if (!isBoss()) { if (window.toast) window.toast('Чат очищает только руководитель'); return; }
   if (window.ask) window.ask('Очистить весь чат? Сообщения будут удалены безвозвратно.', () => {
     DB.chat = [];
     save();
