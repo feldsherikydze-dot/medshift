@@ -1161,6 +1161,45 @@ suite('сборка · версия в одном месте', async () => {
     cols.forEach(n => assert(n <= 2, 'сетка .wgrid не должна становиться шире двух колонок: repeat(' + n + ',1fr)'));
   });
 
+  test('шапка и кнопки страниц не уезжают под статус-бар iPhone', () => {
+    // Жалоба с телефона: ярлык на рабочем экране iPhone, приложение в
+    // standalone с viewport-fit=cover — и шапка с кнопками вкладок уходят
+    // под «шторку» целиком. Причина не в отсутствии safe-area: правило
+    // header{padding:6px 10px} в @media(max-width:480px) стоит ПОЗЖЕ
+    // базового и перетирает env(safe-area-inset-top) shorthand'ом.
+    // Ширина 480px — это все iPhone (375–430), то есть бьёт ровно по тем,
+    // у кого шторка есть.
+    // Правило проверяется здесь по исходнику: в тестах нет ни iPhone,
+    // ни env(), а в десктопном браузере inset и так равен нулю.
+    const css = read('styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    const padWithSat = /padding(?:-top)?\s*:[^;{}]*var\(--sat\)/;
+
+    assert(/--sat\s*:\s*0px/.test(css),
+      'в :root должен быть --sat:0px — без значения по умолчанию отступ сломается там, где safe-area не нужна');
+    assert(/@supports\s*\(\s*padding-top\s*:\s*env\(safe-area-inset-top\)\s*\)\s*\{\s*:root\s*\{\s*--sat\s*:\s*env\(safe-area-inset-top\)/.test(css),
+      'отступ шторки обязан приходить из env(safe-area-inset-top) внутри @supports, а не быть вписаным числом');
+
+    const heads = [...css.matchAll(/(?:^|[^\w-])header\s*\{([^}]*)\}/g)].map(m => m[1]);
+    assert(heads.length >= 2, 'правил header должно быть минимум два (общее и мобильное), найдено ' + heads.length);
+    heads.forEach((body, i) => {
+      assert(padWithSat.test(body),
+        'header №' + (i + 1) + ' задаёт padding без var(--sat): «' + body.trim().slice(0, 110) +
+        '» — на iPhone шапка уедет под статус-бар');
+    });
+
+    const nav = (css.match(/(?:^|[^\w-])nav\s*\{([^}]*)\}/) || [])[1] || '';
+    assert(/position\s*:\s*sticky/.test(nav), 'кнопки вкладок остаются прилипшими (position:sticky) — без этого проверка top теряет смысл');
+    assert(/top\s*:\s*var\(--sat\)/.test(nav),
+      'прилипшие кнопки вкладок должны останавливаться ниже шторки (top:var(--sat)), а не под ней. Найдено: ' + nav.trim().slice(0, 110));
+
+    const dlgs = [...css.matchAll(/(?:^|[^\w-])#dlg\s*\{([^}]*)\}/g)].map(m => m[1]);
+    assert(dlgs.length >= 2, 'правил #dlg должно быть минимум два, найдено ' + dlgs.length);
+    dlgs.forEach((body, i) => {
+      assert(/margin(?:-top)?\s*:[^;{}]*var\(--sat\)/.test(body),
+        'диалог №' + (i + 1) + ' открывается от самой кромки экрана, под статус-баром. Найдено: ' + body.trim().slice(0, 110));
+    });
+  });
+
   test('русский текст не перекодирован (файл прочитан как windows-1251)', () => {
     // Так выглядел ущерб, когда я переписал config.js и index.html командой
     // PowerShell: она прочитала UTF-8 как windows-1251 и записала обратно
