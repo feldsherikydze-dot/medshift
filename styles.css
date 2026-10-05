@@ -1,4 +1,10 @@
-:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#ddd;--fs:14px;--fs-user:14px;--vh:1vh;--kb:0px;--shell:900px;--sab:env(safe-area-inset-bottom,0px)}
+/* --sat — отступ сверху под статус-бар («шторку») iPhone в режиме
+   standalone. По умолчанию 0px: на десктопе и там, где safe-area не нужна,
+   ничего не меняется. Настоящее значение подключается ниже, в @supports.
+   Важно: КАЖДОЕ правило, задающее padding у header и #dlg, обязано брать
+   отступ из var(--sat), а не писать число само — иначе следом идущий
+   media-запрос перетирает safe-area, и шапка уезжает под статус-бар. */
+:root{--ac:#0b5394;--bg:#f4f6f8;--card:#fff;--tx:#111;--mut:#666;--bd:#ddd;--fs:14px;--fs-user:14px;--vh:1vh;--kb:0px;--shell:900px;--sat:0px;--sab:env(safe-area-inset-bottom,0px)}
 body.dark{--bg:#12161c;--card:#1c232c;--tx:#e8e8e8;--mut:#9aa5b1;--bd:#2a3340}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:system-ui;margin:0;background:var(--bg);color:var(--tx);overflow-x:hidden;-webkit-text-size-adjust:100%;font-size:var(--fs)}
@@ -6,11 +12,17 @@ body{font-family:system-ui;margin:0;background:var(--bg);color:var(--tx);overflo
    их содержимое выравнивается по той же колонке, что и текст, иначе на
    мониторе 1920px восемь кнопок растянутся по всей ширине, а текст
    останется в узкой полосе посередине. */
-header{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(0,0,0,.10)),var(--ac);color:#fff;padding:8px max(12px,calc((100% - var(--shell)) / 2));font-size:calc(var(--fs) + 2px);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.20)}
-@supports(padding-top:env(safe-area-inset-top)){header{padding-top:calc(8px + env(safe-area-inset-top))}}
+header{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(0,0,0,.10)),var(--ac);color:#fff;padding:8px max(12px,calc((100% - var(--shell)) / 2));padding-top:calc(8px + var(--sat));font-size:calc(var(--fs) + 2px);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.20)}
+/* Ширина ≤480px — это все iPhone (375–430px), то есть ровно те устройства,
+   у которых есть «шторка». Правило ниже задаёт padding shorthand'ом и стоит
+   ПОЗЖЕ базового, поэтому отступ safe-area обязан быть внутри него самого
+   (var(--sat)), а не отдельной строкой: отдельную строку shorthand перетирает.
+   Так и было: header{padding:6px 10px} в @media(max-width:480px) сносил
+   env(safe-area-inset-top), шапка уходила под статус-бар iOS целиком. */
+@supports (padding-top: env(safe-area-inset-top)){:root{--sat:env(safe-area-inset-top)}}
 .hdr-left{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
 .hdr-user{font-size:calc(var(--fs) - 2px);opacity:.95;white-space:normal;text-align:right;line-height:1.2;max-width:52%}
-nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:10;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 0 var(--bd);padding:0 max(0px,calc((100% - var(--shell)) / 2))}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:var(--sat);z-index:10;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 1px 0 var(--bd);padding:0 max(0px,calc((100% - var(--shell)) / 2))}
 nav button{flex:1 0 auto;padding:10px 6px;border:0;background:none;font-size:calc(var(--fs) - 3px);color:var(--tx);white-space:nowrap;min-width:0;position:relative}
 nav button.on{font-weight:700;color:var(--ac)}
 nav button.on::after{content:'';position:absolute;left:20%;right:20%;bottom:4px;height:3px;border-radius:3px;background:var(--ac)}
@@ -128,7 +140,7 @@ body.dark .seasonBday{color:#ff8ab0}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(28,28,30,.92);color:#fff;padding:8px 16px;border-radius:12px;font-size:calc(var(--fs) - 1px);opacity:0;pointer-events:none;transition:opacity .3s;z-index:99;max-width:92%;text-align:center;word-wrap:break-word;box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
 .toast.show{opacity:1}
 body.dark .toast{background:rgba(238,238,240,.94);color:#14181d}
-#dlg{margin:4px auto;max-height:calc(100vh - 8px);overflow:auto;width:calc(100% - 8px);border-radius:16px;border:1px solid var(--bd);background:var(--card);color:var(--tx);box-shadow:0 12px 40px rgba(0,0,0,.28);animation:dlgIn .16s ease}
+#dlg{margin:calc(4px + var(--sat)) auto 4px;max-height:calc(100vh - 8px - var(--sat));overflow:auto;width:calc(100% - 8px);border-radius:16px;border:1px solid var(--bd);background:var(--card);color:var(--tx);box-shadow:0 12px 40px rgba(0,0,0,.28);animation:dlgIn .16s ease}
 #dlg h3{margin-top:2px;color:var(--tx)}
 #dlg h4,#dlg label,#dlg p,#dlg td,#dlg th{color:var(--tx)}
 #dlg small{color:var(--mut)}
@@ -228,7 +240,7 @@ body.dark #msBg{filter:brightness(.55) saturate(.85)}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
 @media(max-width:480px){
-  header{padding:6px 10px}
+  header{padding:6px 10px;padding-top:calc(6px + var(--sat))}
   .hdr-user{max-width:48%}
   nav button{padding:8px 4px}
   main{padding:6px 6px calc(80px + var(--sab) + var(--kb,0px))}
@@ -248,7 +260,7 @@ body.dark #msBg{filter:brightness(.55) saturate(.85)}
   .chatbox{height:220px}
   .msg{padding:4px 6px}
   .row>*{flex:1 1 100%}
-  #dlg{width:calc(100% - 4px);margin:2px auto}
+  #dlg{width:calc(100% - 4px);margin:2px auto;margin-top:calc(2px + var(--sat))}
   .loginwrap{margin:10px auto}
   .col-name{width:32%}.col-spec{width:15%}.col-qty{width:10%}.col-exp{width:30%}.col-act{width:13%}
   .col-ovm{width:12%}.col-eqname{width:28%}.col-status{width:20%}.col-notes{width:20%}.col-mark{width:20%}
@@ -265,7 +277,7 @@ body.dark #msBg{filter:brightness(.55) saturate(.85)}
   .btn{padding:9px 14px}
   .thumbs img{width:110px;height:110px}
 .chatbox{height:280px}
-   #dlg{width:min(680px,95%);margin:8px auto}
+   #dlg{width:min(680px,95%);margin:8px auto;margin-top:calc(8px + var(--sat))}
 }
 /* ---------- Под широкое окно ----------
    Колонка расширяется вместе с окном, а не остаётся телефонной полосой
