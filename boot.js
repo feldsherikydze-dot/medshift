@@ -66,7 +66,26 @@ defState('editTpl', () => editTpl, v => { editTpl = v; });
 defState('loginFor', () => loginFor, v => { loginFor = v; });
 
 window.logout = () => { logout(); saveNow(); renderNav(); render(); toast('Вы вышли 👋'); };
-window.biometricLogin = async () => { const u = await biometricLogin(); if (!u) return u; go('home'); announceLogin(u); presBeat(); toast('Смена начата 👋'); return u; };
+window.biometricLogin = async () => {
+  try {
+    const u = await biometricLogin();
+    if (!u) return u;
+    go('home'); announceLogin(u); presBeat(); toast('Смена начата 👋'); return u;
+  } catch (err) {
+    // Ловим здесь, а не в общем unhandledrejection: отмена отпечатка —
+    // обычное дело, и человек должен увидеть причину и что делать, а не
+    // «⚠ Ошибка: NotAllowedError» вторым тостом.
+    toast('🔓 ' + (window.bioErrText ? window.bioErrText(err) : (err && err.message) || 'Отпечаток не сработал'));
+    return null;
+  }
+};
+/* Сброс привязки с экрана входа: отпечаток мог остаться от старого профиля
+   или от другого домена. Данные не трогает — только саму привязку. */
+window.bioReset = () => {
+  disableBiometric();
+  render();
+  toast('Отпечаток отвязан. Войдите по PIN и включите его заново в «Ещё»');
+};
 
 // Закрытие диалогов идёт через data-act="close" (его ловит делегат клика
 // в ui.js) и window.closeDlg. Раньше здесь стояло window.close = closeDlg:
@@ -138,7 +157,7 @@ function __isImgName(n) { return /\.(png|jpe?g)$/i.test(n || ''); }
 function __isExcelName(n) { return /\.xlsx?$/i.test(n || ''); }
 function __fileToText(file) {
   const p1 = (file && typeof file.text === 'function') ? file.text().then(t => {
-    if (t && t.indexOf(' ') >= 0 && file.arrayBuffer) {
+    if (t && t.indexOf('�') >= 0 && file.arrayBuffer) {
       return file.arrayBuffer().then(buf => {
         try {
           const dec = new TextDecoder('windows-1251');
@@ -1191,9 +1210,17 @@ window.rmResp = (arg) => {
 };
 window.toggleBiometric = async (el) => {
   try {
-    if (el.checked) await enableBiometric(); else disableBiometric();
-    render();
-  } catch (err) { toast(err.message || 'Ошибка'); render(); }
+    if (el.checked) {
+      await enableBiometric();
+      toast('✅ Отпечаток привязан');
+    } else {
+      disableBiometric();
+      toast('Отпечаток отвязан');
+    }
+  } catch (err) {
+    toast('🔓 ' + (window.bioErrText ? window.bioErrText(err) : (err && err.message) || 'Ошибка'));
+  }
+  render();
 };
 window.setFontSize = (a, el) => {
   // Вызывается двояко: change-делегат даёт (el), input-делегат — (arg, el).
@@ -1405,6 +1432,10 @@ window.doDeleteMyAccount = async () => {
     DB.tomb = DB.tomb || []; if (!DB.tomb.includes(u.id)) DB.tomb.push(u.id);
     DB.users = DB.users.filter(x => x.id !== u.id);
     DB.session = null; localStorage.removeItem('medshift_my'); localStorage.removeItem('medshift_rem');
+    localStorage.removeItem('medshift_rem_ts');
+    // Привязка отпечатка принадлежала удалённому профилю: без этого на
+    // входе висело бы «профиль не найден» и человек не понимал, откуда это.
+    try { localStorage.removeItem('medshift_bio'); } catch {}
     save(); closeDlg(); go('home'); toast('🗑 Удалён');
   });
 };
@@ -1418,6 +1449,7 @@ window.doSafeReset = async () => {
   if (!(await verifyPin(u, pin))) return toast('❌ Неверный PIN');
   localStorage.removeItem('medshift_v3'); localStorage.removeItem('medshift_my');
   localStorage.removeItem('medshift_rem'); localStorage.removeItem('medshift_rem_ts');
+  localStorage.removeItem('medshift_rem_pref');
   localStorage.removeItem('medshift_tab');
   // Локальная копия фото — часть того же кэша: без этого пункта «полный
   // сброс» оставлял у человека все картинки смен, то есть не сбрасывал.
@@ -1438,9 +1470,12 @@ window.loginDo = async () => {
   const v = document.getElementById('pinIn').value;
   const bad = await pinCheck(u, v); if (bad) return toast(bad);
   const rm = document.getElementById('remMe');
-  localStorage.setItem('medshift_rem', rm && rm.checked ? '1' : '0');
-  if (rm && rm.checked) localStorage.setItem('medshift_rem_ts', String(Date.now()));
-  loginAs(u); announceLogin(u); presBeat(); go('home'); toast('Смена начата 👋');
+  const remember = !!(rm && rm.checked);
+  // Выбор галочки запоминаем отдельно: он должен пережить ручной выход.
+  localStorage.setItem(LS_KEYS.REM_PREF, remember ? '1' : '0');
+  // Раньше флаг и время ставились здесь, а loginAs() сразу перетирал их на
+  // «запомнен» — галочка не работала. Теперь решение передаётся явно.
+  loginAs(u, remember); announceLogin(u); presBeat(); go('home'); toast('Смена начата 👋');
 };
 window.toggleByName = () => { loginFor = loginFor === -2 ? 0 : -2; render(); };
 window.loginByName = async () => {

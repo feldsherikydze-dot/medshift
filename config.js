@@ -21,6 +21,10 @@ APP.footer = APP.name + ' — ' + APP.tagline + ' · ' + APP.city + ', ' + APP.a
 export const LS_KEYS = {
   DB: 'medshift_v3', DEV: 'medshift_dev', MY_ID: 'medshift_my',
   REM: 'medshift_rem', REM_TS: 'medshift_rem_ts', TAB: 'medshift_tab',
+  // REM_PREF — выбор галочки «запомнить меня» (1/0). Отдельно от REM:
+  // REM — состояние текущей сессии, а PREF должен пережить ручной выход,
+  // иначе после «Выйти» галочка снова стояла бы снятой.
+  REM_PREF: 'medshift_rem_pref',
   BIO: 'medshift_bio', FB_AUTH: 'medshift_fb_auth',
   ONLINE_CACHE: 'medshift_online_cache', BG_CUSTOM: 'medshift_bg_custom',
   WX: 'medshift_wx'
@@ -28,13 +32,15 @@ export const LS_KEYS = {
 // Единственный источник версии: sw.js читает её отсюда при установке,
 // а index.html дублирует в '?v=' — расхождение ловит тест
 // «версия в одном месте» в tests/run.mjs.
-export const VERSION = '2.6.2';
+export const VERSION = '2.6.3';
 
 export const LIMITS = {
   CHAT_MAX: 500, CHAT_SHOW: 100, REPORTS_SHOW: 50, DRUG_SEARCH_LIMIT: 15,
   DRUG_SEARCH_CACHE: 200, WEATHER_CACHE_MS: 1800000, WEATHER_RETRY_MS: 30000,
   PRESENCE_TTL_MS: 70000, PRESENCE_COOLDOWN_MS: 10000,
   SYNC_PUSH_DELAY_MS: 800, SYNC_PULL_INTERVAL_MS: 12000, SYNC_TICK_INTERVAL_MS: 20000,
+  // Срок жизни сессии БЕЗ галочки «запомнить меня». С галочкой сессия
+  // не истекает сама: человек выходит только кнопкой «Выйти».
   SESSION_TTL_MS: 86400000, LEAVES_COUNT_MOBILE: 8, LEAVES_COUNT_DESKTOP: 10,
   // Подбор PIN: 4 цифры — это 10 000 вариантов, без ограничения набирается
   // руками за пару минут. Счётчик лежит на самом сотруднике, поэтому

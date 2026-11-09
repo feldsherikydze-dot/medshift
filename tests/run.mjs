@@ -851,7 +851,8 @@ suite('auth.js · PIN', async () => {
     db.DB.session = 1;
     db.DB.sched = { days: [{ id: 9001, ts: Date.now(), month: iso(0).slice(0, 7), img: big }], months: [] };
     localStorage.setItem('medshift_rem', '0');
-    localStorage.setItem('medshift_rem_ts', String(Date.now()));
+    // Срок без галочки — сутки; берём заведомо просроченную отметку.
+    localStorage.setItem('medshift_rem_ts', String(Date.now() - 25 * 3600 * 1000));
     a.checkSessionExpiry();
     const rawSrazu = localStorage.getItem('medshift_v3') || '';
     assert(rawSrazu.indexOf('base64') < 0,
@@ -865,6 +866,42 @@ suite('auth.js · PIN', async () => {
     db.DB.session = 1;               // возвращаем состояние общего экземпляра
     localStorage.setItem('medshift_rem', '1');
   });
+  test('«запомнить меня»: сессия не истекает сама, даже спустя сутки', () => {
+    const db = sharedDB;
+    db.DB.session = 1;
+    localStorage.setItem('medshift_rem', '1');
+    localStorage.setItem('medshift_rem_ts', String(Date.now() - 40 * 86400000));
+    a.checkSessionExpiry();
+    eq(db.DB.session, 1, 'с галочкой приложение не должно выходить само');
+  });
+
+  test('без галочки: час прошёл — сидим, сутки — выход', () => {
+    const db = sharedDB;
+    db.DB.session = 1;
+    localStorage.setItem('medshift_rem', '0');
+    localStorage.setItem('medshift_rem_ts', String(Date.now() - 3600 * 1000));
+    a.checkSessionExpiry();
+    eq(db.DB.session, 1, 'через час сессия ещё жива');
+    localStorage.setItem('medshift_rem_ts', String(Date.now() - 25 * 3600 * 1000));
+    a.checkSessionExpiry();
+    eq(db.DB.session, null, 'через сутки без галочки — выход');
+    db.DB.session = 1;
+    localStorage.setItem('medshift_rem', '1');
+    localStorage.setItem('medshift_rem_ts', String(Date.now()));
+  });
+
+  test('loginAs(u, false) не перетирает выбор «не запоминать»', () => {
+    // Регрессия 2.6.2: loginAs() всегда ставил REM='1', поэтому галочка
+    // «запомнить меня» ни на что не влияла, а сессия жила ровно 24 часа.
+    const db = sharedDB;
+    a.loginAs({ id: 1, name: 'Босс' }, false);
+    eq(localStorage.getItem('medshift_rem'), '0', 'без галочки флаг должен остаться 0');
+    a.loginAs({ id: 1, name: 'Босс' }, true);
+    eq(localStorage.getItem('medshift_rem'), '1', 'с галочкой — 1');
+    db.DB.session = 1;
+    localStorage.setItem('medshift_rem', '1');
+  });
+
   test('verifyPin: неверная соль не проходит', async () => {
     const u = { id: 1, name: 'U', pin: await m_hash('1234', 'saltA'), pinSalt: 'saltA' };
     eq(await a.verifyPin(u, '1234'), true);
@@ -937,6 +974,100 @@ suite('auth.js · PIN', async () => {
   test('у пользователя без пароля verifyPin не проходит даже при верном вводе', async () => {
     const u = { id: 1, name: 'U', pin: '', role: 'user' };
     eq(await a.verifyPin(u, ''), false, 'пустой PIN не должен пускать в приложение');
+  });
+});
+
+/* ============================== auth.js · отпечаток ============================== */
+suite('auth.js · вход по отпечатку', async () => {
+  const a = await import('../auth.js');
+  const db = sharedDB;
+  db.DB.session = 1;
+  db.DB.users[0].pin = db.DB.users[0].pin || 'x';   // enableBiometric требует PIN
+  const navDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const setNav = obj => Object.defineProperty(globalThis, 'navigator', { value: obj, configurable: true });
+  const restoreNav = () => Object.defineProperty(globalThis, 'navigator', navDesc);
+  const withLocation = (host, fn) => {
+    const had = Object.prototype.hasOwnProperty.call(globalThis, 'location');
+    const prev = globalThis.location;
+    globalThis.location = { hostname: host };
+    return Promise.resolve().then(fn).finally(() => { if (had) globalThis.location = prev; else delete globalThis.location; });
+  };
+
+  test('привязка хранит домен и имя профиля', async () => {
+    localStorage.removeItem('medshift_bio');
+    const u = db.DB.users[0];
+    const origPK = window.PublicKeyCredential, origSecure = window.isSecureContext;
+    window.PublicKeyCredential = function () {};
+    window.isSecureContext = true;
+    setNav({ credentials: { create: async () => ({ rawId: Uint8Array.from([7, 8, 9]).buffer }) } });
+    try {
+      await withLocation('med.test', () => a.enableBiometric());
+      const b = a.bioInfo();
+      assert(!!b, 'привязка должна сохраниться');
+      eq(b.userId, u.id, 'id профиля');
+      eq(b.userName, u.name, 'имя нужно, чтобы показать его без базы');
+      eq(b.rpId, 'med.test', 'домен обязателен для диагностики «другого адреса»');
+      eq(b.credentialId, btoa(String.fromCharCode(7, 8, 9)), 'credentialId в base64');
+    } finally {
+      window.PublicKeyCredential = origPK; window.isSecureContext = origSecure;
+      restoreNav(); localStorage.removeItem('medshift_bio');
+    }
+  });
+
+  test('нет профиля в базе — привязку НЕ стираем и объясняем причину', async () => {
+    localStorage.setItem('medshift_bio', JSON.stringify({ userId: 999999, userName: 'Старый', credentialId: 'BgcJ', rpId: null }));
+    let msg = '';
+    try { await a.biometricLogin(); } catch (e) { msg = e.message; }
+    assert(/не найден/.test(msg), 'должно быть понятное сообщение, а не тишина: ' + msg);
+    assert(!!a.bioInfo(), 'привязка не должна удаляться из-за отсутствия профиля');
+    localStorage.removeItem('medshift_bio');
+  });
+
+  test('отпечаток с другого домена объясняется словами', async () => {
+    localStorage.setItem('medshift_bio', JSON.stringify({ userId: 1, credentialId: 'BgcJ', rpId: 'other.example' }));
+    let msg = '';
+    try { await withLocation('med.test', () => a.biometricLogin()); } catch (e) { msg = e.message; }
+    assert(/другому адресу/.test(msg), 'ожидалось объяснение про другой адрес, получено: ' + msg);
+    localStorage.removeItem('medshift_bio');
+  });
+
+  test('успешный вход по отпечатку запоминает сессию до выхода', async () => {
+    const u = db.DB.users[0];
+    localStorage.setItem('medshift_bio', JSON.stringify({ userId: u.id, credentialId: 'BgcJ', rpId: null }));
+    setNav({ credentials: { get: async () => ({ id: 'ok' }) } });
+    try {
+      const got = await a.biometricLogin();
+      eq(got && got.id, u.id, 'должен вернуться тот же сотрудник');
+      eq(localStorage.getItem('medshift_rem'), '1', 'после отпечатка сессия не должна истекать сама');
+      eq(db.DB.session, u.id, 'сессия должна открыться');
+    } finally { restoreNav(); localStorage.removeItem('medshift_bio'); db.DB.session = 1; }
+  });
+
+  test('ошибки WebAuthn переводятся на человеческий', () => {
+    eq(/Отпечаток не подтверждён/.test(a.bioErrText({ name: 'NotAllowedError' })), true);
+    eq(/https/.test(a.bioErrText({ name: 'SecurityError' })), true);
+    eq(/датчика/.test(a.bioErrText({ name: 'NotSupportedError' })), true);
+    eq(a.bioErrText({ message: 'Отменено' }), 'Отменено');
+  });
+
+  test('битая привязка: понятная ошибка вместо падения atob', async () => {
+    localStorage.setItem('medshift_bio', JSON.stringify({ userId: 1, credentialId: 'не-base64!!!' }));
+    setNav({ credentials: { get: async () => ({ id: 'ok' }) } });
+    let msg = '';
+    try { await a.biometricLogin(); } catch (e) { msg = e.message; }
+    assert(/повреждена/.test(msg), 'ожидалось сообщение о повреждении, получено: ' + msg);
+    assert(!!a.bioInfo(), 'повреждённую запись не удаляем — человек сам решит, когда отвязать');
+    restoreNav(); localStorage.removeItem('medshift_bio');
+  });
+
+  test('привязка на родительский домен принимается на поддомене', async () => {
+    const u = db.DB.users[0];
+    localStorage.setItem('medshift_bio', JSON.stringify({ userId: u.id, credentialId: 'BgcJ', rpId: 'example.com' }));
+    setNav({ credentials: { get: async () => ({ id: 'ok' }) } });
+    try {
+      const got = await withLocation('app.example.com', () => a.biometricLogin());
+      eq(got && got.id, u.id, 'rpId=example.com должен работать на app.example.com');
+    } finally { restoreNav(); localStorage.removeItem('medshift_bio'); db.DB.session = 1; }
   });
 });
 
@@ -1900,6 +2031,16 @@ suite('сборка · версия в одном месте', async () => {
     const кодБит = бит[0].replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert(!/гость/.test(кодБит), '«гость» в онлайне раздувал счётчик и светил устройство до входа');
     assert(/if \(u\)/.test(кодБит), 'публикация — только при наличии сессии');
+  });
+
+  test('кнопка отпечатка: id профиля сравнивается строкой, есть путь «привязать заново»', () => {
+    // Строгое === молча скрывало кнопку, когда id приходил из сервера
+    // строкой: со стороны это выглядело как «вход по отпечатку сломался».
+    const v = read('views.js');
+    assert(/String\(x\.id\) === String\(_bio\.userId\)/.test(v), 'строгое сравнение id снова скрывает кнопку отпечатка');
+    assert(/data-act="bioReset"/.test(v), 'с экрана входа нужен путь перепривязки отпечатка');
+    const b = read('boot.js');
+    assert(/window\.bioReset\s*=/.test(b), 'у data-act="bioReset" должен быть обработчик');
   });
 
   test('все index.html data-act имеют обработчик', () => {

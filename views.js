@@ -34,13 +34,22 @@ export function loginView() {
   h += '<p class="msMark">MedShift <span>v' + VERSION + '</span></p>';
   h += '<p style="margin:2px 0 8px;font-size:calc(var(--fs) - 2px);color:var(--mut)">' + esc(APP.tagline) + '<br>' + esc(APP.city) + (APP.phone ? ' · ' + esc(APP.phone) : '') + '</p>';
   h += '<p>Вход по PIN</p>';
-  const _bio = localStorage.getItem('medshift_bio');
+  const _bio = window.bioInfo ? window.bioInfo() : null;
   if (_bio) {
-    try {
-      const b = JSON.parse(_bio);
-      const bu = DB.users.find(x => x.id === b.userId);
-      if (bu && !isDead(bu.id)) h += '<button class="bigbtn" data-act="biometricLogin" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>' + esc(bu.name) + '</small></button><hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">';
-    } catch {}
+    // id сравниваем строкой: после обмена с сервером он приходит то числом,
+    // то строкой, а строгое === молча скрывало кнопку — вход по отпечатку
+    // «исчезал» без единой ошибки.
+    const bu = DB.users.find(x => String(x.id) === String(_bio.userId));
+    if (bu && !isDead(bu.id)) {
+      h += '<button class="bigbtn" data-act="biometricLogin" style="background:var(--ac);color:#fff;border-color:var(--ac)">🔓 <b>Вход по отпечатку</b> · <small>' + esc(bu.name) + '</small></button>';
+      h += '<p style="margin:4px 0 0;font-size:calc(var(--fs) - 3px)"><a href="#" data-act="bioReset" style="color:var(--mut)">Отпечаток не срабатывает? Привязать заново</a></p>';
+    } else {
+      // Привязка есть, а профиль не найден: не стираем её молча (база могла
+      // ещё не приехать) и объясняем, что делать.
+      h += '<p style="font-size:calc(var(--fs) - 2px);color:var(--mut)">🔓 Отпечаток привязан к профилю' + (_bio.userName ? ' «' + esc(_bio.userName) + '»' : '') + ', которого нет в базе. Войдите по PIN и включите отпечаток заново в «Ещё».</p>';
+      h += '<p style="margin:4px 0 0;font-size:calc(var(--fs) - 3px)"><a href="#" data-act="bioReset" style="color:var(--mut)">Отвязать отпечаток</a></p>';
+    }
+    h += '<hr style="border:0;border-top:1px solid var(--bd);margin:10px 0">';
   }
   const myId = +localStorage.getItem('medshift_my') || 0;
   const myu = DB.users.find(x => x.id === myId);
@@ -48,7 +57,11 @@ export function loginView() {
     h += '<button class="bigbtn" data-act="loginPick" data-arg="' + myu.id + '">👤 <b>' + esc(myu.name) + '</b></button>';
     if (window.loginFor === myu.id) {
       h += '<p><input id="pinIn" type="password" placeholder="PIN" inputmode="numeric"></p>';
-      h += '<p><label style="font-size:calc(var(--fs) - 1px)"><input type="checkbox" id="remMe" style="width:auto"' + (localStorage.getItem('medshift_rem') === '1' ? ' checked' : '') + '> запомнить меня (24 ч)</label></p>';
+      // Галочка помнит свой выбор отдельно от текущей сессии (REM_PREF):
+      // после ручного выхода не должна сбрасываться.
+      const _remPref = localStorage.getItem('medshift_rem_pref');
+      const _remOn = _remPref != null ? _remPref === '1' : localStorage.getItem('medshift_rem') === '1';
+      h += '<p><label style="font-size:calc(var(--fs) - 1px)"><input type="checkbox" id="remMe" style="width:auto"' + (_remOn ? ' checked' : '') + '> запомнить меня (не выходить, пока не выйду сам)</label></p>';
       h += '<p><button class="btn wide" data-act="loginDo">Войти</button></p>';
     }
   }
@@ -400,11 +413,11 @@ export function setView() {
   h += '<label>Ответственные машины</label>' + respRows(u, 'cars') + '<p><button class="btn sec mini" data-act="addResp" data-arg="cars">+ добавить машину</button></p>';
   h += '<label>Ответственные сумки</label>' + respRows(u, 'bags') + '<p><button class="btn sec mini" data-act="addResp" data-arg="bags">+ добавить сумку</button></p>';
   if (window.PublicKeyCredential && u.pin) {
-    const _bio = localStorage.getItem('medshift_bio');
-    let _has = false;
-    if (_bio) { try { _has = JSON.parse(_bio).userId === u.id; } catch {} }
+    const _b = window.bioInfo ? window.bioInfo() : null;
+    const _has = !!(_b && String(_b.userId) === String(u.id));
     h += '<label><input type="checkbox" style="width:auto"' + (_has ? ' checked' : '') + ' data-act="toggleBiometric"> 🔓 Вход по отпечатку пальца</label>';
     if (_has) h += '<p style="font-size:calc(var(--fs) - 3px);color:var(--mut)">Биометрия привязана для: ' + esc(u.name) + '</p>';
+    else if (_b) h += '<p style="font-size:calc(var(--fs) - 3px);color:var(--mut)">На этом устройстве отпечаток привязан к другому профилю — включите галочку, чтобы перепривязать на себя.</p>';
   }
   h += '</div>';
   h += '<div class="card"><h3>📡 Синхронизация</h3>';

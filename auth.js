@@ -60,36 +60,131 @@ export async function pinCheck(user, pin) {
     ? '❌ Неверный PIN. Осталось попыток: ' + left
     : '⏳ Слишком много попыток. Подождите ' + Math.ceil(LIMITS.PIN_LOCK_MS / 60000) + ' мин';
 }
-export function loginAs(user) { DB.session = user.id; localStorage.setItem(LS_KEYS.MY_ID, String(user.id)); localStorage.setItem(LS_KEYS.REM, '1'); localStorage.setItem(LS_KEYS.REM_TS, String(Date.now())); save(); }
-export function logout() { DB.session = null; localStorage.setItem(LS_KEYS.REM, '0'); localStorage.removeItem(LS_KEYS.REM_TS); save(); }
+/* remember=true — «запомнить меня»: сессия живёт до ручного выхода.
+   remember=false — обычная сессия: через LIMITS.SESSION_TTL_MS (24 ч) таймер
+   разлогинит. Раньше аргумента не было и флаг REM всегда ставился в '1',
+   поэтому галочка на экране входа ни на что не влияла — приложение
+   «запоминало» максимум на сутки, а потом выкидывало. */
+export function loginAs(user, remember = true) {
+  DB.session = user.id;
+  localStorage.setItem(LS_KEYS.MY_ID, String(user.id));
+  localStorage.setItem(LS_KEYS.REM, remember ? '1' : '0');
+  localStorage.setItem(LS_KEYS.REM_TS, String(Date.now()));
+  save();
+}
+export function logout() {
+  DB.session = null;
+  localStorage.setItem(LS_KEYS.REM, '0');
+  localStorage.removeItem(LS_KEYS.REM_TS);
+  // Выбор галочки (REM_PREF) не трогаем: после выхода она должна остаться
+  // такой, какой её оставил человек.
+  save();
+}
 export function checkSessionExpiry() {
   if (!DB.session) return;
-  if (localStorage.getItem(LS_KEYS.REM) !== '1' || Date.now() - (+localStorage.getItem(LS_KEYS.REM_TS) || 0) > LIMITS.SESSION_TTL_MS) {
-    window.loginFor = DB.session; DB.session = null; localStorage.setItem(LS_KEYS.REM, '0');
-    // Писать надо штатным сохранением, а не прямой записью в хранилище:
-    // прямая запись утаскивала base64-фото обратно в главный ключ (их
-    // отцепляет только _write) и падала без try/catch при переполнении
-    // квоты — исключение из таймера заливало экран ошибкой.
-    save();
-    if (window.toast) window.toast('Сессия истекла (24 ч)'); if (window.renderNav) window.renderNav(); if (window.render) window.render();
-  }
+  // «Запомнить меня» — не выходим сами вообще.
+  if (localStorage.getItem(LS_KEYS.REM) === '1') return;
+  const started = +localStorage.getItem(LS_KEYS.REM_TS) || 0;
+  if (started && Date.now() - started <= LIMITS.SESSION_TTL_MS) return;
+  window.loginFor = DB.session; DB.session = null; localStorage.setItem(LS_KEYS.REM, '0');
+  // Писать надо штатным сохранением, а не прямой записью в хранилище:
+  // прямая запись утаскивала base64-фото обратно в главный ключ (их
+  // отцепляет только _write) и падала без try/catch при переполнении
+  // квоты — исключение из таймера заливало экран ошибкой.
+  save();
+  if (window.toast) window.toast('Сессия истекла (24 ч)'); if (window.renderNav) window.renderNav(); if (window.render) window.render();
+}
+/* ---------- Вход по отпечатку (WebAuthn) ----------
+   Привязка живёт в localStorage: { userId, userName, credentialId, rpId }.
+   Отпечаток умеет «умирать» сам по себе: человек сменил телефон, почистил
+   данные сайта, Android сбросил ключи, или приложение открыли с другого
+   адреса (у credential своя привязка к домену). Поэтому:
+   — привязку НЕ удаляем молча, если профиль просто не нашёлся в базе
+     (он мог ещё не приехать с сервера) — раньше именно это и убивало вход;
+   — запоминаем домен и говорим прямо, если отпечаток привязан к другому;
+   — ошибки переводим в понятный текст, а не в «NotAllowedError». */
+function bioHost() {
+  try { return (typeof location !== 'undefined' && location.hostname) ? location.hostname : ''; }
+  catch { return ''; }
+}
+/** rp.id обязан быть доменом: IP-адрес и file:// браузер отвергнет. */
+function bioRpId() {
+  const h = bioHost();
+  if (!h || /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.indexOf(':') >= 0) return null;
+  return h;
+}
+/** Сохранённая привязка или null. Битые/чужие данные не должны ронять экран. */
+export function bioInfo() {
+  try {
+    const b = JSON.parse(localStorage.getItem(LS_KEYS.BIO) || 'null');
+    // credentialId обязан быть непустой строкой: число/объект от старой
+    // версии или битой записи иначе уронит atob уже на входе.
+    return (b && typeof b.credentialId === 'string' && b.credentialId) ? b : null;
+  } catch { return null; }
+}
+/** Человеческий текст ошибки WebAuthn. */
+export function bioErrText(e) {
+  const n = (e && e.name) || '', m = String((e && e.message) || '');
+  if (n === 'NotAllowedError') return 'Отпечаток не подтверждён: отмена или время вышло. Попробуйте ещё раз или войдите по PIN';
+  if (n === 'SecurityError') return 'Браузер запрещает отпечаток на этом адресе. Нужен https:// и тот же домен, где привязывали';
+  if (n === 'NotSupportedError') return 'На этом устройстве нет датчика отпечатка или он не настроен в системе';
+  if (n === 'InvalidStateError') return 'Отпечаток уже привязан на этом устройстве';
+  if (n === 'AbortError') return 'Окно отпечатка закрылось. Попробуйте ещё раз';
+  if (n === 'ConstraintError') return 'Устройство не поддерживает проверку отпечатком';
+  if (n === 'QuotaExceededError' || /quota/i.test(m)) return 'Память браузера переполнена — освободите место и повторите';
+  return m || 'Отпечаток не сработал';
 }
 export async function enableBiometric() {
-  const u = me(); if (!u || !u.pin) throw new Error('Нет PIN');
+  const u = me(); if (!u || (!u.pin && !u.pinSalt)) throw new Error('Сначала задайте PIN');
+  if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.create) throw new Error('Браузер не поддерживает вход по отпечатку');
+  if (!window.isSecureContext) throw new Error('Отпечаток работает только по https:// (или на localhost)');
   const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
-  const cred = await navigator.credentials.create({ publicKey: { challenge, rp: { name: 'МедСмена' }, user: { id: new TextEncoder().encode(String(u.id)), name: u.name, displayName: u.name }, pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }], authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' }, timeout: 60000, attestation: 'none' } });
+  const rpId = bioRpId();
+  const cred = await navigator.credentials.create({ publicKey: {
+    challenge,
+    rp: rpId ? { id: rpId, name: 'МедСмена' } : { name: 'МедСмена' },
+    user: { id: new TextEncoder().encode(String(u.id)), name: u.email || u.name || String(u.id), displayName: u.name || 'Сотрудник' },
+    pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+    // residentKey: 'preferred' — на Android/Chrome такая привязка уходит
+    // в менеджер паролей и переживает чистку данных сайта. Для старых
+    // authenticator'ов это лишь подсказка, отказом не является.
+    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+    timeout: 60000, attestation: 'none'
+  } });
   if (!cred) throw new Error('Отменено');
-  localStorage.setItem(LS_KEYS.BIO, JSON.stringify({ userId: u.id, credentialId: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(cred.rawId)))) }));
+  const data = {
+    v: 2, userId: u.id, userName: u.name || '',
+    credentialId: btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(cred.rawId)))),
+    rpId: rpId, createdAt: Date.now()
+  };
+  try { localStorage.setItem(LS_KEYS.BIO, JSON.stringify(data)); }
+  catch (e) { throw new Error('Не удалось сохранить привязку: ' + bioErrText(e)); }
 }
 export function disableBiometric() { localStorage.removeItem(LS_KEYS.BIO); }
 export async function biometricLogin() {
-  const raw = localStorage.getItem(LS_KEYS.BIO); if (!raw) throw new Error('Не настроена');
-  const b = JSON.parse(raw), u = DB.users.find(x => String(x.id) === String(b.userId));
-  if (!u || isDead(u.id)) { localStorage.removeItem(LS_KEYS.BIO); throw new Error('Недоступна'); }
+  const b = bioInfo(); if (!b) throw new Error('Отпечаток не привязан');
+  // Старые записи (до 2.6.3) домен не хранили — тогда проверку пропускаем.
+  // rp.id по спецификации WebAuthn может быть родительским доменом
+  // (привязка на example.com работает и на www.example.com), поэтому
+  // сравниваем не только на равенство, но и на суффикс.
+  const host = bioRpId();
+  const sameHost = !b.rpId || !host || host === b.rpId || host.endsWith('.' + b.rpId);
+  if (!sameHost) {
+    throw new Error('Отпечаток привязан к другому адресу (' + b.rpId + '). Войдите по PIN и включите его заново в «Ещё»');
+  }
+  const u = DB.users.find(x => String(x.id) === String(b.userId));
+  if (!u) throw new Error('Профиль для отпечатка не найден в базе. Войдите по PIN и включите отпечаток заново в «Ещё»');
+  if (isDead(u.id)) { localStorage.removeItem(LS_KEYS.BIO); throw new Error('Профиль заблокирован'); }
+  if (!navigator.credentials || !navigator.credentials.get) throw new Error('Браузер не поддерживает вход по отпечатку');
+  let rawId;
+  try { rawId = Uint8Array.from(atob(b.credentialId), c => c.charCodeAt(0)); }
+  catch { throw new Error('Привязка отпечатка повреждена. Войдите по PIN и включите отпечаток заново в «Ещё»'); }
   const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
-  const cred = await navigator.credentials.get({ publicKey: { challenge, allowCredentials: [{ id: Uint8Array.from(atob(b.credentialId), c => c.charCodeAt(0)), type: 'public-key' }], userVerification: 'required', timeout: 60000 } });
+  const cred = await navigator.credentials.get({ publicKey: { challenge, allowCredentials: [{ id: rawId, type: 'public-key' }], userVerification: 'required', timeout: 60000 } });
   if (!cred) throw new Error('Отменено');
-  loginAs(u); return u;
+  // Отпечаток — доверенное устройство: сессия не должна сама истекать
+  // через сутки, иначе «вход по отпечатку» выглядит сломанным.
+  loginAs(u, true); return u;
 }
 export function banUser(id) {
   // Блокировка равносильна удалению: человека вычеркивают из списка и
@@ -115,4 +210,4 @@ export function unbanUser(id) {
   DB.banTomb = (DB.banTomb || []); if (!DB.banTomb.some(x => String(x) === String(id))) DB.banTomb.push(id);
   DB.users.push(u); save();
 }
-window.signIn = signIn; window.restoreToken = restoreToken; window.verifyPin = verifyPin; window.setPin = setPin; window.pinCheck = pinCheck; window.pinLockedMs = pinLockedMs; window.loginAs = loginAs; window.logout = logout; window.enableBiometric = enableBiometric; window.disableBiometric = disableBiometric; window.biometricLogin = biometricLogin; window.banUser = banUser; window.unbanUser = unbanUser;
+window.signIn = signIn; window.restoreToken = restoreToken; window.verifyPin = verifyPin; window.setPin = setPin; window.pinCheck = pinCheck; window.pinLockedMs = pinLockedMs; window.loginAs = loginAs; window.logout = logout; window.enableBiometric = enableBiometric; window.disableBiometric = disableBiometric; window.biometricLogin = biometricLogin; window.bioInfo = bioInfo; window.bioErrText = bioErrText; window.banUser = banUser; window.unbanUser = unbanUser;
